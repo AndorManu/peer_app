@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node tools/brain-shot.mjs brain-after)"
+    ]
+  }
+}
