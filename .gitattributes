@@ -1,0 +1,4 @@
+# Normalize line endings: store as LF, check out native on Windows.
+* text=auto eol=lf
+*.png binary
+*.ttf binary
