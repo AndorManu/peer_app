@@ -58,265 +58,32 @@ import {
   getWeakSpots,
   inferProfileFromMessage,
   makeMastery,
-  makeProfile,
-  normalizeMastery,
-  normalizeProfile,
   recordStudyActivity,
   setExplanationDepth,
   updateMasteryFromFeedback,
   updateMasteryFromMessage,
   updateProfileFromAttachments,
 } from "./learningModel.js";
-
-const PROJECT_COLORS = ["#6d5dfc", "#12a594", "#ef6f6c", "#e2a93b", "#2f9ed8", "#d65a9f"];
-const FONT_OPTIONS = [
-  { id: "inter", label: "Inter", family: "'Inter', system-ui, sans-serif" },
-  { id: "system", label: "System", family: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" },
-  { id: "opendyslexic", label: "OpenDyslexic", tag: "Dyslexia font", family: "'OpenDyslexicRegular', 'Comic Sans MS', Verdana, sans-serif" },
-  { id: "atkinson", label: "Atkinson Hyperlegible", tag: "High legibility", family: "'Atkinson Hyperlegible', 'Inter', system-ui, sans-serif" },
-  { id: "lexend", label: "Lexend", tag: "Readable sans", family: "'Lexend', 'Inter', system-ui, sans-serif" },
-  { id: "serif", label: "Readable Serif", family: "Georgia, 'Times New Roman', serif" },
-  { id: "mono", label: "Mono", family: "'JetBrains Mono', 'SFMono-Regular', Consolas, monospace" },
-];
-
-const LANGUAGE_OPTIONS = [
-  { value: "auto", label: "Match my language" },
-  { value: "en", label: "English" },
-  { value: "nl", label: "Dutch / Nederlands" },
-  { value: "mixed", label: "Mixed Dutch/English" },
-  { value: "es", label: "Spanish / Espanol" },
-  { value: "fr", label: "French / Francais" },
-  { value: "de", label: "German / Deutsch" },
-  { value: "pt", label: "Portuguese / Portugues" },
-  { value: "it", label: "Italian / Italiano" },
-  { value: "tr", label: "Turkish / Turkce" },
-  { value: "ar", label: "Arabic / Al-Arabiyyah" },
-];
-
-const STUDY_MODES = [
-  { id: "auto", label: "Auto", icon: Brain, prompt: "Adapt naturally to the learner." },
-  { id: "explain", label: "Explain", icon: Lightbulb, prompt: "Explain clearly with a compact example." },
-  { id: "quiz", label: "Quiz", icon: Target, prompt: "Ask one question at a time and wait for the learner." },
-  { id: "duck", label: "Rubber duck", icon: MessageSquare, prompt: "Let the learner explain first, then gently inspect gaps." },
-  { id: "challenge", label: "Challenge", icon: Trophy, prompt: "Turn the topic into a small level or mini challenge." },
-  { id: "visual", label: "Visual", icon: Layers, prompt: "Use mental models, analogies, and simple diagrams in text." },
-  { id: "exam", label: "Exam prep", icon: GraduationCap, prompt: "Focus on recall, traps, and exam-style checks." },
-  { id: "codeReview", label: "Code review", icon: Code2, prompt: "Review code precisely and explain tradeoffs." },
-];
-
-const DEPTH_OPTIONS = [
-  { id: "simple", label: "Simple", hint: "Tiny steps, low jargon" },
-  { id: "normal", label: "Normal", hint: "Balanced explanation" },
-  { id: "expert", label: "Expert", hint: "Precise terms and edge cases" },
-  { id: "exam", label: "Exam", hint: "Recall, traps, practice" },
-];
-
-const LEVEL_OPTIONS = [
-  { id: "beginner", label: "Beginner", hint: "Start from fundamentals" },
-  { id: "intermediate", label: "Intermediate", hint: "Assume basics, build fluency" },
-  { id: "advanced", label: "Advanced", hint: "Go deeper into tradeoffs" },
-  { id: "exam", label: "Exam focused", hint: "Prioritize recall and traps" },
-];
-
-const LEARNING_STYLE_OPTIONS = [
-  { id: "auto", label: "Let Peer adapt" },
-  { id: "visual", label: "Visual diagrams" },
-  { id: "examples", label: "Examples first" },
-  { id: "socratic", label: "Guided questions" },
-  { id: "challenge", label: "Mini challenges" },
-  { id: "code", label: "Code tutor" },
-];
-
-const COMMUNITY_CHALLENGES = [
-  { id: "c-pointers", subject: "C", title: "Pointer address lab", level: "Beginner", prompt: "Give me a 20-minute C pointer challenge with checkpoints, hints, and one final self-test." },
-  { id: "cyber-web", subject: "Cybersecurity", title: "Web threat model sprint", level: "Intermediate", prompt: "Create a practical web security challenge about authentication mistakes, with hints and a debrief." },
-  { id: "math-proof", subject: "Math", title: "Explain then prove", level: "Intermediate", prompt: "Give me a peer-teaching challenge where I explain a theorem idea, then prove a small case." },
-  { id: "lang-recall", subject: "Languages", title: "Active recall dialogue", level: "Beginner", prompt: "Run a language-learning challenge using short dialogue, correction, and spaced recall." },
-];
-
-const STARTERS = [
-  {
-    icon: Code2,
-    title: "Explain a concept",
-    sub: "Pointers, recursion, arrays, memory",
-    prompt: "Can you explain how pointers work in C?",
-    mode: "explain",
-  },
-  {
-    icon: Lightbulb,
-    title: "Try another angle",
-    sub: "Analogies and visual models",
-    prompt: "Explain recursion with a simple analogy.",
-    mode: "visual",
-  },
-  {
-    icon: Target,
-    title: "Quiz me",
-    sub: "One question at a time",
-    prompt: "Quiz me on binary search. Ask one question at a time.",
-    mode: "quiz",
-  },
-  {
-    icon: MessageSquare,
-    title: "Rubber duck",
-    sub: "I explain, Peer checks the gaps",
-    prompt: "I want to explain a concept to you so you can check if I really get it. Ready?",
-    mode: "duck",
-  },
-];
-
-const AUTH_PROVIDERS = [
-  { id: "google", label: "Google", hint: "Best for Gmail and school accounts", badge: "G" },
-  { id: "github", label: "GitHub", hint: "Useful for coding learners", badge: "GH" },
-  { id: "microsoft", label: "Microsoft", hint: "Works well for Outlook and school tenants", badge: "MS" },
-  { id: "discord", label: "Discord", hint: "Good for study communities", badge: "D" },
-  { id: "email", label: "Email code", hint: "Use any email address", badge: "@" },
-];
-
-const uid = () => Math.random().toString(36).slice(2, 10);
-
-const makeChat = (projectId = null) => ({
-  id: uid(),
-  name: "New chat",
-  projectId,
-  messages: [],
-  createdAt: Date.now(),
-});
-
-const defaultState = () => {
-  const projectId = uid();
-  const chat = makeChat(projectId);
-
-  return {
-    theme: "dark",
-    fontId: "inter",
-    textSize: 15,
-    activeMode: "auto",
-    landingComplete: false,
-    onboardingComplete: false,
-    account: null,
-    profile: makeProfile(),
-    notes: [],
-    studyRooms: [],
-    projects: [{ id: projectId, name: "C Programming", color: PROJECT_COLORS[0], docs: [], mastery: makeMastery() }],
-    chats: [chat],
-    activeId: chat.id,
-    flashcards: [],
-  };
-};
-
-function normalizeState(stored) {
-  const fallback = defaultState();
-  if (!stored || typeof stored !== "object") return fallback;
-
-  const projects = Array.isArray(stored.projects)
-    ? stored.projects.map((project, index) => ({
-        id: project?.id || uid(),
-        name: project?.name || "Untitled project",
-        color: project?.color || PROJECT_COLORS[index % PROJECT_COLORS.length],
-        mastery: normalizeMastery(project?.mastery),
-        docs: Array.isArray(project?.docs)
-          ? project.docs.map((doc) => ({
-              id: doc?.id || uid(),
-              name: doc?.name || "Untitled document",
-              kind: doc?.kind || "pdf",
-              pages: doc?.pages || 0,
-              chars: doc?.chars || String(doc?.text || "").length,
-              text: String(doc?.text || ""),
-              previewUrl: doc?.previewUrl || null,
-              note: doc?.note || "",
-              addedAt: doc?.addedAt || Date.now(),
-            }))
-          : [],
-      }))
-    : fallback.projects;
-
-  const chats = Array.isArray(stored.chats)
-    ? stored.chats.map((chat) => ({
-        id: chat?.id || uid(),
-        name: chat?.name || "New chat",
-        projectId: chat?.projectId || null,
-        messages: Array.isArray(chat?.messages)
-          ? chat.messages.map((message) => ({
-              id: message?.id || uid(),
-              role: message?.role === "assistant" ? "assistant" : "user",
-              content: String(message?.content || ""),
-              displayContent: message?.displayContent ? String(message.displayContent) : null,
-              attachments: Array.isArray(message?.attachments) ? message.attachments : [],
-              createdAt: message?.createdAt || Date.now(),
-              feedback: message?.feedback || null,
-              savedNoteId: message?.savedNoteId || null,
-              streaming: false,
-              imageUrl: message?.imageUrl || null,
-            }))
-          : [],
-        createdAt: chat?.createdAt || Date.now(),
-      }))
-    : fallback.chats;
-
-  const profile = normalizeProfile(stored.profile);
-  const account = normalizeAccount(stored.account);
-
-  const safeChats = chats.length ? chats : fallback.chats;
-  const activeId = safeChats.some((chat) => chat.id === stored.activeId) ? stored.activeId : safeChats[0].id;
-  const activeMode = STUDY_MODES.some((mode) => mode.id === stored.activeMode) ? stored.activeMode : "auto";
-
-  return {
-    theme: stored.theme === "light" ? "light" : "dark",
-    fontId: FONT_OPTIONS.some((font) => font.id === stored.fontId) ? stored.fontId : "inter",
-    textSize: Number.isFinite(Number(stored.textSize)) ? Number(stored.textSize) : 15,
-    activeMode,
-    landingComplete: Boolean(stored.landingComplete || stored.onboardingComplete || account?.verified),
-    onboardingComplete: Boolean(stored.onboardingComplete),
-    account,
-    profile,
-    notes: Array.isArray(stored.notes) ? stored.notes : [],
-    studyRooms: Array.isArray(stored.studyRooms)
-      ? stored.studyRooms.map((room) => ({
-          id: room?.id || uid(),
-          name: String(room?.name || "Study room"),
-          topic: String(room?.topic || "General study"),
-          projectId: room?.projectId || null,
-          members: Number.isFinite(Number(room?.members)) ? Number(room.members) : 1,
-          createdAt: room?.createdAt || Date.now(),
-          lastActivityAt: room?.lastActivityAt || Date.now(),
-        }))
-      : [],
-    projects,
-    chats: safeChats,
-    activeId,
-    flashcards: Array.isArray(stored.flashcards)
-      ? stored.flashcards.map((deck) => ({
-          id: deck?.id || uid(),
-          chatId: deck?.chatId || null,
-          projectId: deck?.projectId || null,
-          chatName: String(deck?.chatName || "Chat"),
-          createdAt: deck?.createdAt || Date.now(),
-          cards: Array.isArray(deck?.cards)
-            ? deck.cards.map((card) => ({ id: card?.id || uid(), question: String(card?.question || ""), answer: String(card?.answer || "") }))
-            : [],
-        }))
-      : [],
-  };
-}
-
-function normalizeAccount(account) {
-  if (!account || typeof account !== "object") return null;
-  return {
-    id: account.id || uid(),
-    name: String(account.name || "").slice(0, 80),
-    email: String(account.email || "").slice(0, 160),
-    provider: AUTH_PROVIDERS.some((provider) => provider.id === account.provider) ? account.provider : "email",
-    verified: Boolean(account.verified),
-    createdAt: account.createdAt || Date.now(),
-    lastLoginAt: account.lastLoginAt || Date.now(),
-  };
-}
-
-// Persisted state now loads asynchronously from IndexedDB, so we render a
-// normalized default first and hydrate once storage resolves (see the
-// hydration effect in App).
-const initialState = () => normalizeState(null);
+import {
+  AUTH_PROVIDERS,
+  COMMUNITY_CHALLENGES,
+  DEPTH_OPTIONS,
+  FONT_OPTIONS,
+  LANGUAGE_OPTIONS,
+  LEARNING_STYLE_OPTIONS,
+  LEVEL_OPTIONS,
+  PROJECT_COLORS,
+  STARTERS,
+  STUDY_MODES,
+} from "./constants.js";
+import {
+  defaultState,
+  initialState,
+  makeChat,
+  normalizeAccount,
+  normalizeState,
+  uid,
+} from "./stateModel.js";
 
 function PeerLogo({ size = 28 }) {
   return (
