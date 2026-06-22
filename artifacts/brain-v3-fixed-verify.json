@@ -1,0 +1,50 @@
+[
+  {
+    "viewport": "desktop",
+    "stats": {
+      "canvas": true,
+      "shell": {
+        "width": 660,
+        "height": 740,
+        "top": 322
+      },
+      "card": {
+        "width": 662,
+        "top": 321
+      },
+      "detail": {
+        "width": 410,
+        "top": 321
+      },
+      "labels": 13,
+      "clusters": 5,
+      "allProjects": true,
+      "reset": true
+    },
+    "errors": []
+  },
+  {
+    "viewport": "mobile",
+    "stats": {
+      "canvas": true,
+      "shell": {
+        "width": 368,
+        "height": 560,
+        "top": 632
+      },
+      "card": {
+        "width": 370,
+        "top": 631
+      },
+      "detail": {
+        "width": 370,
+        "top": 1205
+      },
+      "labels": 13,
+      "clusters": 5,
+      "allProjects": true,
+      "reset": true
+    },
+    "errors": []
+  }
+]
