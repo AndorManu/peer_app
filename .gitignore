@@ -2,5 +2,10 @@ node_modules
 dist
 .env
 .DS_Store
+
+# Logs
 npm-debug.log*
-dev-*.log
+*.log
+
+# Local debug screenshots from tools/brain-shot.mjs
+artifacts/
