@@ -115,7 +115,7 @@ async function streamOpenAI(system, messages, res) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+      model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
       max_tokens: 1200,
       stream: true,
       messages: [

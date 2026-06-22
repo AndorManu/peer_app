@@ -24,7 +24,7 @@ or:
 
 ```bash
 ANTHROPIC_API_KEY=your_key_here
-ANTHROPIC_MODEL=claude-3-5-sonnet-latest
+ANTHROPIC_MODEL=claude-haiku-4-5-20251001
 ```
 
 The browser talks to `/api/chat`, and the local Node server talks to the AI provider. That keeps API keys out of frontend code.
