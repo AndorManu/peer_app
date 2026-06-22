@@ -47,7 +47,7 @@ import {
 import { Markdown } from "./markdown.jsx";
 import { extractStudyMaterial } from "./materials.js";
 import { buildSystemPrompt } from "./peerPrompt.js";
-import { loadState, saveState } from "./storage.js";
+import { loadState, saveState, setSaveErrorHandler } from "./storage.js";
 import {
   addReflection,
   applyFeedback,
@@ -313,7 +313,10 @@ function normalizeAccount(account) {
   };
 }
 
-const initialState = () => normalizeState(loadState());
+// Persisted state now loads asynchronously from IndexedDB, so we render a
+// normalized default first and hydrate once storage resolves (see the
+// hydration effect in App).
+const initialState = () => normalizeState(null);
 
 function PeerLogo({ size = 28 }) {
   return (
@@ -347,6 +350,7 @@ function PeerLogo({ size = 28 }) {
 
 export default function App() {
   const [state, setState] = useState(initialState);
+  const [hydrated, setHydrated] = useState(false);
   const [view, setView] = useState("chat");
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -390,7 +394,45 @@ export default function App() {
 
   const appClass = useMemo(() => `app ${state.theme === "light" ? "theme-light" : "theme-dark"}`, [state.theme]);
 
-  useEffect(() => saveState(state), [state]);
+  // Hydrate persisted state from IndexedDB once on mount, then resync the
+  // onboarding draft so it reflects the loaded profile.
+  useEffect(() => {
+    let cancelled = false;
+    setSaveErrorHandler((error) => {
+      setToast({
+        id: uid(),
+        message:
+          error?.name === "QuotaExceededError"
+            ? "Local storage is full. Remove some documents or notes to keep saving."
+            : "Could not save your latest changes locally.",
+      });
+    });
+    loadState().then((stored) => {
+      if (cancelled) return;
+      if (stored) {
+        const next = normalizeState(stored);
+        setState(next);
+        setProfileDraft({
+          subject: next.profile.subject,
+          goal: next.profile.goal,
+          language: next.profile.language,
+          level: next.profile.level,
+          learningPreference: next.profile.learningPreference,
+        });
+      }
+      setHydrated(true);
+    });
+    return () => {
+      cancelled = true;
+      setSaveErrorHandler(null);
+    };
+  }, []);
+
+  // Only persist after hydration so the default state never overwrites real
+  // saved data during the initial load.
+  useEffect(() => {
+    if (hydrated) saveState(state);
+  }, [state, hydrated]);
   useEffect(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), [activeChat?.messages, loading]);
   useEffect(() => {
     const onResize = () => setSidebarOpen(window.innerWidth >= 820);
@@ -1277,6 +1319,22 @@ export default function App() {
       run: () => setView("notes"),
     })),
   ];
+
+  // Hold the first paint until persisted state has loaded, so returning users
+  // don't briefly see the landing screen before their data hydrates.
+  if (!hydrated) {
+    return (
+      <div
+        className={appClass}
+        style={{ "--app-font": font.family, "--text-size": `${state.textSize}px` }}
+      >
+        <div className="boot-splash">
+          <PeerLogo size={40} />
+          <span>Loading your workspace…</span>
+        </div>
+      </div>
+    );
+  }
 
   if (!state.landingComplete) {
     return (
