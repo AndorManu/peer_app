@@ -1,6 +1,7 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.jsx";
+import { clearState } from "./storage.js";
 import "open-dyslexic/open-dyslexic-regular.css";
 import "./styles.css";
 
@@ -21,8 +22,7 @@ class ErrorBoundary extends React.Component {
           <h1>Peer could not start</h1>
           <p>{this.state.error.message}</p>
           <button onClick={() => {
-            localStorage.removeItem("peer-app-state-v1");
-            window.location.reload();
+            clearState().finally(() => window.location.reload());
           }}>
             Reset local app state
           </button>
