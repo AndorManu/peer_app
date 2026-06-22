@@ -11,6 +11,12 @@ npm run dev
 
 Open `http://127.0.0.1:5173`.
 
+Run the unit tests (no extra dependencies — uses Node's built-in test runner):
+
+```bash
+npm test
+```
+
 ## Add an AI key
 
 Create a `.env` file from `.env.example` and fill in one provider:
