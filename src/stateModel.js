@@ -29,7 +29,7 @@ export const defaultState = () => {
     profile: makeProfile(),
     notes: [],
     studyRooms: [],
-    projects: [{ id: projectId, name: "C Programming", color: PROJECT_COLORS[0], docs: [], mastery: makeMastery() }],
+    projects: [{ id: projectId, name: "My first topic", color: PROJECT_COLORS[0], docs: [], mastery: makeMastery() }],
     chats: [chat],
     activeId: chat.id,
     flashcards: [],

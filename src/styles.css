@@ -117,27 +117,27 @@ body { background: #06060b; }
 .brand strong {
   font-size: 13px !important;
   font-weight: 600 !important;
-  letter-spacing: 0.2em !important;
-  text-transform: uppercase !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
   color: var(--accent) !important;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
 }
 .brand span {
   font-size: 9.5px !important;
-  letter-spacing: 0.1em !important;
-  text-transform: uppercase !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
   color: var(--muted) !important;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
 }
 
 /* ── Sidebar headings ── */
 .side-heading span {
   font-size: 9px !important;
   font-weight: 700 !important;
-  letter-spacing: 0.2em !important;
-  text-transform: uppercase !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
   color: rgba(109, 94, 240, 0.38) !important;
-  font-family: 'JetBrains Mono', monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
 }
 
 /* ── Sidebar search ── */
@@ -181,9 +181,9 @@ body { background: #06060b; }
   border: 1px solid rgba(109, 94, 240, 0.22) !important;
   color: var(--accent) !important;
   border-radius: 7px !important;
-  font-family: 'JetBrains Mono', monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 11.5px !important;
-  letter-spacing: 0.06em !important;
+  letter-spacing: normal !important;
   transition: background 0.15s, box-shadow 0.15s, border-color 0.15s !important;
 }
 .primary-button:hover {
@@ -203,8 +203,8 @@ body { background: #06060b; }
 .sidebar-nav button {
   border-radius: 6px !important;
   font-size: 10px !important;
-  font-family: 'JetBrains Mono', monospace !important;
-  letter-spacing: 0.03em !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  letter-spacing: normal !important;
   color: var(--muted) !important;
   position: relative !important;
   overflow: hidden !important;
@@ -240,11 +240,11 @@ body { background: #06060b; }
   -webkit-backdrop-filter: blur(12px) !important;
 }
 .topbar-title {
-  font-family: 'JetBrains Mono', monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 12.5px !important;
   font-weight: 600 !important;
-  letter-spacing: 0.08em !important;
-  text-transform: uppercase !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
   color: var(--text) !important;
 }
 .topbar-action {
@@ -315,7 +315,7 @@ body { background: #06060b; }
 /* ── Mode strip ── */
 .mode-strip button {
   border-radius: 6px !important;
-  font-family: 'JetBrains Mono', monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 10.5px !important;
   letter-spacing: 0.02em !important;
 }
@@ -449,12 +449,12 @@ textarea:focus {
 .settings-sidenav-label {
   font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
+  letter-spacing: normal;
+  text-transform: none;
   color: rgba(109, 94, 240, 0.38);
   padding: 0 8px 14px;
   margin: 0;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Inter', system-ui, sans-serif;
 }
 .settings-sidenav-btn {
   display: flex;
@@ -472,8 +472,8 @@ textarea:focus {
   transition: background 0.12s, color 0.12s;
   text-align: left;
   margin-bottom: 2px;
-  font-family: 'JetBrains Mono', monospace;
-  letter-spacing: 0.04em;
+  font-family: 'Inter', system-ui, sans-serif;
+  letter-spacing: normal;
 }
 .settings-sidenav-btn:hover { background: rgba(109, 94, 240, 0.06); color: var(--text); }
 .settings-sidenav-btn.active {
@@ -498,7 +498,7 @@ textarea:focus {
   text-align: right;
   color: var(--accent);
   font-size: 13px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Inter', system-ui, sans-serif;
 }
 .settings-danger-desc {
   color: var(--muted);
@@ -518,7 +518,7 @@ textarea:focus {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Inter', system-ui, sans-serif;
   transition: background 0.15s, border-color 0.15s;
 }
 .danger-btn:hover {
@@ -609,7 +609,7 @@ textarea:focus {
   background: rgba(109, 94, 240, 0.045) !important;
   color: var(--accent) !important;
   padding: 0 13px !important;
-  font-family: 'JetBrains Mono', monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 12px !important;
   cursor: pointer !important;
 }
@@ -738,7 +738,7 @@ textarea:focus {
 .deck-row small {
   color: var(--muted) !important;
   margin-top: 4px !important;
-  font-family: 'JetBrains Mono', monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 10px !important;
 }
 
@@ -774,7 +774,7 @@ textarea:focus {
 
 .fc-count {
   color: var(--accent) !important;
-  font-family: 'JetBrains Mono', monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 13px !important;
   font-weight: 800 !important;
 }
@@ -863,11 +863,11 @@ textarea:focus {
   color: var(--accent) !important;
   background: rgba(109, 94, 240, 0.06) !important;
   padding: 0 10px !important;
-  font-family: 'JetBrains Mono', monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 10px !important;
   font-weight: 800 !important;
-  letter-spacing: 0.14em !important;
-  text-transform: uppercase !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
 }
 
 .fc-label-answer {
@@ -887,7 +887,7 @@ textarea:focus {
 
 .fc-content small {
   color: var(--muted) !important;
-  font-family: 'JetBrains Mono', monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 11px !important;
 }
 
@@ -906,7 +906,7 @@ textarea:focus {
   color: var(--text) !important;
   padding: 0 14px !important;
   cursor: pointer !important;
-  font-family: 'JetBrains Mono', monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 12px !important;
   font-weight: 650 !important;
 }
@@ -984,12 +984,12 @@ textarea:focus {
   background: rgba(109, 94, 240, 0.055) !important;
   color: var(--accent) !important;
   padding: 0 7px !important;
-  font-family: 'JetBrains Mono', monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 10px !important;
   font-weight: 800 !important;
-  letter-spacing: 0.08em !important;
+  letter-spacing: normal !important;
   line-height: 1 !important;
-  text-transform: uppercase !important;
+  text-transform: none !important;
 }
 
 .markdown .code-copy {
@@ -1003,7 +1003,7 @@ textarea:focus {
   background: rgba(109, 94, 240, 0.06) !important;
   color: var(--text) !important;
   padding: 0 8px !important;
-  font-family: 'JetBrains Mono', monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 11px !important;
   cursor: pointer !important;
 }
@@ -1125,7 +1125,7 @@ textarea:focus {
   gap: 6px !important;
   min-height: 28px !important;
   border-radius: 7px !important;
-  font-family: 'JetBrains Mono', monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 10.5px !important;
 }
 
@@ -1160,7 +1160,7 @@ textarea:focus {
 .streak-card strong {
   margin: 0 !important;
   color: var(--accent) !important;
-  font-family: 'JetBrains Mono', monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 42px !important;
   line-height: 1 !important;
 }
@@ -1217,7 +1217,7 @@ textarea:focus {
   background: rgba(109, 94, 240, 0.08) !important;
   color: var(--accent) !important;
   padding: 0 12px !important;
-  font-family: 'JetBrains Mono', monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 12px !important;
   font-weight: 800 !important;
 }
@@ -1259,7 +1259,7 @@ textarea:focus {
 
 .skill-node small {
   color: var(--muted) !important;
-  font-family: 'JetBrains Mono', monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 10px !important;
 }
 
@@ -1345,7 +1345,7 @@ textarea:focus {
   min-height: 34px !important;
   padding: 0 10px !important;
   cursor: pointer !important;
-  font-family: 'JetBrains Mono', monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 11px !important;
 }
 
@@ -1438,8 +1438,8 @@ textarea:focus {
   margin: 0 0 10px !important;
   color: var(--muted) !important;
   font-size: 12px !important;
-  font-family: 'JetBrains Mono', monospace !important;
-  text-transform: uppercase !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  text-transform: none !important;
 }
 
 .note-card header span {
@@ -1460,7 +1460,7 @@ textarea:focus {
   color: var(--accent) !important;
   background: rgba(109, 94, 240, 0.045) !important;
   padding: 3px 8px !important;
-  font-family: 'JetBrains Mono', monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 10px !important;
 }
 
@@ -1586,7 +1586,7 @@ textarea:focus {
   color: var(--accent) !important;
   background: rgba(109, 94, 240, 0.05) !important;
   padding: 3px 8px !important;
-  font-family: 'JetBrains Mono', monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 10px !important;
 }
 
@@ -2448,11 +2448,11 @@ textarea:focus {
   padding: 0 12px 0 16px !important;
   border-bottom: 1px solid rgba(109, 94, 240, 0.1) !important;
   color: rgba(231, 244, 255, 0.52) !important;
-  font-family: "JetBrains Mono", monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 11px !important;
   font-weight: 800 !important;
-  letter-spacing: 0.12em !important;
-  text-transform: uppercase !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
 }
 
 .command-header button {
@@ -2550,11 +2550,11 @@ textarea:focus {
   border-radius: 999px !important;
   background: rgba(109, 94, 240, 0.055) !important;
   color: var(--accent) !important;
-  font-family: "JetBrains Mono", monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 11px !important;
   font-weight: 800 !important;
-  letter-spacing: 0.08em !important;
-  text-transform: uppercase !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
 }
 
 .brain-heading h1 {
@@ -2744,7 +2744,7 @@ textarea:focus {
   pointer-events: none !important;
   text-anchor: middle !important;
   dominant-baseline: middle !important;
-  font-family: "JetBrains Mono", monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
 }
 
 .brain-node-icon {
@@ -3092,11 +3092,11 @@ textarea:focus {
 
 .brain-cluster-label {
   fill: rgba(224, 224, 238, 0.32) !important;
-  font-family: "JetBrains Mono", monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 11px !important;
   font-weight: 850 !important;
-  letter-spacing: 0.12em !important;
-  text-transform: uppercase !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
 }
 
 .brain-link {
@@ -3304,7 +3304,7 @@ textarea:focus {
   color: rgba(239, 246, 255, 0.78) !important;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.26) !important;
   padding: 4px 8px !important;
-  font-family: "JetBrains Mono", monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 10.5px !important;
   font-weight: 850 !important;
   transition: opacity 0.12s ease, filter 0.12s ease, border-color 0.12s ease !important;
@@ -3640,11 +3640,11 @@ textarea:focus {
   position: absolute !important;
   transform: translate(-50%, -50%) !important;
   color: rgba(169, 186, 205, 0.26) !important;
-  font-family: "JetBrains Mono", monospace !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 10px !important;
   font-weight: 900 !important;
   letter-spacing: 0.16em !important;
-  text-transform: uppercase !important;
+  text-transform: none !important;
   white-space: nowrap !important;
 }
 
@@ -3937,3 +3937,23 @@ textarea:focus {
   .composer-wrap { padding-bottom: calc(16px + env(safe-area-inset-bottom)) !important; }
   .landing-shell { padding-top: calc(clamp(22px,5vw,68px) + env(safe-area-inset-top)); }
 }
+
+/* ============================================================
+   CALM PREMIUM — quiet the terminal aesthetic, keep code mono
+   ============================================================ */
+/* Code and literal notation must stay monospaced. */
+code, pre, kbd, samp, .hljs, .code-block, .code-block code, .markdown code, .markdown pre, .demo-code strong {
+  font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace !important;
+}
+/* No pulsing glow on the logo — calm, not gamer. */
+.peer-logo-mark { animation: none !important; filter: none !important; }
+/* Dot-grid backdrop: from "terminal" to a barely-there texture. */
+.bg-canvas { opacity: 0.4 !important; }
+.theme-light .bg-canvas { opacity: 0.5 !important; }
+/* Brand wordmark: calm, readable, not a shouting monospace label. */
+.brand strong { font-size: 15px !important; font-weight: 600 !important; letter-spacing: -0.01em !important; }
+.brand span { font-size: 12px !important; letter-spacing: normal !important; color: var(--muted) !important; }
+/* Section headings/kickers: small, calm, sentence case (uppercase already removed). */
+.side-heading, .brain-kicker, .landing-kicker { letter-spacing: 0.01em !important; font-weight: 600 !important; }
+/* Soften any leftover heavy glows on focus/hover into clean rings. */
+.starter-card, .profile-card, .note-card, .concept-row { box-shadow: var(--shadow-soft) !important; }
