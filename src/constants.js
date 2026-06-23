@@ -81,31 +81,31 @@ export const COMMUNITY_CHALLENGES = [
 
 export const STARTERS = [
   {
-    icon: Code2,
+    icon: Lightbulb,
     title: "Explain a concept",
-    sub: "Pointers, recursion, arrays, memory",
-    prompt: "Can you explain how pointers work in C?",
+    sub: "Any subject, in plain language",
+    prompt: "Explain how photosynthesis works, in plain language with one simple example.",
     mode: "explain",
   },
   {
-    icon: Lightbulb,
-    title: "Try another angle",
-    sub: "Analogies and visual models",
-    prompt: "Explain recursion with a simple analogy.",
+    icon: Layers,
+    title: "Make it click",
+    sub: "Analogies, diagrams, timelines",
+    prompt: "Explain supply and demand using a simple analogy and a small diagram.",
     mode: "visual",
   },
   {
     icon: Target,
     title: "Quiz me",
-    sub: "One question at a time",
-    prompt: "Quiz me on binary search. Ask one question at a time.",
+    sub: "Test recall, one question at a time",
+    prompt: "Quiz me on world capitals. Ask one question at a time and wait for my answer.",
     mode: "quiz",
   },
   {
     icon: MessageSquare,
-    title: "Rubber duck",
-    sub: "I explain, Peer checks the gaps",
-    prompt: "I want to explain a concept to you so you can check if I really get it. Ready?",
+    title: "Teach it back",
+    sub: "I explain, Peer finds the gaps",
+    prompt: "I want to explain a topic to you so you can check if I really understand it. Ready?",
     mode: "duck",
   },
 ];
