@@ -208,12 +208,12 @@ export function LearningBrainPanel({ state, activeProject, setView, updateState,
 }
 
 const BRAIN_PALETTE = {
-  brain: { core: 0x86d8ff, glow: 0x49bdff },
-  project: { core: 0xb9a3ff, glow: 0x8a6bff },
-  concept: { core: 0x57d8ff, glow: 0x2bb8ff },
-  weak: { core: 0xff7d9c, glow: 0xff4d74 },
-  file: { core: 0x6ba6ff, glow: 0x3d7bff },
-  note: { core: 0xffcd86, glow: 0xffab47 },
+  brain: { core: 0xc4b9ff, glow: 0x6d5ef0 },
+  project: { core: 0xb9a8ff, glow: 0x8b7cf6 },
+  concept: { core: 0x9f8eff, glow: 0x6d5ef0 },
+  weak: { core: 0xff8aa3, glow: 0xf2685f },
+  file: { core: 0x8fb0ff, glow: 0x5b7cf5 },
+  note: { core: 0xffcd86, glow: 0xf6a23a },
   chat: { core: 0x66e9c9, glow: 0x2fd4aa },
   quiz: { core: 0xa6e981, glow: 0x76d44f },
 };
@@ -273,27 +273,32 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
     if (!mount) return undefined;
 
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x05070d, 0.014);
+    scene.fog = new THREE.FogExp2(0x07070c, 0.014);
     const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 600);
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
     renderer.setClearColor(0x000000, 0);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.12;
     mount.appendChild(renderer.domElement);
 
-    scene.add(new THREE.AmbientLight(0xcfe9ff, 1.05));
-    const key = new THREE.PointLight(0x69d9ff, 1.6, 0, 1.4);
+    scene.add(new THREE.AmbientLight(0xd0ccff, 1.0));
+    const key = new THREE.PointLight(0x8b7cf6, 1.7, 0, 1.4);
     key.position.set(-8, 9, 16);
     scene.add(key);
-    const warm = new THREE.PointLight(0xffd6a0, 0.7, 0, 1.6);
+    const warm = new THREE.PointLight(0xffc8d6, 0.6, 0, 1.6);
     warm.position.set(10, -6, 10);
     scene.add(warm);
+    const rim = new THREE.PointLight(0x6d5ef0, 0.9, 0, 1.5);
+    rim.position.set(0, -10, -14);
+    scene.add(rim);
 
     const glowTexture = makeGlowTexture();
     const sphereGeometry = new THREE.SphereGeometry(1, 32, 22);
 
     // Soft focal haze behind the graph.
-    const hazeMaterial = new THREE.SpriteMaterial({ map: glowTexture, color: 0x0f3149, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
+    const hazeMaterial = new THREE.SpriteMaterial({ map: glowTexture, color: 0x1b1640, transparent: true, opacity: 0.34, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
     const haze = new THREE.Sprite(hazeMaterial);
     haze.scale.setScalar(52);
     haze.position.set(0, 0, -8);
