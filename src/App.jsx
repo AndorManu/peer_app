@@ -146,7 +146,12 @@ export default function App() {
   }));
   const [voiceMode, setVoiceMode] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [listening, setListening] = useState(false);
   const voiceModeRef = useRef(false);
+  const listeningRef = useRef(false);
+  const recognitionRef = useRef(null);
+  const voicesRef = useRef([]);
+  const loadingRef = useRef(false);
   const bottomRef = useRef(null);
   const fileRef = useRef(null);
 
@@ -201,6 +206,17 @@ export default function App() {
     if (hydrated) saveState(state);
   }, [state, hydrated]);
   useEffect(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), [activeChat?.messages, loading]);
+  useEffect(() => { loadingRef.current = loading; }, [loading]);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return undefined;
+    const load = () => { voicesRef.current = window.speechSynthesis.getVoices(); };
+    load();
+    window.speechSynthesis.addEventListener?.("voiceschanged", load);
+    return () => {
+      window.speechSynthesis.removeEventListener?.("voiceschanged", load);
+      window.speechSynthesis.cancel();
+    };
+  }, []);
   useEffect(() => {
     const onResize = () => setSidebarOpen(window.innerWidth >= 820);
     onResize();
@@ -775,7 +791,7 @@ export default function App() {
     if (!voiceModeRef.current || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const clean = text
-      .replace(/```[\s\S]*?```/g, "")
+      .replace(/```[\s\S]*?```/g, " (code block) ")
       .replace(/`([^`]+)`/g, "$1")
       .replace(/\*\*([^*]+)\*\*/g, "$1")
       .replace(/\*([^*]+)\*/g, "$1")
@@ -783,16 +799,26 @@ export default function App() {
       .replace(/^[-*] /gm, "")
       .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
       .trim();
+    if (!clean) {
+      maybeListenAfterSpeak();
+      return;
+    }
     const utterance = new SpeechSynthesisUtterance(clean);
-    utterance.rate = 1.05;
+    utterance.rate = 1.04;
+    utterance.pitch = 1;
     utterance.onstart = () => setSpeaking(true);
-    utterance.onend = () => setSpeaking(false);
-    utterance.onerror = () => setSpeaking(false);
-    const langMap = { en: "en-US", nl: "nl-NL", es: "es-ES", fr: "fr-FR", de: "de-DE", pt: "pt-BR", it: "it-IT", tr: "tr-TR", ar: "ar" };
-    const langCode = langMap[state.profile.language] || "";
+    utterance.onend = () => {
+      setSpeaking(false);
+      maybeListenAfterSpeak();
+    };
+    utterance.onerror = () => {
+      setSpeaking(false);
+      maybeListenAfterSpeak();
+    };
+    const langCode = SPEECH_LANG_MAP[state.profile.language] || "";
     if (langCode) {
-      const voices = window.speechSynthesis.getVoices();
-      const match = voices.find((v) => v.lang.startsWith(langCode.slice(0, 2)));
+      const voices = voicesRef.current.length ? voicesRef.current : window.speechSynthesis.getVoices();
+      const match = voices.find((v) => v.lang.toLowerCase().startsWith(langCode.slice(0, 2)));
       if (match) utterance.voice = match;
       utterance.lang = langCode;
     }
@@ -802,6 +828,84 @@ export default function App() {
   function stopSpeaking() {
     window.speechSynthesis?.cancel();
     setSpeaking(false);
+  }
+
+  // Hands-free loop: after Peer finishes speaking, start listening again so the
+  // learner can just keep talking. Only while voice mode is on and idle.
+  function maybeListenAfterSpeak() {
+    if (!voiceModeRef.current || listeningRef.current || loadingRef.current) return;
+    if (typeof document !== "undefined" && document.hidden) return;
+    window.setTimeout(() => {
+      if (voiceModeRef.current && !listeningRef.current && !loadingRef.current) startListening();
+    }, 350);
+  }
+
+  function startListening() {
+    const SpeechRec = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
+    if (!SpeechRec) {
+      showToast("Voice input isn't supported in this browser. Try Chrome or Edge.");
+      return;
+    }
+    if (listeningRef.current) return;
+    if (speaking) stopSpeaking();
+
+    let rec;
+    try {
+      rec = new SpeechRec();
+    } catch {
+      return;
+    }
+    rec.lang = SPEECH_LANG_MAP[state.profile.language] || "en-US";
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.maxAlternatives = 1;
+
+    let finalText = "";
+    rec.onresult = (event) => {
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const result = event.results[i];
+        if (result.isFinal) finalText += result[0].transcript;
+        else interim += result[0].transcript;
+      }
+      setInput((finalText + interim).replace(/\s+/g, " ").trimStart());
+    };
+    rec.onerror = (event) => {
+      listeningRef.current = false;
+      setListening(false);
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        showToast("Microphone access is blocked. Allow it in your browser's site settings.");
+      }
+    };
+    rec.onend = () => {
+      listeningRef.current = false;
+      setListening(false);
+      const text = finalText.trim();
+      if (text) {
+        setInput("");
+        sendMessage(text);
+      }
+    };
+
+    recognitionRef.current = rec;
+    listeningRef.current = true;
+    setListening(true);
+    try {
+      rec.start();
+    } catch {
+      listeningRef.current = false;
+      setListening(false);
+    }
+  }
+
+  function stopListening() {
+    listeningRef.current = false;
+    setListening(false);
+    try {
+      recognitionRef.current?.stop();
+    } catch {
+      /* already stopped */
+    }
   }
 
   async function generateImage(message) {
@@ -1272,6 +1376,9 @@ export default function App() {
             toggleVoiceMode={toggleVoiceMode}
             speaking={speaking}
             stopSpeaking={stopSpeaking}
+            listening={listening}
+            startListening={startListening}
+            stopListening={stopListening}
             profileLanguage={state.profile.language}
             explanationDepth={state.profile.explanationDepth}
             setExplanationDepth={changeExplanationDepth}
@@ -1508,6 +1615,11 @@ function Sidebar(props) {
   } = props;
 
   const matchesSearch = (chat) => chat.name.toLowerCase().includes(chatSearch.toLowerCase());
+  const [draggingChatId, setDraggingChatId] = useState(null);
+  const [dropProjectId, setDropProjectId] = useState(null);
+
+  const onChatDragStart = (chatId) => setDraggingChatId(chatId);
+  const onChatDragEnd = () => { setDraggingChatId(null); setDropProjectId(null); };
 
   return (
     <aside className="sidebar">
@@ -1546,22 +1658,33 @@ function Sidebar(props) {
           {state.projects.map((project) => {
             const projectChats = state.chats.filter((chat) => chat.projectId === project.id && matchesSearch(chat));
             const isOpen = expanded[project.id] ?? true;
+            const isDropTarget = dropProjectId === project.id && draggingChatId;
+            const canDrop = (chatId) => {
+              const source = state.chats.find((c) => c.id === chatId);
+              return source && source.projectId !== project.id;
+            };
             return (
-              <div className="project-group" key={project.id}>
-                <div
-                  className="project-row"
-                  onDragOver={(event) => {
-                    event.preventDefault();
-                    event.currentTarget.classList.add("drag-over");
-                  }}
-                  onDragLeave={(event) => event.currentTarget.classList.remove("drag-over")}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    event.currentTarget.classList.remove("drag-over");
-                    const chatId = event.dataTransfer.getData("text/peer-chat-id");
-                    if (chatId) moveChatToProject(chatId, project.id);
-                  }}
-                >
+              <div
+                className={`project-group ${isDropTarget ? "drop-target" : ""}`}
+                key={project.id}
+                onDragOver={(event) => {
+                  if (!draggingChatId || !canDrop(draggingChatId)) return;
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "move";
+                  if (dropProjectId !== project.id) setDropProjectId(project.id);
+                }}
+                onDragLeave={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget)) setDropProjectId(null);
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  const chatId = event.dataTransfer.getData("text/peer-chat-id") || draggingChatId;
+                  setDropProjectId(null);
+                  setDraggingChatId(null);
+                  if (chatId && canDrop(chatId)) moveChatToProject(chatId, project.id);
+                }}
+              >
+                <div className="project-row">
                   <button className="project-toggle" onClick={() => setExpanded((current) => ({ ...current, [project.id]: !isOpen }))} aria-label="Toggle project">
                     <ChevronRight className={isOpen ? "rotated" : ""} size={15} />
                   </button>
@@ -1570,6 +1693,7 @@ function Sidebar(props) {
                   {project.docs.length > 0 && <span className="doc-count"><FileText size={12} />{project.docs.length}</span>}
                   <button className="ghost-icon" onClick={() => manageProject(project.id)} aria-label="Manage project"><Settings size={14} /></button>
                 </div>
+                {isDropTarget && <div className="drop-hint"><Plus size={12} /> Move here</div>}
                 {isOpen && (
                   <div className="chat-list nested">
                     <button className="new-project-chat" onClick={() => createChat(project.id)}>
@@ -1588,6 +1712,9 @@ function Sidebar(props) {
                         startRename={startRename}
                         deleteChat={deleteChat}
                         draggable
+                        dragging={draggingChatId === chat.id}
+                        onChatDragStart={onChatDragStart}
+                        onChatDragEnd={onChatDragEnd}
                       />
                     ))}
                   </div>
@@ -1614,6 +1741,9 @@ function Sidebar(props) {
                   startRename={startRename}
                   deleteChat={deleteChat}
                   draggable
+                  dragging={draggingChatId === chat.id}
+                  onChatDragStart={onChatDragStart}
+                  onChatDragEnd={onChatDragEnd}
                 />
               ))}
             </div>
@@ -1634,15 +1764,17 @@ function Sidebar(props) {
   );
 }
 
-function ChatRow({ chat, active, editing, editingName, setEditingName, renameChat, selectChat, startRename, deleteChat, draggable }) {
+function ChatRow({ chat, active, editing, editingName, setEditingName, renameChat, selectChat, startRename, deleteChat, draggable, dragging, onChatDragStart, onChatDragEnd }) {
   return (
     <div
-      className={`chat-row ${active ? "active" : ""}`}
+      className={`chat-row ${active ? "active" : ""} ${dragging ? "dragging" : ""}`}
       draggable={draggable && !editing}
       onDragStart={(event) => {
         event.dataTransfer.setData("text/peer-chat-id", chat.id);
         event.dataTransfer.effectAllowed = "move";
+        onChatDragStart?.(chat.id);
       }}
+      onDragEnd={() => onChatDragEnd?.()}
       onClick={() => selectChat(chat.id)}
     >
       <MessageSquare size={15} />
@@ -1802,38 +1934,20 @@ function Composer({
   toggleVoiceMode,
   speaking,
   stopSpeaking,
+  listening,
+  startListening,
+  stopListening,
   profileLanguage,
   explanationDepth,
   setExplanationDepth,
 }) {
   const attachRef = useRef(null);
-  const recognitionRef = useRef(null);
-  const [recording, setRecording] = useState(false);
   const hasSpeech = typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
   const activeModeIndex = STUDY_MODES.findIndex((mode) => mode.id === activeMode.id);
 
   function toggleRecording() {
-    if (recording) {
-      recognitionRef.current?.stop();
-      setRecording(false);
-      return;
-    }
-    if (speaking) stopSpeaking();
-    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const rec = new SpeechRec();
-    rec.lang = SPEECH_LANG_MAP[profileLanguage] || "en-US";
-    rec.continuous = Boolean(voiceMode);
-    rec.interimResults = false;
-    rec.onresult = (e) => {
-      const transcript = e.results[0][0].transcript;
-      setRecording(false);
-      sendMessage(transcript);
-    };
-    rec.onerror = () => setRecording(false);
-    rec.onend = () => setRecording(false);
-    rec.start();
-    recognitionRef.current = rec;
-    setRecording(true);
+    if (listening) stopListening();
+    else startListening();
   }
 
   return (
@@ -1912,17 +2026,17 @@ function Composer({
               sendMessage();
             }
           }}
-          placeholder={recording ? "Listening..." : activeProject ? `Ask about ${activeProject.name}...` : "Ask a question or explain what you are stuck on..."}
+          placeholder={listening ? "Listening… speak now" : activeProject ? `Ask about ${activeProject.name}...` : "Ask a question or explain what you are stuck on..."}
           rows={1}
         />
         {hasSpeech && (
           <button
-            className={`mic-button ${recording ? "recording" : ""}`}
+            className={`mic-button ${listening ? "recording" : ""}`}
             onClick={toggleRecording}
-            aria-label={recording ? "Stop recording" : speaking ? "Interrupt and speak" : "Speak your question"}
-            title={speaking ? "Interrupt Peer and speak" : "Speak your question"}
+            aria-label={listening ? "Stop listening" : speaking ? "Interrupt and speak" : "Speak your question"}
+            title={listening ? "Listening — click to stop" : speaking ? "Interrupt Peer and speak" : "Speak your question"}
           >
-            {recording ? <MicOff size={17} /> : <Mic size={17} />}
+            {listening ? <MicOff size={17} /> : <Mic size={17} />}
           </button>
         )}
         <button
