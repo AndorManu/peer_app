@@ -1078,7 +1078,7 @@ export default function App() {
           : current.profile.observations,
       },
     }));
-    if (profileDraft.subject.trim() && state.projects.length === 1 && state.projects[0].name === "C Programming") {
+    if (profileDraft.subject.trim() && state.projects.length === 1 && state.projects[0].name === "My first topic") {
       updateState((current) => ({
         ...current,
         projects: current.projects.map((project, index) => index === 0 ? { ...project, name: profileDraft.subject.trim() } : project),
@@ -1626,8 +1626,8 @@ function Sidebar(props) {
       <div className="brand">
         <PeerLogo size={28} />
         <div>
-          <strong>peer</strong>
-          <span>learning terminal</span>
+          <strong>Peer</strong>
+          <span>Adaptive tutor</span>
         </div>
       </div>
 
@@ -2210,7 +2210,7 @@ function ProfilePanel({ profile, activeProject, activeChat, insights, activeMode
           <div className="profile-form">
             <label>
               Subject
-              <input value={profile.subject} onChange={(event) => updateState((current) => ({ ...current, profile: { ...current.profile, subject: event.target.value } }))} placeholder="C programming, biology, calculus..." />
+              <input value={profile.subject} onChange={(event) => updateState((current) => ({ ...current, profile: { ...current.profile, subject: event.target.value } }))} placeholder="Biology, history, Spanish, calculus, coding..." />
             </label>
             <label>
               Goal
@@ -2745,7 +2745,7 @@ function OnboardingModal({ profileDraft, setProfileDraft, complete, skip }) {
         <p>A tiny bit of context helps Peer start closer to how you actually learn.</p>
         <label>
           What are you studying?
-          <input value={profileDraft.subject} onChange={(event) => setProfileDraft((current) => ({ ...current, subject: event.target.value }))} placeholder="C programming, math, biology..." />
+          <input value={profileDraft.subject} onChange={(event) => setProfileDraft((current) => ({ ...current, subject: event.target.value }))} placeholder="Biology, history, Spanish, calculus, coding..." />
         </label>
         <label>
           What is your goal?
