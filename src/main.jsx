@@ -5,6 +5,7 @@ import { clearState } from "./storage.js";
 import "open-dyslexic/open-dyslexic-regular.css";
 import "./styles.css";
 import "./peer-theme.css";
+import "./peer-skin.css";
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
