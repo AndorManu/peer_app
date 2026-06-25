@@ -180,7 +180,7 @@ await page.screenshot({ path: resolve(outDir, `${outPrefix}-chat.png`) });
 // 2) Profile/insights view if present
 try {
   await page.getByRole("button", { name: "Brain", exact: false }).first().click();
-  await page.waitForSelector(".peer-brain canvas", { timeout: 10000 });
+  await page.waitForSelector(".brain-3d-canvas canvas", { timeout: 10000 });
   await page.waitForTimeout(3500);
   await page.screenshot({ path: resolve(outDir, `${outPrefix}-brain.png`) });
   const card = page.locator(".brain-map-card");
