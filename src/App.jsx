@@ -84,6 +84,7 @@ import {
   uid,
 } from "./stateModel.js";
 import { LearningBrainPanel } from "./LearningBrain.jsx";
+import PeerNavRail from "./components/PeerNavRail.jsx";
 
 function PeerLogo({ size = 28 }) {
   return (
@@ -1223,12 +1224,18 @@ export default function App() {
 
   return (
     <div
-      className={appClass}
+      className={`${appClass} peer-skin`}
       style={{
         "--app-font": font.family,
         "--text-size": `${state.textSize}px`,
       }}
     >
+      <PeerNavRail
+        view={view}
+        setView={setView}
+        account={state.account}
+        onAvatar={() => setView("profile")}
+      />
       <div className="bg-canvas" aria-hidden="true">
         <div className="bg-blob bg-blob-1" />
         <div className="bg-blob bg-blob-2" />
