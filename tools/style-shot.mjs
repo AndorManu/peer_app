@@ -187,5 +187,14 @@ try {
   if (await card.count()) await card.screenshot({ path: resolve(outDir, `${outPrefix}-brain-card.png`) });
 } catch (e) { console.log("brain capture failed:", e.message); }
 
+
+for (const [label, key] of [["Notes","notes"],["Cards","flashcards"],["Rooms","community"]]) {
+  try {
+    await page.click(`[data-nav="${key}"]`);
+    await page.waitForTimeout(900);
+    await page.screenshot({ path: resolve(outDir, `${outPrefix}-${key}.png`) });
+  } catch (e) { console.log(label+" capture failed:", e.message); }
+}
+
 console.log("Saved screenshots to artifacts/");
 await browser.close();
