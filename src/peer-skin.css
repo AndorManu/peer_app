@@ -253,3 +253,11 @@
   transform: translateY(-2px) !important; box-shadow: 0 12px 32px -16px rgba(139,92,246,0.7) !important;
 }
 .peer-skin .starter-card svg { color: #22d3ee !important; }
+
+/* the conversations sidebar belongs to the Chat screen only */
+.peer-skin:not(.view-chat) > .sidebar { display: none !important; }
+
+/* ---------- brain: full-bleed (hide topbar on this screen) ---------- */
+.peer-skin .main:has(.peer-brain) .topbar { display: none !important; }
+.peer-skin .main:has(.peer-brain)::before,
+.peer-skin .main:has(.peer-brain)::after { display: none; }
