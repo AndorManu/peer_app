@@ -76,8 +76,8 @@ export function LearningBrainPanel({ state, activeProject, setView, updateState,
       <div className="brain-heading">
         <div>
           <span className="brain-kicker"><GitBranch size={14} /> Learning graph</span>
-          <h1>Learning brain</h1>
-          <p>Peer maps every project, concept, weak spot, file, note, deck, and chat into one navigable system.</p>
+          <h1>Your Brain</h1>
+          <p>A living map of everything you're learning · drag to orbit, click a node</p>
         </div>
         <div className="brain-summary">
           <span><strong>{graph.summary.projects}</strong> projects</span>
@@ -207,15 +207,17 @@ export function LearningBrainPanel({ state, activeProject, setView, updateState,
   );
 }
 
+// Design palette (Peer.dc.html): project=violet, concept=cyan, weak=amber,
+// with complementary hues for the extra node types the real feature keeps.
 const BRAIN_PALETTE = {
-  brain: { core: 0xc4b9ff, glow: 0x6d5ef0 },
-  project: { core: 0xb9a8ff, glow: 0x8b7cf6 },
-  concept: { core: 0x9f8eff, glow: 0x6d5ef0 },
-  weak: { core: 0xff8aa3, glow: 0xf2685f },
-  file: { core: 0x8fb0ff, glow: 0x5b7cf5 },
-  note: { core: 0xffcd86, glow: 0xf6a23a },
-  chat: { core: 0x66e9c9, glow: 0x2fd4aa },
-  quiz: { core: 0xa6e981, glow: 0x76d44f },
+  brain: { core: 0xc9c2fb, glow: 0x8b5cf6 },
+  project: { core: 0xb9a8ff, glow: 0x8b5cf6 },
+  concept: { core: 0x7fe9ff, glow: 0x22d3ee },
+  weak: { core: 0xffd08a, glow: 0xf59e0b },
+  file: { core: 0xa5b4fc, glow: 0x818cf8 },
+  note: { core: 0xffcd86, glow: 0xfb923c },
+  chat: { core: 0x8ef0c9, glow: 0x34d399 },
+  quiz: { core: 0xf3b6f7, glow: 0xe879f9 },
 };
 
 function brainPalette(type) {
@@ -303,6 +305,23 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
     haze.scale.setScalar(52);
     haze.position.set(0, 0, -8);
     scene.add(haze);
+
+    // Star field (design aesthetic) — a sphere of faint points, slow rotation.
+    const starCount = 1100;
+    const starPos = new Float32Array(starCount * 3);
+    for (let s = 0; s < starCount; s += 1) {
+      const sr = 90 + Math.random() * 160;
+      const sth = Math.random() * Math.PI * 2;
+      const sph = Math.acos(2 * Math.random() - 1);
+      starPos[s * 3] = sr * Math.sin(sph) * Math.cos(sth);
+      starPos[s * 3 + 1] = sr * Math.sin(sph) * Math.sin(sth);
+      starPos[s * 3 + 2] = sr * Math.cos(sph);
+    }
+    const starGeo = new THREE.BufferGeometry();
+    starGeo.setAttribute("position", new THREE.BufferAttribute(starPos, 3));
+    const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.5, transparent: true, opacity: 0.45, sizeAttenuation: true, depthWrite: false });
+    const stars = new THREE.Points(starGeo, starMat);
+    scene.add(stars);
 
     const nodeGroup = new THREE.Group();
     scene.add(nodeGroup);
@@ -591,6 +610,7 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
       frame += 1;
       const dt = 0.85;
       hazeMaterial.opacity = 0.26 + Math.sin(frame * 0.018) * 0.06;
+      stars.rotation.y = frame * 0.0004;
 
       const ready = state.nodes.length > 0
         && state.pos.length === state.nodes.length
@@ -799,6 +819,7 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
       lineGeometry.dispose();
       lineMaterial.dispose();
       hazeMaterial.dispose();
+      starGeo.dispose(); starMat.dispose();
       glowTexture.dispose();
       renderer.dispose();
       renderer.domElement.remove();
