@@ -10,6 +10,7 @@ import { COLORS, GRADIENTS, EASE, SHADOW, SURFACE } from "../peerTheme.js";
 const NAV_ITEMS = [
   { key: "chat", label: "Chat", d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" },
   { key: "brain", label: "Brain", d: "M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6M6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6M18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" },
+  { key: "code", label: "Code", d: "M16 18l6-6-6-6M8 6l-6 6 6 6" },
   { key: "notes", label: "Notes", d: "M4 4a2 2 0 0 1 2-2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM14 2v6h6M8 13h8M8 17h5" },
   { key: "flashcards", label: "Cards", d: "M3 7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM7 5V3h12a2 2 0 0 1 2 2v12h-2" },
   { key: "community", label: "Rooms", d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8" },

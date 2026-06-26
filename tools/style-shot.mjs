@@ -188,7 +188,7 @@ try {
 } catch (e) { console.log("brain capture failed:", e.message); }
 
 
-for (const [label, key] of [["Notes","notes"],["Cards","flashcards"],["Rooms","community"]]) {
+for (const [label, key] of [["Notes","notes"],["Cards","flashcards"],["Rooms","community"],["Code","code"]]) {
   try {
     await page.click(`[data-nav="${key}"]`);
     await page.waitForTimeout(900);
@@ -202,6 +202,15 @@ try {
   console.log("settings gear present:", gc);
   if (gc>0){ await page.locator('[title="Settings"]').first().click(); await page.waitForTimeout(700); await page.screenshot({ path: resolve(outDir, `${outPrefix}-settings.png`) }); }
 } catch(e){ console.log("settings capture:", e.message); }
+
+
+try {
+  await page.click('[data-nav="code"]');
+  await page.waitForTimeout(500);
+  await page.getByText("Run", { exact: true }).click();
+  await page.waitForTimeout(1000);
+  console.log("RUN_PRODUCED_olleh:", await page.evaluate(() => document.body.innerText.includes("olleh")));
+} catch (e) { console.log("run test:", e.message); }
 
 console.log("Saved screenshots to artifacts/");
 await browser.close();
