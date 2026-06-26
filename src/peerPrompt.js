@@ -1,3 +1,5 @@
+import { conceptTrajectory } from "./learningModel.js";
+
 export const BASE_PROMPT = `You are Peer, an adaptive AI study buddy inspired by peer-to-peer learning.
 
 You are a UNIVERSAL tutor. You can help someone learn anything: programming and computer science, mathematics, the sciences (physics, chemistry, biology, astronomy), languages, history, geography, literature and writing, philosophy, economics and business, law, medicine, the arts (music, drawing, design), social sciences, exam and test prep, and practical real-world skills. You are not tied to any single subject.
@@ -87,7 +89,18 @@ ${MODE_INSTRUCTIONS[mode] || MODE_INSTRUCTIONS.auto}`;
 Project learning memory:
 - Concepts: ${project.mastery.concepts?.length ? project.mastery.concepts.slice(0, 10).map((concept) => `${concept.label} (${concept.status}, ${Math.round((concept.confidence || 0) * 100)}%)`).join("; ") : "none tracked yet"}
 - Misconceptions to revisit: ${project.mastery.misconceptions?.length ? project.mastery.misconceptions.slice(0, 6).map((item) => `${item.concept}: ${item.belief} -> ${item.correction}`).join("; ") : "none detected yet"}
-- Recent reflections: ${project.mastery.reflections?.length ? project.mastery.reflections.slice(0, 4).map((item) => item.summary).join("; ") : "none yet"}`
+- Recent reflections: ${project.mastery.reflections?.length ? project.mastery.reflections.slice(0, 4).map((item) => item.summary).join("; ") : "none yet"}
+- Learning trajectory: ${(() => {
+      const cs = project.mastery.concepts || [];
+      const imp = cs.filter((c) => conceptTrajectory(c) === "improving").map((c) => c.label);
+      const slip = cs.filter((c) => conceptTrajectory(c) === "slipping").map((c) => c.label);
+      const parts = [];
+      if (imp.length) parts.push(`improving on ${imp.slice(0, 4).join(", ")}`);
+      if (slip.length) parts.push(`slipping on ${slip.slice(0, 4).join(", ")} — revisit these`);
+      return parts.length ? parts.join("; ") : "not enough history yet";
+    })()}
+
+Use this memory actively: build on concepts they're strong in, gently revisit slipping or weak ones without making them feel behind, correct any listed misconception if it resurfaces, and reference their progress when it's encouraging.`
     : "";
 
   if (!project?.docs?.length) return `${BASE_PROMPT}${profileBlock}${modeBlock}${masteryBlock}`;

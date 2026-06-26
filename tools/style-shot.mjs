@@ -212,5 +212,8 @@ try {
   console.log("RUN_PRODUCED_olleh:", await page.evaluate(() => document.body.innerText.includes("olleh")));
 } catch (e) { console.log("run test:", e.message); }
 
+
+try { await page.click('[title="Profile"]'); await page.waitForTimeout(700); await page.screenshot({ path: resolve(outDir, `${outPrefix}-profile.png`) }); } catch(e){ console.log("profile cap:", e.message); }
+
 console.log("Saved screenshots to artifacts/");
 await browser.close();

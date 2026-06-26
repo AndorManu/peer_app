@@ -402,6 +402,39 @@ export function addReflection(mastery, summary) {
   return next;
 }
 
+// Smarter memory ------------------------------------------------------------
+// Direction a concept is trending, from its mastery history snapshots.
+export function conceptTrajectory(concept) {
+  const h = Array.isArray(concept?.history) ? concept.history : [];
+  if (h.length < 2) return "new";
+  const delta = (h[h.length - 1].confidence || 0) - (h[0].confidence || 0);
+  if (delta > 0.08) return "improving";
+  if (delta < -0.08) return "slipping";
+  return "steady";
+}
+
+// A cross-project snapshot of what the learner has been working on — used to
+// surface a recap in the UI and to make the AI's context memory richer.
+export function buildLearnerRecap(state) {
+  const projects = Array.isArray(state?.projects) ? state.projects : [];
+  const concepts = projects.flatMap((p) =>
+    (p.mastery?.concepts || []).map((c) => ({ ...c, project: p.name, trajectory: conceptTrajectory(c) })),
+  );
+  const recent = [...concepts].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)).slice(0, 6);
+  const improving = concepts.filter((c) => c.trajectory === "improving").slice(0, 5);
+  const slipping = concepts.filter((c) => c.trajectory === "slipping").slice(0, 5);
+  const weakSpots = concepts.filter((c) => c.status === "weak" || (c.confidence ?? 1) < 0.4)
+    .sort((a, b) => (a.confidence ?? 0) - (b.confidence ?? 0)).slice(0, 6);
+  return {
+    totalConcepts: concepts.length,
+    recent,
+    improving,
+    slipping,
+    weakSpots,
+    streak: state?.profile?.streak?.count || 0,
+  };
+}
+
 function refreshRecipe(profile) {
   return {
     ...profile,
@@ -418,15 +451,19 @@ function upsertConcept(mastery, label, update) {
     existing.status = statusFromConfidence(existing.confidence, update.status);
     existing.evidence = update.evidence;
     existing.updatedAt = Date.now();
+    // smarter memory: keep a short trajectory of how mastery moved over time
+    existing.history = [...(existing.history || []), { at: Date.now(), confidence: existing.confidence, status: existing.status }].slice(-12);
     return;
   }
+  const startConfidence = clamp(0.35 + update.confidenceDelta, 0, 1);
   mastery.concepts.unshift({
     id: makeId(),
     key: normalized.key,
     label: normalized.label,
-    confidence: clamp(0.35 + update.confidenceDelta, 0, 1),
+    confidence: startConfidence,
     status: update.status,
     evidence: update.evidence,
+    history: [{ at: Date.now(), confidence: startConfidence, status: update.status }],
     createdAt: Date.now(),
     updatedAt: Date.now(),
   });

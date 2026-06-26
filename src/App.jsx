@@ -53,6 +53,7 @@ import {
   applyReflection,
   buildSessionRecap,
   buildSkillTree,
+  buildLearnerRecap,
   buildTeachingRecipe,
   getWeakSpots,
   inferProfileFromMessage,
@@ -1443,7 +1444,7 @@ export default function App() {
         </header>
 
         {view === "settings" && <SettingsPanel state={state} updateState={updateState} resetData={resetData} loadSampleData={loadSampleData} />}
-        {view === "profile" && <ProfilePanel profile={state.profile} activeProject={activeProject} activeChat={activeChat} insights={insights} activeMode={activeMode} updateState={updateState} />}
+        {view === "profile" && <ProfilePanel profile={state.profile} activeProject={activeProject} activeChat={activeChat} insights={insights} activeMode={activeMode} updateState={updateState} recap={buildLearnerRecap(state)} />}
         {view === "brain" && <LearningBrainPanel state={state} activeProject={activeProject} setView={setView} updateState={updateState} setManagedProjectId={setManagedProjectId} setSelectedDocId={setSelectedDocId} onPractice={generatePractice} />}
         {view === "code" && <CodingPanel profile={state.profile} />}
         {view === "notes" && <NotesPanel notes={state.notes} projects={state.projects} deleteNote={deleteNote} toggleShareNote={toggleShareNote} onPractice={generatePractice} />}
@@ -2180,7 +2181,7 @@ function Composer({
   );
 }
 
-function ProfilePanel({ profile, activeProject, activeChat, insights, activeMode, updateState }) {
+function ProfilePanel({ profile, activeProject, activeChat, insights, activeMode, updateState, recap }) {
   const recipe = buildTeachingRecipe(profile, activeProject, activeMode.id);
   const concepts = activeProject?.mastery?.concepts || [];
   const misconceptions = activeProject?.mastery?.misconceptions || [];
@@ -2198,6 +2199,36 @@ function ProfilePanel({ profile, activeProject, activeChat, insights, activeMode
       </div>
 
       <div className="profile-grid">
+        {recap && recap.totalConcepts > 0 && (
+          <div className="profile-card wide recap-card">
+            <h2>What Peer remembers</h2>
+            <div className="recap-row">
+              {recap.recent.length > 0 && (
+                <div>
+                  <strong>Recently studied</strong>
+                  <div className="recap-chips">
+                    {recap.recent.map((c) => (
+                      <span key={c.id} className={`recap-chip traj-${c.trajectory}`}>{c.label} · {Math.round((c.confidence || 0) * 100)}%</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {recap.improving.length > 0 && (
+                <div>
+                  <strong>Improving ↗</strong>
+                  <div className="recap-chips">{recap.improving.map((c) => <span key={c.id} className="recap-chip traj-improving">{c.label}</span>)}</div>
+                </div>
+              )}
+              {recap.slipping.length > 0 && (
+                <div>
+                  <strong>Slipping ↘ · revisit</strong>
+                  <div className="recap-chips">{recap.slipping.map((c) => <span key={c.id} className="recap-chip traj-slipping">{c.label}</span>)}</div>
+                </div>
+              )}
+            </div>
+            <p className="recap-foot">Tracking {recap.totalConcepts} concept{recap.totalConcepts === 1 ? "" : "s"} across your projects · {recap.streak}-day streak. Peer uses this to adapt every answer.</p>
+          </div>
+        )}
         <div className="profile-card">
           <h2>Current read</h2>
           <strong>{insights.headline}</strong>
