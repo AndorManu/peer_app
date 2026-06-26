@@ -414,10 +414,17 @@ function upsertConcept(mastery, label, update) {
   if (!normalized) return;
   const existing = mastery.concepts.find((concept) => concept.key === normalized.key);
   if (existing) {
-    existing.confidence = clamp((existing.confidence || 0.35) + update.confidenceDelta, 0, 1);
-    existing.status = statusFromConfidence(existing.confidence, update.status);
-    existing.evidence = update.evidence;
-    existing.updatedAt = Date.now();
+    // Replace immutably — normalizeMastery shares concept refs with the caller's
+    // state, so mutating in place would mutate the persisted object.
+    const confidence = clamp((existing.confidence || 0.35) + update.confidenceDelta, 0, 1);
+    const updated = {
+      ...existing,
+      confidence,
+      status: statusFromConfidence(confidence, update.status),
+      evidence: update.evidence,
+      updatedAt: Date.now(),
+    };
+    mastery.concepts = mastery.concepts.map((concept) => concept.key === normalized.key ? updated : concept);
     return;
   }
   mastery.concepts.unshift({
