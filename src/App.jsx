@@ -551,6 +551,19 @@ export default function App() {
     return content;
   }
 
+  // Practice generator — turn any topic/concept/note into a targeted quiz.
+  function generatePractice(topic, opts = {}) {
+    const t = String(topic || "").trim();
+    if (!t) { showToast("Pick a concept or note to practice."); return; }
+    const n = opts.count || 5;
+    const grounding = opts.context ? `\n\nGround the questions in this material:\n${String(opts.context).slice(0, 1500)}` : "";
+    setView("chat");
+    sendMessage(
+      `Create a focused ${n}-question practice set on "${t}". Ask one question at a time, wait for my answer, then give brief feedback before moving on. Mix recall and application. Start with question 1 now.${grounding}`,
+      { mode: "quiz" },
+    );
+  }
+
   async function sendMessage(forcedPrompt, options = {}) {
     const content = (forcedPrompt ?? input).trim();
     if ((!content && !pendingFiles.length) || loading || attachmentBusy || !activeChat) return;
@@ -1250,6 +1263,19 @@ export default function App() {
     { label: "Open study rooms", hint: "Local peer-to-peer study prototype", icon: Users, run: () => setView("community") },
     { label: "Open settings", hint: "Theme, fonts, text size", icon: Settings, run: () => setView("settings") },
     { label: "Load sample data", hint: "Add demo subjects, concepts, notes & decks to explore", icon: Sparkles, run: () => loadSampleData() },
+    {
+      label: "Practice a weak spot",
+      hint: "Auto-quiz on the concept Peer thinks you're weakest on",
+      icon: Target,
+      run: () => {
+        const weak = state.projects
+          .flatMap((p) => (p.mastery?.concepts || []).map((c) => ({ ...c, project: p.name })))
+          .filter((c) => c.status === "weak" || (c.confidence ?? 1) < 0.4)
+          .sort((a, b) => (a.confidence ?? 0) - (b.confidence ?? 0))[0];
+        if (weak) generatePractice(weak.label);
+        else generatePractice(activeProject?.name || state.profile.subject || "your subject");
+      },
+    },
     { label: "Quiz mode", hint: "Ask one question at a time", icon: Target, run: () => updateState((current) => ({ ...current, activeMode: "quiz" })) },
     { label: "Challenge mode", hint: "Turn learning into levels", icon: Trophy, run: () => updateState((current) => ({ ...current, activeMode: "challenge" })) },
     { label: "Upload material", hint: "Open current project library", icon: Paperclip, run: () => activeProject && setManagedProjectId(activeProject.id) },
@@ -1404,9 +1430,9 @@ export default function App() {
 
         {view === "settings" && <SettingsPanel state={state} updateState={updateState} resetData={resetData} loadSampleData={loadSampleData} />}
         {view === "profile" && <ProfilePanel profile={state.profile} activeProject={activeProject} activeChat={activeChat} insights={insights} activeMode={activeMode} updateState={updateState} />}
-        {view === "brain" && <LearningBrainPanel state={state} activeProject={activeProject} setView={setView} updateState={updateState} setManagedProjectId={setManagedProjectId} setSelectedDocId={setSelectedDocId} />}
+        {view === "brain" && <LearningBrainPanel state={state} activeProject={activeProject} setView={setView} updateState={updateState} setManagedProjectId={setManagedProjectId} setSelectedDocId={setSelectedDocId} onPractice={generatePractice} />}
         {view === "code" && <CodingPanel profile={state.profile} />}
-        {view === "notes" && <NotesPanel notes={state.notes} projects={state.projects} deleteNote={deleteNote} toggleShareNote={toggleShareNote} />}
+        {view === "notes" && <NotesPanel notes={state.notes} projects={state.projects} deleteNote={deleteNote} toggleShareNote={toggleShareNote} onPractice={generatePractice} />}
         {view === "flashcards" && <FlashcardsPanel flashcards={state.flashcards} projects={state.projects} setView={setView} deleteFlashcardDeck={deleteFlashcardDeck} />}
         {view === "community" && (
           <SocialPanel
@@ -2376,7 +2402,7 @@ function PreferenceBars({ preferences }) {
   );
 }
 
-function NotesPanel({ notes, projects, deleteNote, toggleShareNote }) {
+function NotesPanel({ notes, projects, deleteNote, toggleShareNote, onPractice }) {
   const [query, setQuery] = useState("");
   const [projectFilter, setProjectFilter] = useState("all");
   const filtered = notes.filter((note) => {
@@ -2431,6 +2457,7 @@ function NotesPanel({ notes, projects, deleteNote, toggleShareNote }) {
                       <header>
                         <strong>{note.title}</strong>
                         <span>
+                          {onPractice && <button onClick={() => onPractice(note.title, { context: note.content })} title="Practice this note"><Target size={14} /></button>}
                           <button onClick={() => toggleShareNote(note.id)} title={note.shared ? "Unshare note" : "Share note locally"}><Share2 size={14} /></button>
                           <button onClick={() => deleteNote(note.id)}><Trash2 size={14} /></button>
                         </span>

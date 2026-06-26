@@ -6,7 +6,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { Brain, GitBranch, RotateCcw, Search } from "lucide-react";
 
-export function LearningBrainPanel({ state, activeProject, setView, updateState, setManagedProjectId, setSelectedDocId }) {
+export function LearningBrainPanel({ state, activeProject, setView, updateState, setManagedProjectId, setSelectedDocId, onPractice }) {
   const firstProjectId = state.projects[0]?.id || "";
   const [scope, setScope] = useState("global");
   const [projectId, setProjectId] = useState(activeProject?.id || firstProjectId);
@@ -184,7 +184,12 @@ export function LearningBrainPanel({ state, activeProject, setView, updateState,
                   ))}
                 </div>
               )}
-              <button className="brain-open-btn" onClick={() => openNode(selectedNode)}>
+              {(selectedNode.type === "concept" || selectedNode.type === "weak") && onPractice && (
+                <button className="brain-open-btn" onClick={() => onPractice(selectedNode.label, { context: selectedNode.evidence })}>
+                  Practice this
+                </button>
+              )}
+              <button className="brain-open-btn brain-open-secondary" onClick={() => openNode(selectedNode)}>
                 {selectedNode.type === "brain"
                   ? "Open profile"
                   : selectedNode.type === "project"
