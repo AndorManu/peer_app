@@ -17,6 +17,7 @@ export function LearningBrainPanel({ state, activeProject, setView, updateState,
     concepts: true,
     weak: true,
     files: true,
+    code: true,
     notes: true,
     chats: true,
     quizzes: true,
@@ -123,6 +124,7 @@ export function LearningBrainPanel({ state, activeProject, setView, updateState,
             ["concepts", "Concepts"],
             ["weak", "Weak spots"],
             ["files", "Files"],
+            ["code", "Code"],
             ["notes", "Notes"],
             ["chats", "Chats"],
             ["quizzes", "Quizzes"],
@@ -144,6 +146,7 @@ export function LearningBrainPanel({ state, activeProject, setView, updateState,
             <span><i className="brain-dot concept" /> Concept</span>
             <span><i className="brain-dot weak" /> Weak</span>
             <span><i className="brain-dot file" /> File</span>
+            <span><i className="brain-dot code" /> Code</span>
             <span><i className="brain-dot note" /> Note</span>
             <span><i className="brain-dot chat" /> Chat</span>
             <span><i className="brain-dot quiz" /> Quiz</span>
@@ -223,6 +226,7 @@ const BRAIN_PALETTE = {
   note: { core: 0xffcd86, glow: 0xfb923c },
   chat: { core: 0x8ef0c9, glow: 0x34d399 },
   quiz: { core: 0xf3b6f7, glow: 0xe879f9 },
+  code: { core: 0xeaffb0, glow: 0x84cc16 },
 };
 
 function brainPalette(type) {
@@ -232,6 +236,7 @@ function brainPalette(type) {
 function brainNodeRadius(node) {
   if (node.type === "brain") return 1.3;
   if (node.type === "project") return 0.78;
+  if (node.type === "code") return 0.5;
   const confidence = Number(node.confidence ?? 0.4);
   const base = node.type === "weak" ? 0.4 : 0.32;
   return base + Math.max(0, Math.min(1, confidence)) * 0.36;
@@ -961,7 +966,7 @@ function buildLearningBrainGraph(state, project, filters, options = {}) {
     : [];
 
   const fileNodes = filters.files
-    ? scopedDocs.slice(0, isGlobal ? 18 : 12).map((doc) => ({
+    ? scopedDocs.filter((doc) => doc.kind !== "code").slice(0, isGlobal ? 18 : 12).map((doc) => ({
       id: `file:${doc.projectId}:${doc.id}`,
       sourceId: doc.id,
       projectId: doc.projectId,
@@ -975,6 +980,25 @@ function buildLearningBrainGraph(state, project, filters, options = {}) {
       radius: 22,
       related: [],
       sourceText: `${doc.name} ${doc.content || ""} ${doc.projectName}`,
+      labelWidth: measureBrainLabel(doc.name),
+    }))
+    : [];
+
+  const codeNodes = filters.code
+    ? scopedDocs.filter((doc) => doc.kind === "code").slice(0, isGlobal ? 16 : 12).map((doc) => ({
+      id: `code:${doc.projectId}:${doc.id}`,
+      sourceId: doc.id,
+      projectId: doc.projectId,
+      type: "code",
+      label: doc.name,
+      symbol: "</>",
+      description: `A code snippet you wrote in the Code lab (${doc.language || "code"}), connected to ${doc.projectName}.`,
+      status: doc.language || "code",
+      evidence: doc.content ? `${(doc.content.match(/\n/g)?.length || 0) + 1} lines of ${doc.language || "code"}.` : "Saved from the Code lab.",
+      updatedAt: doc.createdAt || doc.addedAt,
+      radius: 24,
+      related: [],
+      sourceText: `${doc.name} ${doc.language || ""} ${doc.content || ""} ${doc.projectName}`,
       labelWidth: measureBrainLabel(doc.name),
     }))
     : [];
@@ -1060,6 +1084,7 @@ function buildLearningBrainGraph(state, project, filters, options = {}) {
   const filteredConceptNodes = conceptNodes.filter((node) => matchesBrainQuery(node, query));
   const filteredMisconceptionNodes = misconceptionNodes.filter((node) => matchesBrainQuery(node, query));
   const filteredFileNodes = fileNodes.filter((node) => matchesBrainQuery(node, query));
+  const filteredCodeNodes = codeNodes.filter((node) => matchesBrainQuery(node, query));
   const filteredNoteNodes = noteNodes.filter((node) => matchesBrainQuery(node, query));
   const filteredChatNodes = chatNodes.filter((node) => matchesBrainQuery(node, query));
   const filteredQuizNodes = quizNodes.filter((node) => matchesBrainQuery(node, query));
@@ -1077,6 +1102,7 @@ function buildLearningBrainGraph(state, project, filters, options = {}) {
     { nodes: filteredNoteNodes, anchor: { x: 138, y: 500 }, columns: 4, xGap: 106, yGap: 68 },
     { nodes: filteredQuizNodes, anchor: { x: 594, y: 520 }, columns: 3, xGap: 104, yGap: 68 },
     { nodes: filteredChatNodes, anchor: { x: 735, y: 350 }, columns: 2, xGap: 112, yGap: 78 },
+    { nodes: filteredCodeNodes, anchor: { x: 388, y: 96 }, columns: 4, xGap: 104, yGap: 70 },
   ];
 
   for (const group of groups) {
@@ -1095,7 +1121,7 @@ function buildLearningBrainGraph(state, project, filters, options = {}) {
   }
 
   const conceptLike = nodes.filter((node) => (node.type === "concept" || node.type === "weak") && node.key);
-  const sources = nodes.filter((node) => ["file", "note", "chat", "quiz", "project"].includes(node.type));
+  const sources = nodes.filter((node) => ["file", "code", "note", "chat", "quiz", "project"].includes(node.type));
   for (const concept of conceptLike) {
     const matcher = brainKeyRegex(concept.key);
     if (!matcher) continue;

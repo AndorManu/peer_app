@@ -2890,6 +2890,7 @@ textarea:focus {
 .brain-dot.note { background: #ffcd86 !important; }
 .brain-dot.chat { background: #66e9c9 !important; }
 .brain-dot.quiz { background: #a6e981 !important; }
+.brain-dot.code { background: #bef264 !important; }
 
 .brain-open-btn {
   width: 100% !important;

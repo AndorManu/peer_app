@@ -253,6 +253,38 @@
 .peer-skin .code-block pre { margin: 0 !important; overflow-x: auto !important; }
 .peer-skin .code-block pre code { font-family: 'Geist Mono', ui-monospace, 'SFMono-Regular', monospace !important; font-size: 13px !important; line-height: 1.55 !important; white-space: pre !important; display: block !important; padding: 14px 16px !important; }
 
+/* ===== Code lab: VS Code-style editor + integrated terminal ===== */
+.peer-skin .vscode-tabbar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(255,255,255,0.025); border-bottom: 1px solid rgba(255,255,255,0.06); }
+.peer-skin .vscode-tab { display: inline-flex; align-items: center; gap: 8px; padding: 6px 13px; border-radius: 8px; background: rgba(10,10,18,0.65); border: 1px solid rgba(255,255,255,0.07); font-family: 'Geist Mono', monospace; font-size: 12.5px; color: rgba(255,255,255,0.8); }
+.peer-skin .vscode-dot { width: 8px; height: 8px; border-radius: 99px; }
+
+.peer-skin .vscode-editor { flex: 1; min-height: 0; display: flex; overflow: hidden; background: #0a0a12; }
+.peer-skin .vscode-gutter { flex: 0 0 auto; overflow: hidden; padding: 14px 0; text-align: right; user-select: none; background: rgba(255,255,255,0.012); border-right: 1px solid rgba(255,255,255,0.05); }
+.peer-skin .vscode-gutter div { padding: 0 12px 0 18px; font-family: 'Geist Mono', monospace; font-size: 13px; line-height: 1.6; color: rgba(255,255,255,0.24); }
+.peer-skin .vscode-code { position: relative; flex: 1; min-width: 0; overflow: hidden; }
+.peer-skin .vscode-code pre,
+.peer-skin .vscode-code textarea {
+  position: absolute; inset: 0; box-sizing: border-box; margin: 0; padding: 14px 16px; border: 0;
+  font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px; line-height: 1.6;
+  white-space: pre; tab-size: 2; -moz-tab-size: 2; letter-spacing: 0;
+}
+.peer-skin .vscode-code pre { z-index: 0; overflow: hidden; pointer-events: none; background: transparent; }
+.peer-skin .vscode-code pre code.hljs { background: transparent !important; padding: 0 !important; font: inherit; }
+.peer-skin .vscode-code textarea { z-index: 1; overflow: auto; background: transparent; color: transparent; caret-color: #fff; resize: none; outline: none; }
+.peer-skin .vscode-code textarea::selection { background: rgba(139,92,246,0.32); }
+
+.peer-skin .vscode-terminal .term-tabbar { display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: rgba(255,255,255,0.025); border-bottom: 1px solid rgba(255,255,255,0.06); }
+.peer-skin .term-tab { font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 700; letter-spacing: .8px; color: rgba(255,255,255,0.55); padding-bottom: 7px; margin-bottom: -8px; }
+.peer-skin .term-tab.active { color: #fff; border-bottom: 2px solid #8b5cf6; }
+.peer-skin .term-meta { margin-left: auto; font-family: 'Geist Mono', monospace; font-size: 11px; color: rgba(255,255,255,0.42); }
+.peer-skin .term-body { flex: 1; min-height: 0; overflow: auto; padding: 12px 16px; font-family: 'Geist Mono', monospace; font-size: 12.5px; line-height: 1.55; background: rgba(6,6,12,0.55); }
+.peer-skin .term-cmd { color: #84cc16; margin-bottom: 6px; }
+.peer-skin .term-line { white-space: pre-wrap; word-break: break-word; }
+.peer-skin .term-line.out { color: rgba(255,255,255,0.87); }
+.peer-skin .term-line.err { color: #fb7185; }
+.peer-skin .term-line.muted { color: rgba(255,255,255,0.38); }
+.peer-skin .term-caret { display: inline-block; width: 8px; height: 14px; background: #84cc16; margin-left: 4px; vertical-align: text-bottom; animation: pcaret 1s steps(1) infinite; }
+
 /* ---------- chat empty state (welcome) ---------- */
 .peer-skin .welcome-mark {
   background: linear-gradient(135deg,#8b5cf6,#22d3ee) !important;
