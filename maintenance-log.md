@@ -4,6 +4,34 @@ Persistent memory for the daily maintenance agent. Newest entry on top. Never de
 
 ---
 
+## 2026-06-26 · Run 2
+
+Targeted run. No source files changed since Run 1 (all dated 00:44); branch was in sync with main (PR #1 merged). Resolved the one open HIGH flag from Run 1 and re-verified the CLEAN set.
+
+### Fixed
+- HIGH · server/handleChat.js · streamAnthropic · lines 92-104 — resolved the Run 1 flag. The SSE parse loop wrapped event handling in a `try { ... } catch {}` that swallowed everything, so a mid-stream `{"type":"error",...}` event was silently dropped and the stream still ended with `{done:true}` — user saw a truncated answer with no error. Split the loop: the `try/catch` now wraps ONLY `JSON.parse` (`continue` on parse failure), and an error event throws `apiError(502, ...)` OUTSIDE the catch. The throw propagates to `handleChatRequest`'s catch (line 30), which emits `{error}` + `res.end()`; frontend `streamRequest` (App.jsx:536 `if (event.error) throw`) surfaces it. Verified: build PASS, 17/17 tests pass, server boots, `node --check` clean.
+- HIGH · server/handleChat.js · streamOpenAI · lines ~162-172 — same swallowing pattern (flag noted "OpenAI has the same gap minus the catch issue"). Applied the identical split: parse-only try/catch, throw `apiError(502, ...)` on `event.error`. Symmetric, low-risk, same propagation path. Verified together with the above.
+
+### Flagged
+- (none new) — Run 1's only open HIGH flag is now fixed. Run 1's MEDIUM note (learningModel mutation boundary) remains informational only; no action needed.
+
+### Improvements noted (carried from Run 1, still open — all off-limits or low-value per rules)
+- src/peerPrompt.js · buildSystemPrompt — no aggregate token cap across docs (bounded 40k/doc at ingestion). Prompt content off-limits per run rules. · effort: moderate
+- src/markdown.jsx · Markdown — block parse runs every render; could `useMemo(text)`. · effort: simple
+- vite build — single 1.33MB JS chunk; LearningBrain (Three.js) + pdf.js worker (2.2MB) eager-loaded; `React.lazy` + dynamic import would cut initial load. (Build still warns on >500kB chunk — expected.) · effort: moderate
+- src/App.jsx · FlashcardsPanel keydown effect ~line 3003 — no dep array, re-binds each render; intentional closure over deck. Low value. · effort: simple
+
+### Clean (re-confirmed, skip deep read next run unless changed)
+- src/storage.js, src/stateModel.js, src/LearningBrain.jsx, server/handleImage.js, server/dev.js, src/constants.js, src/components/PeerNavRail.jsx, src/peerTheme.js, src/peer-theme.css, src/main.jsx, src/materials.js, src/markdown.jsx, src/App.jsx — unchanged since Run 1.
+- server/handleChat.js — now fully clean; the streaming error-event gap that was the last open concern is closed.
+- .env.example / .gitignore — cover all server env vars + dist/, *.log, node_modules, .env.
+
+### Notes
+- Recurring pattern emerging: the SSE streaming loops were the codebase's weak spot (silent `catch {}` swallowing). Both paths are now hardened identically. Future streaming additions should follow the parse-only-catch pattern.
+- API model strings untouched per rules. No console noise, no key leakage.
+
+---
+
 ## 2026-06-26 · Run 1
 
 First run — full scan of the entire codebase (no prior memory).
