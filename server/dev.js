@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { createServer as createViteServer } from "vite";
 import { handleChatRequest } from "./handleChat.js";
 import { handleImageRequest } from "./handleImage.js";
+import { handleRunRequest } from "./handleRun.js";
 
 loadDotEnv();
 
@@ -30,6 +31,11 @@ const server = createHttpServer(async (req, res) => {
     if (req.url?.startsWith("/api/image")) {
       loadDotEnv({ override: true });
       await handleImageRequest(req, res);
+      return;
+    }
+
+    if (req.url?.startsWith("/api/run")) {
+      await handleRunRequest(req, res);
       return;
     }
 

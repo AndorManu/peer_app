@@ -566,6 +566,38 @@ export default function App() {
     );
   }
 
+  // Save a Code-lab snippet into a project: it becomes a "code" cell in the brain
+  // AND grows concept mastery from the code, so the brain learns from what you write.
+  function saveCodeToBrain({ language, code, title, projectId }) {
+    const trimmed = String(code || "").trim();
+    if (!trimmed) { showToast("Write some code first."); return; }
+    let saved = false;
+    updateState((current) => {
+      const projects = current.projects;
+      if (!projects.length) { showToast("Create a subject first."); return current; }
+      const targetId = projectId && projects.some((p) => p.id === projectId) ? projectId : projects[0].id;
+      const doc = {
+        id: uid(),
+        name: (title && title.trim()) || `${language} snippet`,
+        kind: "code",
+        language,
+        content: trimmed.slice(0, 8000),
+        chars: trimmed.length,
+        createdAt: Date.now(),
+      };
+      saved = true;
+      return {
+        ...current,
+        projects: projects.map((p) =>
+          p.id === targetId
+            ? { ...p, docs: [...(p.docs || []), doc], mastery: updateMasteryFromMessage(p.mastery, trimmed) }
+            : p,
+        ),
+      };
+    });
+    if (saved) showToast("Saved to your brain — open Brain to see the code cell.");
+  }
+
   async function sendMessage(forcedPrompt, options = {}) {
     const content = (forcedPrompt ?? input).trim();
     if ((!content && !pendingFiles.length) || loading || attachmentBusy || !activeChat) return;
@@ -1446,7 +1478,7 @@ export default function App() {
         {view === "settings" && <SettingsPanel state={state} updateState={updateState} resetData={resetData} loadSampleData={loadSampleData} />}
         {view === "profile" && <ProfilePanel profile={state.profile} activeProject={activeProject} activeChat={activeChat} insights={insights} activeMode={activeMode} updateState={updateState} recap={buildLearnerRecap(state)} />}
         {view === "brain" && <LearningBrainPanel state={state} activeProject={activeProject} setView={setView} updateState={updateState} setManagedProjectId={setManagedProjectId} setSelectedDocId={setSelectedDocId} onPractice={generatePractice} />}
-        {view === "code" && <CodingPanel profile={state.profile} />}
+        {view === "code" && <CodingPanel profile={state.profile} projects={state.projects} onSaveToBrain={saveCodeToBrain} />}
         {view === "notes" && <NotesPanel notes={state.notes} projects={state.projects} deleteNote={deleteNote} toggleShareNote={toggleShareNote} onPractice={generatePractice} />}
         {view === "flashcards" && <FlashcardsPanel flashcards={state.flashcards} projects={state.projects} setView={setView} deleteFlashcardDeck={deleteFlashcardDeck} gradeFlashcard={gradeFlashcard} />}
         {view === "community" && (
