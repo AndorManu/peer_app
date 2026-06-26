@@ -339,6 +339,17 @@
 .peer-skin .challenge-card button:hover, .peer-skin .room-card > button:hover { background: rgba(52,211,153,0.14) !important; border-color: rgba(52,211,153,0.4) !important; color: #34d399 !important; }
 .peer-skin .roadmap-grid span { background: rgba(255,255,255,0.025) !important; border: 1px solid rgba(255,255,255,0.07) !important; border-radius: 12px !important; }
 
+/* ---------- smarter-memory recap card ---------- */
+.peer-skin .recap-card { grid-column: 1 / -1 !important; }
+.peer-skin .recap-row { display: flex; flex-wrap: wrap; gap: 22px; margin-top: 6px; }
+.peer-skin .recap-row > div { min-width: 160px; }
+.peer-skin .recap-row strong { display: block; font-size: 11px; letter-spacing: .5px; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: 9px; }
+.peer-skin .recap-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.peer-skin .recap-chip { font-size: 12px; font-weight: 500; padding: 5px 11px; border-radius: 999px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09); color: rgba(255,255,255,0.78); }
+.peer-skin .recap-chip.traj-improving { background: rgba(52,211,153,0.1); border-color: rgba(52,211,153,0.3); color: #34d399; }
+.peer-skin .recap-chip.traj-slipping { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3); color: #fbbf24; }
+.peer-skin .recap-foot { margin-top: 16px !important; font-size: 12.5px; color: rgba(255,255,255,0.4) !important; }
+
 /* ---------- brain + code: full-bleed (hide topbar on these screens) ---------- */
 .peer-skin.view-brain .topbar, .peer-skin.view-code .topbar { display: none !important; }
 .peer-skin.view-code .main::before, .peer-skin.view-code .main::after { display: none !important; }
