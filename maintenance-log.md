@@ -4,6 +4,15 @@ Persistent memory for the daily maintenance agent. Newest entry on top. Never de
 
 ---
 
+## ⚙️ STANDING DIRECTIVES (read every run, before anything else)
+
+- **ALWAYS send the full report at the end of EVERY run** — owner requirement (andor.danse@gmail.com), automated, no exceptions, even on a clean run.
+- **Primary delivery channel = PushNotification** with the COMPLETE report inside `<routine_summary>` tags. This is the only channel that reaches the owner's email + phone automatically in headless/scheduled runs (no host allowlist, no MCP token needed). First sentence = banner; full body = email. Put the whole report (health, build status, fixed, flagged, improvements, PR link) in the body.
+- **Discord webhook is BLOCKED** by this environment's network egress policy — `discord.com` returns 403 at the proxy. Still attempt it (in case the allowlist gets updated), but verify the HTTP status with `curl -sS -w "%{http_code}"`; NEVER print "[sent]" without checking. Do not treat Discord as the report's safety net — PushNotification is. To restore Discord, the owner must add `discord.com` to the environment allowlist.
+- **Gmail MCP is unreliable for automation** — token expires and needs interactive re-auth (absent in scheduled runs), and it only exposes `create_draft` (no send). Use only as a manual extra if already authed; never depend on it.
+
+---
+
 ## 2026-06-26 · Run 2
 
 Targeted run. No source files changed since Run 1 (all dated 00:44); branch was in sync with main (PR #1 merged). Resolved the one open HIGH flag from Run 1 and re-verified the CLEAN set.
