@@ -317,6 +317,14 @@
 .peer-skin .fc-nav-btn { background: rgba(255,255,255,0.03) !important; border: 1px solid rgba(255,255,255,0.08) !important; border-radius: 11px !important; transition: background .25s cubic-bezier(.16,1,.3,1) !important; }
 .peer-skin .fc-nav-btn:hover:not(:disabled) { background: rgba(255,255,255,0.07) !important; }
 .peer-skin .fc-flip-btn { background: linear-gradient(135deg,#8b5cf6,#22d3ee) !important; color: #0a0a14 !important; border: none !important; box-shadow: 0 0 20px -6px rgba(139,92,246,0.7) !important; }
+/* spaced-repetition: review button + grade buttons (amber / green) */
+.peer-skin .fc-review-btn { background: linear-gradient(135deg,#8b5cf6,#22d3ee) !important; color: #0a0a14 !important; border: none !important; border-radius: 10px !important; box-shadow: 0 0 20px -6px rgba(139,92,246,0.7) !important; }
+.peer-skin .fc-grade-row { display: flex; gap: 12px; width: 100%; margin-top: 18px; }
+.peer-skin .fc-grade { flex: 1; display: flex; align-items: center; justify-content: center; gap: 9px; padding: 16px; border-radius: 14px; cursor: pointer; font-size: 15px; font-weight: 600; transition: background .25s cubic-bezier(.16,1,.3,1), box-shadow .25s ease, transform .2s cubic-bezier(.16,1,.3,1); }
+.peer-skin .fc-grade-again { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.3); color: #fbbf24; }
+.peer-skin .fc-grade-again:hover { background: rgba(245,158,11,0.16); box-shadow: 0 0 30px -8px rgba(245,158,11,0.7); transform: translateY(-2px); }
+.peer-skin .fc-grade-good { background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.3); color: #34d399; }
+.peer-skin .fc-grade-good:hover { background: rgba(52,211,153,0.16); box-shadow: 0 0 30px -8px rgba(52,211,153,0.7); transform: translateY(-2px); }
 
 /* ---------- ROOMS (social) ---------- */
 .peer-skin .social-panel .page-heading > button,

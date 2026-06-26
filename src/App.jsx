@@ -86,6 +86,7 @@ import {
 import { LearningBrainPanel } from "./LearningBrain.jsx";
 import PeerNavRail from "./components/PeerNavRail.jsx";
 import CodingPanel from "./CodingPanel.jsx";
+import { gradeCard, dueQueue, dueCount } from "./spacedRepetition.js";
 
 function PeerLogo({ size = 28 }) {
   return (
@@ -968,6 +969,19 @@ export default function App() {
     showToast("Flashcard deck deleted");
   }
 
+  // Spaced repetition — grade a card ("again" | "good") and reschedule it.
+  function gradeFlashcard(deckId, cardIndex, grade) {
+    updateState((current) => ({
+      ...current,
+      flashcards: current.flashcards.map((deck) =>
+        deck.id !== deckId ? deck : {
+          ...deck,
+          cards: deck.cards.map((card, i) => (i === cardIndex ? gradeCard(card, grade) : card)),
+        }
+      ),
+    }));
+  }
+
   async function makeFlashcards(message) {
     if (loading) return;
     setLoading(true);
@@ -1433,7 +1447,7 @@ export default function App() {
         {view === "brain" && <LearningBrainPanel state={state} activeProject={activeProject} setView={setView} updateState={updateState} setManagedProjectId={setManagedProjectId} setSelectedDocId={setSelectedDocId} onPractice={generatePractice} />}
         {view === "code" && <CodingPanel profile={state.profile} />}
         {view === "notes" && <NotesPanel notes={state.notes} projects={state.projects} deleteNote={deleteNote} toggleShareNote={toggleShareNote} onPractice={generatePractice} />}
-        {view === "flashcards" && <FlashcardsPanel flashcards={state.flashcards} projects={state.projects} setView={setView} deleteFlashcardDeck={deleteFlashcardDeck} />}
+        {view === "flashcards" && <FlashcardsPanel flashcards={state.flashcards} projects={state.projects} setView={setView} deleteFlashcardDeck={deleteFlashcardDeck} gradeFlashcard={gradeFlashcard} />}
         {view === "community" && (
           <SocialPanel
             state={state}
@@ -3001,20 +3015,50 @@ function StreamingMessage({ content, streaming }) {
   );
 }
 
-function FlashcardsPanel({ flashcards, projects, setView, deleteFlashcardDeck }) {
+function FlashcardsPanel({ flashcards, projects, setView, deleteFlashcardDeck, gradeFlashcard }) {
   const [activeDeckId, setActiveDeckId] = useState(flashcards[0]?.id || null);
   const [cardIndex, setCardIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
+  const [reviewMode, setReviewMode] = useState(false);
+  const [reviewTotal, setReviewTotal] = useState(0);
+  const [reviewDone, setReviewDone] = useState(0);
 
-  const deck = flashcards.find((d) => d.id === activeDeckId) || flashcards[0] || null;
-  const card = deck?.cards[cardIndex] || null;
+  const reviewQueue = useMemo(() => dueQueue(flashcards), [flashcards]);
+  const due = reviewQueue.length;
+
+  // Review mode always works the FRONT of the live due queue; grading reschedules
+  // a card out of "due", so the queue shifts forward on its own.
+  const reviewItem = reviewMode ? reviewQueue[0] : null;
+  const deck = reviewMode
+    ? flashcards.find((d) => d.id === reviewItem?.deckId) || null
+    : flashcards.find((d) => d.id === activeDeckId) || flashcards[0] || null;
+  const effectiveIndex = reviewMode ? (reviewItem?.index ?? 0) : cardIndex;
+  const card = reviewMode ? reviewItem?.card : deck?.cards[cardIndex] || null;
   const project = projects.find((p) => p.id === deck?.projectId);
-  const progress = deck ? ((cardIndex + 1) / deck.cards.length) * 100 : 0;
+  const progress = reviewMode
+    ? (reviewTotal ? (reviewDone / reviewTotal) * 100 : 100)
+    : deck ? ((cardIndex + 1) / deck.cards.length) * 100 : 0;
+
+  function startReview() { if (!due) return; setReviewMode(true); setReviewTotal(due); setReviewDone(0); setFlipped(false); }
+  function exitReview() { setReviewMode(false); setFlipped(false); }
+
+  function grade(g) {
+    if (!deck || !card) return;
+    gradeFlashcard(deck.id, effectiveIndex, g);
+    setFlipped(false);
+    if (reviewMode) {
+      setReviewDone((n) => n + 1);
+      if (due <= 1) setReviewMode(false); // graded the last due card
+    } else {
+      next();
+    }
+  }
 
   function selectDeck(id) {
     setActiveDeckId(id);
     setCardIndex(0);
     setFlipped(false);
+    setReviewMode(false);
   }
 
   function next() {
@@ -3058,8 +3102,17 @@ function FlashcardsPanel({ flashcards, projects, setView, deleteFlashcardDeck })
   return (
     <section className="flashcards-panel">
       <div className="page-heading">
-        <div><h1>Flashcards</h1><p>Space to flip - use arrow keys to navigate - click card to flip</p></div>
-        <button onClick={() => setView("chat")}>Back to chat</button>
+        <div><h1>Flashcards</h1><p>{reviewMode ? "Review mode — grade each card so Peer can reschedule it" : "Flip to reveal, then grade to schedule your next review"}</p></div>
+        <div style={{ display: "flex", gap: 8 }}>
+          {reviewMode ? (
+            <button onClick={exitReview}>Exit review</button>
+          ) : (
+            <button className={due ? "fc-review-btn" : ""} onClick={startReview} disabled={!due}>
+              {due ? `Review due (${due})` : "Nothing due"}
+            </button>
+          )}
+          <button onClick={() => setView("chat")}>Back to chat</button>
+        </div>
       </div>
       <div className="flashcards-layout">
         <div className="deck-list">
@@ -3093,7 +3146,7 @@ function FlashcardsPanel({ flashcards, projects, setView, deleteFlashcardDeck })
         {deck && card && (
           <div className="flashcard-area">
             <div className="flashcard-progress">
-              <span className="fc-count">{cardIndex + 1}<em> / {deck.cards.length}</em></span>
+              <span className="fc-count">{reviewMode ? `${Math.min(reviewDone + 1, reviewTotal)} / ${reviewTotal} due` : <>{cardIndex + 1}<em> / {deck.cards.length}</em></>}</span>
               <div className="fc-progress-bar">
                 <div className="fc-progress-fill" style={{ width: `${progress}%` }} />
               </div>
@@ -3109,14 +3162,14 @@ function FlashcardsPanel({ flashcards, projects, setView, deleteFlashcardDeck })
             >
               <div className={`flashcard-inner ${flipped ? "flipped" : ""}`}>
                 <div className="flashcard-front">
-                  <div key={`q-${cardIndex}`} className="fc-content">
+                  <div key={`q-${deck.id}-${effectiveIndex}`} className="fc-content">
                     <span className="fc-label">Question</span>
                     <p>{card.question}</p>
                     <small>Click or Space to reveal</small>
                   </div>
                 </div>
                 <div className="flashcard-back">
-                  <div key={`a-${cardIndex}`} className="fc-content">
+                  <div key={`a-${deck.id}-${effectiveIndex}`} className="fc-content">
                     <span className="fc-label fc-label-answer">Answer</span>
                     <p>{card.answer}</p>
                     <small>Click to flip back</small>
@@ -3125,14 +3178,29 @@ function FlashcardsPanel({ flashcards, projects, setView, deleteFlashcardDeck })
               </div>
             </div>
 
-            <div className="flashcard-nav">
-              <button className="fc-nav-btn" onClick={prev} disabled={deck.cards.length <= 1}>Prev</button>
-              <button className="fc-nav-btn fc-flip-btn" onClick={() => setFlipped((f) => !f)}>
-                {flipped ? "Show question" : "Reveal answer"}
+            {!reviewMode && (
+              <div className="flashcard-nav">
+                <button className="fc-nav-btn" onClick={prev} disabled={deck.cards.length <= 1}>Prev</button>
+                <button className="fc-nav-btn fc-flip-btn" onClick={() => setFlipped((f) => !f)}>
+                  {flipped ? "Show question" : "Reveal answer"}
+                </button>
+                <button className="fc-nav-btn" onClick={next} disabled={deck.cards.length <= 1}>Next</button>
+              </div>
+            )}
+
+            {/* spaced-repetition grading */}
+            <div className="fc-grade-row">
+              <button className="fc-grade fc-grade-again" onClick={() => grade("again")}>
+                <RotateCcw size={16} /> Still learning
               </button>
-              <button className="fc-nav-btn" onClick={next} disabled={deck.cards.length <= 1}>Next</button>
+              <button className="fc-grade fc-grade-good" onClick={() => grade("good")}>
+                <CheckCircle2 size={16} /> I know this
+              </button>
             </div>
           </div>
+        )}
+        {reviewMode && !card && (
+          <div className="flashcard-area"><div className="empty-state"><CheckCircle2 size={28} /><strong>Review complete</strong><span>You've cleared everything due. Nicely done.</span><button className="primary-button" onClick={exitReview}>Done</button></div></div>
         )}
       </div>
     </section>
