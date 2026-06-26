@@ -4,6 +4,32 @@ Persistent memory for the daily maintenance agent. Newest entry on top. Never de
 
 ---
 
+## 2026-06-26 · Run 2
+
+No code changes since Run 1 (`git diff 7e54c07 HEAD` empty — PR #1 merge brought in nothing new). Focused on the open HIGH flagged item from Run 1 and skimmed the rest.
+
+### Fixed
+- HIGH · server/handleChat.js · streamAnthropic · lines 88-105 — resolved Run 1's flagged SSE error-handling gap. The parse loop's blanket `try { ... } catch {}` swallowed mid-stream Anthropic `error` events (`{"type":"error","error":{...}}`), so the user could receive a truncated answer plus `done:true` with no error surfaced. Restructured: `JSON.parse` is now wrapped in a narrow `try/catch` that only `continue`s on malformed JSON; a parsed `event.type === "error"` throws `apiError(502, ...)` OUTSIDE that catch, so it propagates to `handleChatRequest`'s catch which sends `{ error }` and ends the stream. Confirmed Anthropic SSE error shape via the claude-api skill.
+- HIGH · server/handleChat.js · streamOpenAI · lines 148-165 — applied the symmetric fix to the OpenAI path (same swallowing pattern, noted in Run 1). A parsed `event.error` now throws `apiError(502, ...)`; malformed JSON still `continue`s. `[DONE]` handling unchanged.
+
+### Flagged
+- (none new) — Run 1's flagged SSE gap is now fixed. Run 1's MEDIUM note about the learningModel mutation boundary remains informational only (no action needed).
+
+### Improvements noted
+- (carried from Run 1, still open) src/markdown.jsx · Markdown — block parse runs every render; `useMemo` on `text` would help. · effort: simple
+- (carried) vite build — single 1.33MB JS chunk; LearningBrain (Three.js) + pdf.js (2.2MB worker) eager-loaded; React.lazy + dynamic import would cut initial load. · effort: moderate
+- (carried) src/peerPrompt.js · buildSystemPrompt — no aggregate token cap across docs (per-doc 40k cap exists). Prompt content off-limits per rules. · effort: moderate
+
+### Clean (skip deep read next run unless changed)
+- All files confirmed clean in Run 1 remain unchanged (verified via empty `git diff` since the Run 1 commit). server/handleChat.js is now fully clean — the one outstanding gap is closed.
+
+### Notes
+- Verification this run: `npm run build` ✅ (after `npm install` — node_modules absent on fresh container), `npm test` ✅ 17/17, `node server/dev.js` boots clean, `node --check` + dynamic import of handleChat.js OK.
+- Recurring pattern: the SSE streaming parser was the one real reliability gap; now addressed on both providers. Watch the learningModel immutable boundary and any new streaming-event types (e.g. `message_stop`, `input_json_delta`) if the parser is extended.
+- Model strings (`claude-haiku-4-5-20251001`, `gpt-4.1-mini`) left untouched per rules.
+
+---
+
 ## 2026-06-26 · Run 1
 
 First run — full scan of the entire codebase (no prior memory).
