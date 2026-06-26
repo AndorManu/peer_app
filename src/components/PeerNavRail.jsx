@@ -3,6 +3,7 @@
 // pill that measures the active item and slides to it, avatar at the bottom.
 // Wired to the existing `view` / `setView` routing — design keys map to app keys.
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Settings } from "lucide-react";
 import { COLORS, GRADIENTS, EASE, SHADOW, SURFACE } from "../peerTheme.js";
 
 // design rail order; `key` is the app's `view` routing key
@@ -115,17 +116,32 @@ export default function PeerNavRail({ view, setView, account, onAvatar }) {
         })}
       </div>
 
-      {/* avatar */}
-      <div
-        onClick={onAvatar}
-        title="Profile & settings"
-        style={{
-          marginTop: "auto", width: 34, height: 34, borderRadius: 999, background: GRADIENTS.avatarWarm,
-          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 600,
-          color: "#0b0b16", boxShadow: "0 0 16px -3px rgba(251,113,133,.7)", cursor: "pointer",
-        }}
-      >
-        {initialsOf(account)}
+      {/* bottom cluster: settings gear + avatar (profile) */}
+      <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+        <div
+          onClick={() => setView("settings")}
+          title="Settings"
+          style={{
+            width: 40, height: 40, borderRadius: 13, display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer", color: view === "settings" ? "#fff" : COLORS.text42,
+            background: view === "settings" ? "rgba(255,255,255,0.06)" : "transparent",
+            transition: `color .25s ${EASE}, background .25s ease`,
+          }}
+        >
+          <Settings size={20} strokeWidth={1.7} />
+        </div>
+        <div
+          onClick={onAvatar}
+          title="Profile"
+          style={{
+            width: 34, height: 34, borderRadius: 999, background: GRADIENTS.avatarWarm,
+            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 600,
+            color: "#0b0b16", boxShadow: "0 0 16px -3px rgba(251,113,133,.7)", cursor: "pointer",
+            outline: view === "profile" ? "2px solid rgba(255,255,255,0.4)" : "none", outlineOffset: 2,
+          }}
+        >
+          {initialsOf(account)}
+        </div>
       </div>
     </div>
   );
