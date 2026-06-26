@@ -202,7 +202,7 @@ ${code || "(empty)"}
           <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 16px" }}>
             {aiTitle && <div style={{ fontSize: 10.5, letterSpacing: ".5px", textTransform: "uppercase", color: COLORS.text40, marginBottom: 8 }}>{aiTitle}</div>}
             {aiResponse ? (
-              <div className="markdown" style={{ fontSize: 14, lineHeight: 1.6, color: "rgba(255,255,255,0.86)" }}><Markdown content={aiResponse} /></div>
+              <div className="markdown" style={{ fontSize: 14, lineHeight: 1.6, color: "rgba(255,255,255,0.86)" }}><Markdown text={aiResponse} /></div>
             ) : aiBusy ? (
               <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.text50, fontSize: 13 }}><Loader2 size={15} className="spin" /> Thinking…</div>
             ) : (

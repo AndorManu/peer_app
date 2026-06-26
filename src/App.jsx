@@ -3026,10 +3026,13 @@ function StreamingMessage({ content, streaming }) {
     const interval = setInterval(() => {
       setDisplayed((prev) => {
         const target = contentRef.current;
-        if (prev.length >= target.length) return prev;
-        return target.slice(0, prev.length + 3);
+        const remaining = target.length - prev.length;
+        if (remaining <= 0) return prev;
+        // catch-up reveal: fast for long bursts, still smooth for short ones
+        const step = Math.max(4, Math.ceil(remaining / 5));
+        return target.slice(0, prev.length + step);
       });
-    }, 40);
+    }, 24);
     return () => clearInterval(interval);
   }, []);
 

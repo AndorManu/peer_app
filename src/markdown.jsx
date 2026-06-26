@@ -57,6 +57,23 @@ export function Markdown({ text }) {
       continue;
     }
 
+    // markdown table: a "| a | b |" row followed by a "| --- | --- |" separator
+    if (line.trim().startsWith("|") && i + 1 < lines.length) {
+      const sep = lines[i + 1].trim();
+      if (/^[\s|:-]+$/.test(sep) && sep.includes("--")) {
+        const cells = (row) => row.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((s) => s.trim());
+        const header = cells(line);
+        i += 2;
+        const rows = [];
+        while (i < lines.length && lines[i].trim().startsWith("|")) {
+          rows.push(cells(lines[i]));
+          i += 1;
+        }
+        blocks.push({ type: "table", header, rows });
+        continue;
+      }
+    }
+
     if (/^[-*] /.test(line)) {
       const items = [];
       while (i < lines.length && /^[-*] /.test(lines[i])) {
@@ -90,6 +107,14 @@ export function Markdown({ text }) {
     <div className="markdown">
       {blocks.map((block, idx) => {
         if (block.type === "code") return <CodeBlock key={idx} lang={block.lang} code={block.text} />;
+        if (block.type === "table") return (
+          <div key={idx} className="md-table-wrap">
+            <table className="md-table">
+              <thead><tr>{block.header.map((h, j) => <th key={j}>{inline(h)}</th>)}</tr></thead>
+              <tbody>{block.rows.map((row, ri) => <tr key={ri}>{row.map((cell, ci) => <td key={ci}>{inline(cell)}</td>)}</tr>)}</tbody>
+            </table>
+          </div>
+        );
         if (block.type === "ul") return <ul key={idx}>{block.items.map((item, j) => <li key={j}>{inline(item)}</li>)}</ul>;
         if (block.type === "ol") return <ol key={idx}>{block.items.map((item, j) => <li key={j}>{inline(item)}</li>)}</ol>;
         if (block.type === "h1") return <h1 key={idx}>{inline(block.text)}</h1>;

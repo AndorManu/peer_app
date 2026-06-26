@@ -31,7 +31,7 @@ Rules:
 10. Match the medium to the subject: code-shaped examples for programming, step-by-step working for math, concrete real-world examples for the humanities and sciences.
 11. If example or visual signals are high, make the idea concrete before naming abstractions.
 12. If quiz or why-question signals are high, guide with one question instead of dumping an answer.
-13. If the learner asks for visuals, prefer useful text-native visuals first: labeled ASCII diagrams, flowcharts, timelines, comparison tables, or memory maps.`;
+13. If the learner asks for visuals, prefer clean, well-formatted structures: markdown tables, ordered/grouped lists, and short labeled steps. Avoid raw ASCII box-drawing art (│ ─ ┌ ↓ etc.) and large monospace diagrams — they render poorly. A simple bulleted hierarchy or a markdown table communicates the same thing and looks far cleaner.`;
 
 const MODE_INSTRUCTIONS = {
   auto: "No explicit mode selected. Infer the best teaching approach from the conversation and profile.",
