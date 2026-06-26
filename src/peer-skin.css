@@ -263,14 +263,21 @@
 .peer-skin .vscode-gutter div { padding: 0 12px 0 18px; font-family: 'Geist Mono', monospace; font-size: 13px; line-height: 1.6; color: rgba(255,255,255,0.24); }
 .peer-skin .vscode-code { position: relative; flex: 1; min-width: 0; overflow: hidden; }
 .peer-skin .vscode-code pre,
+.peer-skin .vscode-code pre code,
 .peer-skin .vscode-code textarea {
   position: absolute; inset: 0; box-sizing: border-box; margin: 0; padding: 14px 16px; border: 0;
-  font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px; line-height: 1.6;
-  white-space: pre; tab-size: 2; -moz-tab-size: 2; letter-spacing: 0;
+  /* MUST be byte-for-byte identical across both layers or the caret drifts.
+     !important defeats the global `textarea{font:inherit}` (→Inter) and the
+     `pre{font-family:JetBrains Mono!important}` rules that otherwise mismatch. */
+  font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Consolas, "Liberation Mono", monospace !important;
+  font-size: 13px !important; line-height: 1.6 !important; letter-spacing: 0 !important;
+  white-space: pre !important; tab-size: 2 !important; -moz-tab-size: 2 !important; word-spacing: 0 !important;
+  text-rendering: auto !important; font-variant-ligatures: none !important;
 }
+.peer-skin .vscode-code pre code { position: static; inset: auto; padding: 0 !important; }
 .peer-skin .vscode-code pre { z-index: 0; overflow: hidden; pointer-events: none; background: transparent; }
-.peer-skin .vscode-code pre code.hljs { background: transparent !important; padding: 0 !important; font: inherit; }
-.peer-skin .vscode-code textarea { z-index: 1; overflow: auto; background: transparent; color: transparent; caret-color: #fff; resize: none; outline: none; }
+.peer-skin .vscode-code pre code.hljs { background: transparent !important; }
+.peer-skin .vscode-code textarea { z-index: 1; overflow: auto; background: transparent; color: transparent !important; caret-color: #fff; resize: none; outline: none; }
 .peer-skin .vscode-code textarea::selection { background: rgba(139,92,246,0.32); }
 
 .peer-skin .vscode-terminal .term-tabbar { display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: rgba(255,255,255,0.025); border-bottom: 1px solid rgba(255,255,255,0.06); }
@@ -284,6 +291,27 @@
 .peer-skin .term-line.err { color: #fb7185; }
 .peer-skin .term-line.muted { color: rgba(255,255,255,0.38); }
 .peer-skin .term-caret { display: inline-block; width: 8px; height: 14px; background: #84cc16; margin-left: 4px; vertical-align: text-bottom; animation: pcaret 1s steps(1) infinite; }
+
+/* word-wrap plugin: both layers wrap identically so they stay aligned */
+.peer-skin .vscode-editor.wrap .vscode-code pre,
+.peer-skin .vscode-editor.wrap .vscode-code pre code,
+.peer-skin .vscode-editor.wrap .vscode-code textarea { white-space: pre-wrap !important; word-break: break-word; overflow-x: hidden !important; }
+
+/* extensions popover (toggle coding assists) */
+.peer-skin .ext-popover { position: absolute; top: 40px; right: 0; z-index: 50; width: 240px; padding: 8px; border-radius: 12px; background: rgba(16,16,26,0.98); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 18px 50px rgba(0,0,0,0.6); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); }
+.peer-skin .ext-title { font-size: 10.5px; letter-spacing: .5px; text-transform: uppercase; color: rgba(255,255,255,0.4); padding: 6px 8px 8px; }
+.peer-skin .ext-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px; border-radius: 9px; background: transparent; border: 0; cursor: pointer; text-align: left; }
+.peer-skin .ext-row:hover { background: rgba(255,255,255,0.05); }
+.peer-skin .ext-label { font-size: 13px; color: rgba(255,255,255,0.9); font-weight: 500; }
+.peer-skin .ext-desc { font-size: 11px; color: rgba(255,255,255,0.42); }
+.peer-skin .ext-switch { flex: 0 0 auto; width: 32px; height: 18px; border-radius: 99px; background: rgba(255,255,255,0.12); position: relative; transition: background .2s ease; }
+.peer-skin .ext-switch i { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 99px; background: #fff; transition: left .2s ease; }
+.peer-skin .ext-switch.on { background: linear-gradient(135deg,#8b5cf6,#22d3ee); }
+.peer-skin .ext-switch.on i { left: 16px; }
+
+/* apply Peer's suggested code to the editor */
+.peer-skin .apply-bar { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 10px 12px 0; padding: 11px; border: 0; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 600; color: #0a0a14; background: linear-gradient(135deg,#8b5cf6,#22d3ee); box-shadow: 0 0 20px -6px rgba(139,92,246,0.7); transition: transform .15s ease; }
+.peer-skin .apply-bar:hover { transform: translateY(-1px); }
 
 /* ---------- chat empty state (welcome) ---------- */
 .peer-skin .welcome-mark {
