@@ -16,6 +16,8 @@ import {
   getWeakSpots,
   updateMasteryFromMessage,
   updateMasteryFromFeedback,
+  conceptTrajectory,
+  buildLearnerRecap,
 } from "./learningModel.js";
 
 test("makeProfile returns a fully-formed default profile", () => {
@@ -155,6 +157,30 @@ test("buildSkillTree groups tracked concepts and getWeakSpots surfaces low confi
 
   const weak = getWeakSpots(project);
   assert.ok(Array.isArray(weak));
+});
+
+test("updateMasteryFromMessage records a concept history snapshot", () => {
+  let mastery = updateMasteryFromMessage(makeMastery(), "tell me about recursion");
+  const c1 = mastery.concepts.find((c) => c.key === "recursion");
+  assert.ok(Array.isArray(c1.history) && c1.history.length === 1, "new concept seeds history");
+  mastery = updateMasteryFromFeedback(mastery, "understood", "recursion");
+  const c2 = mastery.concepts.find((c) => c.key === "recursion");
+  assert.ok(c2.history.length >= 2, "feedback appends a history snapshot");
+});
+
+test("conceptTrajectory classifies improving vs slipping", () => {
+  assert.equal(conceptTrajectory({ history: [{ confidence: 0.3 }, { confidence: 0.6 }] }), "improving");
+  assert.equal(conceptTrajectory({ history: [{ confidence: 0.7 }, { confidence: 0.4 }] }), "slipping");
+  assert.equal(conceptTrajectory({ history: [{ confidence: 0.5 }] }), "new");
+});
+
+test("buildLearnerRecap summarizes concepts across projects", () => {
+  let mastery = updateMasteryFromMessage(makeMastery(), "pointers and recursion");
+  const state = { projects: [{ name: "C", mastery }], profile: { streak: { count: 3 } } };
+  const recap = buildLearnerRecap(state);
+  assert.ok(recap.totalConcepts >= 2);
+  assert.equal(recap.streak, 3);
+  assert.ok(Array.isArray(recap.weakSpots));
 });
 
 test("normalizeMastery tolerates junk input", () => {
