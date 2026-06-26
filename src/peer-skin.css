@@ -207,6 +207,12 @@
   background: linear-gradient(135deg, rgba(139,92,246,0.2), rgba(34,211,238,0.14)) !important;
   border-color: rgba(139,92,246,0.4) !important; color: #fff !important;
 }
+/* tighten the busy action row so it reads as a calm cluster, not clutter */
+.peer-skin .message-actions { gap: 6px !important; margin-top: 9px !important; }
+.peer-skin .message-actions button { padding: 6px 11px !important; font-size: 12px !important; }
+.peer-skin .action-divider { display: none !important; }
+/* nested empty states (e.g. Rooms) shouldn't double-border inside a card */
+.peer-skin .profile-card .empty-state { background: transparent !important; border: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 
 /* ---------- composer / input ---------- */
 .peer-skin .composer-wrap { background: transparent !important; border-top: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
@@ -350,8 +356,8 @@
 .peer-skin .recap-chip.traj-slipping { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3); color: #fbbf24; }
 .peer-skin .recap-foot { margin-top: 16px !important; font-size: 12.5px; color: rgba(255,255,255,0.4) !important; }
 
-/* ---------- brain + code: full-bleed (hide topbar on these screens) ---------- */
-.peer-skin.view-brain .topbar, .peer-skin.view-code .topbar { display: none !important; }
+/* ---------- topbar lives on Chat only (every other screen has its own heading) ---------- */
+.peer-skin:not(.view-chat) .topbar { display: none !important; }
 .peer-skin.view-code .main::before, .peer-skin.view-code .main::after { display: none !important; }
 .peer-skin.view-brain .main::before, .peer-skin.view-brain .main::after { display: none !important; }
 
@@ -394,16 +400,27 @@
 }
 .peer-skin .brain-reset-view { color: rgba(255,255,255,0.6) !important; }
 
-/* workspace: full-bleed canvas + glass right panel */
-.peer-skin .brain-workspace { display: block !important; height: 100% !important; padding: 0 !important; }
+/* workspace: full-bleed canvas + glass right panel. The panel/workspace must be
+   a positioned full-height container so the absolute canvas actually fills it. */
+.peer-skin .learning-brain-panel { position: absolute !important; inset: 0 !important; overflow: hidden !important; }
+.peer-skin .brain-workspace { position: absolute !important; inset: 0 !important; display: block !important; height: auto !important; padding: 0 !important; }
 .peer-skin .brain-map-card {
-  position: absolute !important; inset: 0 330px 0 0 !important; border: none !important; border-radius: 0 !important;
+  position: absolute !important; inset: 0 330px 0 0 !important; min-height: 0 !important; border: none !important; border-radius: 0 !important;
   background: radial-gradient(120% 95% at 50% 26%, rgba(109,94,240,0.18), transparent 60%), #07070e !important;
   box-shadow: none !important;
 }
+.peer-skin .brain-map-card::before { display: none !important; } /* drop the grid overlay */
+.peer-skin .brain-3d-shell {
+  position: absolute !important; inset: 0 !important; width: auto !important; height: auto !important;
+  min-height: 0 !important; border-radius: 0 !important;
+  background: transparent !important;
+}
+.peer-skin .brain-3d-shell::before { display: none !important; } /* drop the grid overlay */
+.peer-skin .brain-3d-canvas { position: absolute !important; inset: 0 !important; }
 .peer-skin .brain-map-legend {
-  position: absolute !important; bottom: 18px !important; left: 30px !important; z-index: 5 !important;
-  background: rgba(12,12,22,0.5) !important; border: 1px solid rgba(255,255,255,0.07) !important; border-radius: 12px !important;
+  position: absolute !important; top: auto !important; right: auto !important; bottom: 18px !important; left: 30px !important; z-index: 5 !important;
+  width: auto !important; max-width: 70% !important;
+  background: rgba(12,12,22,0.5) !important; border: 1px solid rgba(255,255,255,0.07) !important; border-radius: 12px !important; padding: 8px 12px !important;
   -webkit-backdrop-filter: blur(14px) !important; backdrop-filter: blur(14px) !important;
 }
 .peer-skin .brain-detail {

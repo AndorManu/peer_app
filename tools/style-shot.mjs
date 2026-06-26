@@ -215,5 +215,15 @@ try {
 
 try { await page.click('[title="Profile"]'); await page.waitForTimeout(700); await page.screenshot({ path: resolve(outDir, `${outPrefix}-profile.png`) }); } catch(e){ console.log("profile cap:", e.message); }
 
+
+try {
+  await page.click('[data-nav="chat"]'); await page.waitForTimeout(500);
+  await page.evaluate(()=>{ const t=document.querySelector('.messages'); if(t) t.scrollTop=0; });
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: resolve(outDir, `${outPrefix}-chattop.png`) });
+  await page.click('[data-nav="brain"]'); await page.waitForTimeout(3200);
+  await page.screenshot({ path: resolve(outDir, `${outPrefix}-brain.png`) });
+} catch(e){ console.log("extra cap:", e.message); }
+
 console.log("Saved screenshots to artifacts/");
 await browser.close();

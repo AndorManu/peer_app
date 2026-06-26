@@ -2656,6 +2656,12 @@ function SettingsPanel({ state, updateState, resetData, loadSampleData }) {
 
   return (
     <section className="settings-panel">
+      <div className="page-heading">
+        <div>
+          <h1>Settings</h1>
+          <p>Appearance, account, and your local data.</p>
+        </div>
+      </div>
       <div className="settings-layout">
         <nav className="settings-sidenav">
           <p className="settings-sidenav-label">Settings</p>
