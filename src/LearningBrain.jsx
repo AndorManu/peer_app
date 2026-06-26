@@ -286,23 +286,11 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
     renderer.setClearColor(0x000000, 0);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.12;
     mount.appendChild(renderer.domElement);
 
-    scene.add(new THREE.AmbientLight(0xd0ccff, 1.0));
-    const key = new THREE.PointLight(0x8b7cf6, 1.7, 0, 1.4);
-    key.position.set(-8, 9, 16);
-    scene.add(key);
-    const warm = new THREE.PointLight(0xffc8d6, 0.6, 0, 1.6);
-    warm.position.set(10, -6, 10);
-    scene.add(warm);
-    const rim = new THREE.PointLight(0x6d5ef0, 0.9, 0, 1.5);
-    rim.position.set(0, -10, -14);
-    scene.add(rim);
-
+    // Nodes are pure additive glow+core sprites (design look) — no lighting needed.
+    const lightenColor = (hex, amt) => { const c = new THREE.Color(hex); c.r += (1 - c.r) * amt; c.g += (1 - c.g) * amt; c.b += (1 - c.b) * amt; return c; };
     const glowTexture = makeGlowTexture();
-    const sphereGeometry = new THREE.SphereGeometry(1, 32, 22);
 
     // Soft focal haze behind the graph.
     const hazeMaterial = new THREE.SpriteMaterial({ map: glowTexture, color: 0x1b1640, transparent: true, opacity: 0.34, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
@@ -426,28 +414,23 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
         const node = nodes[i];
         const palette = brainPalette(node.type);
         const radius = state.baseRadius[i];
-        const material = new THREE.MeshStandardMaterial({
-          color: palette.core,
-          emissive: palette.core,
-          emissiveIntensity: node.type === "brain" ? 0.5 : node.type === "project" ? 0.46 : 0.4,
-          roughness: 0.4,
-          metalness: 0.0,
-          transparent: true,
-          opacity: 1,
-        });
-        const mesh = new THREE.Mesh(sphereGeometry, material);
+        // bright additive core sprite (replaces the old lit sphere)
+        const material = new THREE.SpriteMaterial({ map: glowTexture, color: lightenColor(palette.core, 0.6), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0.95 });
+        const mesh = new THREE.Sprite(material);
         mesh.scale.setScalar(radius);
         mesh.position.copy(state.pos[i]);
         mesh.userData = { id: node.id, i };
+        mesh.renderOrder = 2;
         nodeGroup.add(mesh);
         state.meshes.push(mesh);
         state.materials.push(material);
 
-        const glowMaterial = new THREE.SpriteMaterial({ map: glowTexture, color: palette.glow, transparent: true, opacity: 0.52, blending: THREE.AdditiveBlending, depthWrite: false });
+        const glowMaterial = new THREE.SpriteMaterial({ map: glowTexture, color: palette.glow, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false });
         const glow = new THREE.Sprite(glowMaterial);
         const glowScale = radius * (node.type === "brain" ? 4 : node.type === "project" ? 3.8 : 3.4);
         glow.scale.setScalar(glowScale);
         glow.position.copy(state.pos[i]);
+        glow.renderOrder = 1;
         nodeGroup.add(glow);
         state.glows.push(glow);
         state.glowMaterials.push(glowMaterial);
@@ -518,12 +501,11 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
         const material = state.materials[i];
         const glowMaterial = state.glowMaterials[i];
         if (immediate) {
-          material.opacity = targetOpacity;
-          material.emissiveIntensity = targetEmissive;
+          material.opacity = targetOpacity * 0.95;
           state.meshes[i].scale.setScalar(targetScale);
         }
-        material.userData = { targetOpacity, targetEmissive, targetScale };
-        glowMaterial.userData = { targetOpacity: set ? (inSet ? 0.6 : 0.06) : 0.52 };
+        material.userData = { targetOpacity: targetOpacity * 0.95, targetScale };
+        glowMaterial.userData = { targetOpacity: set ? (inSet ? 0.6 : 0.06) : 0.6 };
       }
     }
 
@@ -636,7 +618,6 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
         const mUd = material.userData;
         if (mUd && mUd.targetOpacity != null) {
           material.opacity += (mUd.targetOpacity - material.opacity) * 0.16;
-          material.emissiveIntensity += (mUd.targetEmissive - material.emissiveIntensity) * 0.16;
           const mesh = state.meshes[i];
           const s = mesh.scale.x + (mUd.targetScale - mesh.scale.x) * 0.18;
           mesh.scale.setScalar(s);
@@ -820,7 +801,6 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
       renderer.domElement.removeEventListener("pointerleave", onPointerUp);
       renderer.domElement.removeEventListener("wheel", onWheel);
       disposeGraph();
-      sphereGeometry.dispose();
       lineGeometry.dispose();
       lineMaterial.dispose();
       hazeMaterial.dispose();

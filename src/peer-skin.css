@@ -434,3 +434,11 @@
 .peer-skin .brain-open-btn { background: linear-gradient(135deg,#8b5cf6,#22d3ee) !important; color: #0a0a14 !important; border: none !important; box-shadow: 0 0 20px -6px rgba(139,92,246,0.7) !important; border-radius: 10px !important; }
 .peer-skin .brain-open-secondary { background: rgba(255,255,255,0.04) !important; color: #fff !important; box-shadow: none !important; border: 1px solid rgba(255,255,255,0.1) !important; margin-top: 8px !important; }
 .peer-skin .brain-related button:hover { background: rgba(255,255,255,0.05) !important; }
+/* clean floating node labels (design look) — drop the heavy dark pill */
+.peer-skin .brain-node-label,
+.peer-skin .brain-node-label.brain {
+  background: transparent !important; border: none !important; box-shadow: none !important;
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important; padding: 0 !important;
+  color: rgba(255,255,255,0.82) !important; text-shadow: 0 0 12px rgba(0,0,0,0.95), 0 1px 3px rgba(0,0,0,0.8) !important;
+  font-family: 'Space Grotesk', sans-serif !important; font-size: 12px !important; font-weight: 600 !important;
+}
