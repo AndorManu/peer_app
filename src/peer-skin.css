@@ -396,4 +396,5 @@
 .peer-skin .brain-detail h2 { font-family: 'Space Grotesk', sans-serif !important; color: #fff !important; }
 .peer-skin .brain-detail-metrics strong { font-family: 'Geist Mono', monospace !important; background: linear-gradient(135deg,#8b5cf6,#22d3ee) !important; -webkit-background-clip: text !important; background-clip: text !important; -webkit-text-fill-color: transparent !important; }
 .peer-skin .brain-open-btn { background: linear-gradient(135deg,#8b5cf6,#22d3ee) !important; color: #0a0a14 !important; border: none !important; box-shadow: 0 0 20px -6px rgba(139,92,246,0.7) !important; border-radius: 10px !important; }
+.peer-skin .brain-open-secondary { background: rgba(255,255,255,0.04) !important; color: #fff !important; box-shadow: none !important; border: 1px solid rgba(255,255,255,0.1) !important; margin-top: 8px !important; }
 .peer-skin .brain-related button:hover { background: rgba(255,255,255,0.05) !important; }
