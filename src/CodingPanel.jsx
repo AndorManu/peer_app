@@ -1,19 +1,21 @@
 // Peer — Code lab
-// A VS Code-style coding workspace: a syntax-highlighted editor with a line-number
-// gutter and file tab, a real integrated terminal that executes ANY language
-// (JavaScript runs instantly in a sandboxed Web Worker; everything else runs on the
-// server runner at /api/run), and an AI tutor that SEES your code AND your learning
-// brain (the active subject's tracked concepts + weak spots) so help is connected to
-// what you're actually learning. "Save to brain" turns a snippet into its own brain
-// cell and grows concept mastery from the code.
+// A VS Code-style coding workspace:
+//  • syntax-highlighted editor (line-number gutter + highlight.js layer perfectly
+//    aligned under a transparent textarea) with a file tab
+//  • toggleable "extensions" (line numbers, word wrap, auto-close brackets,
+//    auto-indent, syntax highlighting) — turn the assists on/off like VS Code
+//  • a real integrated terminal that runs ANY language (JS instantly in a sandboxed
+//    Web Worker; everything else on the server runner at /api/run)
+//  • an AI tutor that SEES your code AND your learning brain (the subject's tracked
+//    concepts + weak spots) and can EDIT your code on request — its suggestions get
+//    an "Apply to editor" button, and "Improve my code" rewrites the file for you.
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Play, RotateCcw, Sparkles, Bug, Lightbulb, ClipboardCheck, Send, Loader2, Trophy, BrainCircuit } from "lucide-react";
+import { Play, RotateCcw, Sparkles, Bug, Lightbulb, ClipboardCheck, Send, Loader2, Trophy, BrainCircuit, Puzzle, Wand2, Check } from "lucide-react";
 import hljs from "highlight.js/lib/core";
 import { Markdown } from "./markdown.jsx";
 import { streamChat } from "./peerChat.js";
 import { COLORS, GRADIENTS, EASE } from "./peerTheme.js";
 
-// All languages run via the server runner; JavaScript also runs instantly offline.
 const LANGUAGES = [
   { id: "javascript", label: "JavaScript", ext: "main.js", local: true },
   { id: "python", label: "Python", ext: "main.py" },
@@ -30,7 +32,6 @@ const LANGUAGES = [
   { id: "bash", label: "Bash", ext: "main.sh" },
 ];
 
-// our id -> highlight.js language registered in markdown.jsx (others fall back to plain)
 const HL_MAP = { javascript: "javascript", typescript: "typescript", python: "python", c: "c", cpp: "cpp", java: "java", go: "go", rust: "rust", bash: "bash" };
 
 const STARTERS = {
@@ -49,11 +50,39 @@ const STARTERS = {
   bash: "echo \"hello $((6 * 7))\"\n",
 };
 
+const PAIRS = { "(": ")", "[": "]", "{": "}", '"': '"', "'": "'", "`": "`" };
+const CLOSERS = new Set([")", "]", "}", '"', "'", "`"]);
+
+const PLUGIN_LIST = [
+  { id: "lineNumbers", label: "Line numbers", desc: "Show the gutter" },
+  { id: "highlight", label: "Syntax highlighting", desc: "Colorize the code" },
+  { id: "autoClose", label: "Auto-close brackets", desc: "Insert the matching ) ] } \" '" },
+  { id: "autoIndent", label: "Smart indent", desc: "Keep indentation on new lines" },
+  { id: "wordWrap", label: "Word wrap", desc: "Wrap long lines" },
+];
+const DEFAULT_PLUGINS = { lineNumbers: true, highlight: true, autoClose: true, autoIndent: true, wordWrap: false };
+
+function loadPlugins() {
+  try { return { ...DEFAULT_PLUGINS, ...JSON.parse(localStorage.getItem("peer-code-plugins") || "{}") }; }
+  catch { return { ...DEFAULT_PLUGINS }; }
+}
+
 function escapeHtml(s) {
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-// run JS in a terminable Web Worker so infinite loops can't lock the page
+// pull the first fenced code block out of an AI answer (prefer the current language)
+function firstCodeBlock(text, language) {
+  const re = /```(\w*)\n([\s\S]*?)```/g;
+  let m; let firstAny = null;
+  while ((m = re.exec(String(text || "")))) {
+    const info = (m[1] || "").toLowerCase();
+    if (firstAny == null) firstAny = m[2];
+    if (info === language || info === HL_MAP[language]) return m[2].replace(/\n$/, "");
+  }
+  return firstAny != null ? firstAny.replace(/\n$/, "") : null;
+}
+
 function runJavaScript(code, onResult) {
   const workerSrc = `
     const logs = [];
@@ -83,8 +112,8 @@ function runJavaScript(code, onResult) {
   worker.postMessage(code);
 }
 
-// ── syntax-highlighted editor (gutter + transparent textarea over highlighted pre) ──
-function CodeEditor({ value, onChange, language }) {
+// ── syntax-highlighted editor: transparent textarea over an aligned highlight layer ──
+function CodeEditor({ value, onChange, language, plugins }) {
   const taRef = useRef(null);
   const preRef = useRef(null);
   const gutterRef = useRef(null);
@@ -92,11 +121,11 @@ function CodeEditor({ value, onChange, language }) {
 
   const highlighted = useMemo(() => {
     const safe = value || "";
-    if (hlName && hljs.getLanguage(hlName)) {
+    if (plugins.highlight && hlName && hljs.getLanguage(hlName)) {
       try { return hljs.highlight(safe, { language: hlName }).value; } catch { /* fall through */ }
     }
     return escapeHtml(safe);
-  }, [value, hlName]);
+  }, [value, hlName, plugins.highlight]);
 
   const lineCount = useMemo(() => (value || "").split("\n").length, [value]);
 
@@ -107,22 +136,65 @@ function CodeEditor({ value, onChange, language }) {
     if (gutterRef.current) gutterRef.current.scrollTop = ta.scrollTop;
   }
 
+  function apply(next, caret) {
+    onChange(next);
+    requestAnimationFrame(() => { const ta = taRef.current; if (ta) { ta.selectionStart = ta.selectionEnd = caret; } });
+  }
+
   function onKeyDown(e) {
+    const t = e.target;
+    const s = t.selectionStart, en = t.selectionEnd;
     if (e.key === "Tab") {
       e.preventDefault();
-      const t = e.target;
-      const s = t.selectionStart, en = t.selectionEnd;
-      const next = value.slice(0, s) + "  " + value.slice(en);
-      onChange(next);
-      requestAnimationFrame(() => { t.selectionStart = t.selectionEnd = s + 2; });
+      apply(value.slice(0, s) + "  " + value.slice(en), s + 2);
+      return;
+    }
+    if (plugins.autoClose && PAIRS[e.key]) {
+      e.preventDefault();
+      const close = PAIRS[e.key];
+      const sel = value.slice(s, en);
+      const next = value.slice(0, s) + e.key + sel + close + value.slice(en);
+      apply(next, sel ? en + 2 : s + 1);
+      return;
+    }
+    if (plugins.autoClose && s === en && CLOSERS.has(e.key) && value[s] === e.key) {
+      e.preventDefault();
+      apply(value, s + 1);
+      return;
+    }
+    if (plugins.autoClose && e.key === "Backspace" && s === en && s > 0 && PAIRS[value[s - 1]] === value[s]) {
+      e.preventDefault();
+      apply(value.slice(0, s - 1) + value.slice(s + 1), s - 1);
+      return;
+    }
+    if (plugins.autoIndent && e.key === "Enter") {
+      e.preventDefault();
+      const lineStart = value.lastIndexOf("\n", s - 1) + 1;
+      const lineText = value.slice(lineStart, s);
+      const indent = (lineText.match(/^[ \t]*/) || [""])[0];
+      const prev = value[s - 1];
+      const next = value[en];
+      const opensBlock = prev === "{" || prev === "[" || prev === "(" || prev === ":";
+      if (opensBlock && ((prev === "{" && next === "}") || (prev === "[" && next === "]") || (prev === "(" && next === ")"))) {
+        const insert = "\n" + indent + "  ";
+        apply(value.slice(0, s) + insert + "\n" + indent + value.slice(en), s + insert.length);
+      } else if (opensBlock) {
+        const insert = "\n" + indent + "  ";
+        apply(value.slice(0, s) + insert + value.slice(en), s + insert.length);
+      } else {
+        const insert = "\n" + indent;
+        apply(value.slice(0, s) + insert + value.slice(en), s + insert.length);
+      }
     }
   }
 
   return (
-    <div className="vscode-editor">
-      <div className="vscode-gutter" ref={gutterRef}>
-        {Array.from({ length: lineCount }).map((_, i) => <div key={i}>{i + 1}</div>)}
-      </div>
+    <div className={`vscode-editor${plugins.wordWrap ? " wrap" : ""}`}>
+      {plugins.lineNumbers && (
+        <div className="vscode-gutter" ref={gutterRef}>
+          {Array.from({ length: lineCount }).map((_, i) => <div key={i}>{i + 1}</div>)}
+        </div>
+      )}
       <div className="vscode-code">
         <pre ref={preRef} aria-hidden="true"><code className="hljs" dangerouslySetInnerHTML={{ __html: highlighted + "\n" }} /></pre>
         <textarea
@@ -146,21 +218,35 @@ export default function CodingPanel({ profile, projects = [], onSaveToBrain }) {
   const [exit, setExit] = useState(null);
   const [running, setRunning] = useState(false);
   const [projectId, setProjectId] = useState(projects[0]?.id || "");
+  const [plugins, setPlugins] = useState(loadPlugins);
+  const [showExt, setShowExt] = useState(false);
   const [aiResponse, setAiResponse] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
   const [aiTitle, setAiTitle] = useState("");
   const [question, setQuestion] = useState("");
+  const [applied, setApplied] = useState(false);
   const abortRef = useRef(null);
 
   useEffect(() => { if (!projectId && projects[0]) setProjectId(projects[0].id); }, [projects, projectId]);
+  useEffect(() => { localStorage.setItem("peer-code-plugins", JSON.stringify(plugins)); }, [plugins]);
 
   const lang = useMemo(() => LANGUAGES.find((l) => l.id === language) || LANGUAGES[0], [language]);
   const project = useMemo(() => projects.find((p) => p.id === projectId), [projects, projectId]);
+  const suggestedCode = useMemo(() => firstCodeBlock(aiResponse, language), [aiResponse, language]);
+
+  function togglePlugin(id) { setPlugins((p) => ({ ...p, [id]: !p[id] })); }
 
   function changeLanguage(id) {
     setLanguage(id);
     if (STARTERS[id]) setCode(STARTERS[id]);
     setOutput([]); setExit(null);
+  }
+
+  function applySuggestion() {
+    if (!suggestedCode) return;
+    setCode(suggestedCode);
+    setApplied(true);
+    setTimeout(() => setApplied(false), 1800);
   }
 
   async function run() {
@@ -213,7 +299,7 @@ export default function CodingPanel({ profile, projects = [], onSaveToBrain }) {
     const brainCtx = project
       ? `\n\nLearner's brain for "${project.name}": tracked concepts = ${concepts.join(", ") || "none yet"}; weak spots to reinforce = ${weak.join(", ") || "none yet"}. When relevant, connect your teaching to these and gently shore up the weak spots.`
       : "";
-    const system = `You are Peer, a patient ${lang.label} coding tutor for a ${level}-level learner. Teach by guiding: explain the concept, give a hint before the full answer, point out bugs AND the underlying idea, keep examples small. Use markdown with fenced code blocks. Never dump a solution without explaining the reasoning.
+    const system = `You are Peer, a patient ${lang.label} coding tutor for a ${level}-level learner. Teach by guiding: explain the concept, give a hint before the full answer, point out bugs AND the underlying idea, keep examples small. Use markdown. When you provide code the learner should put in their editor, give it as ONE fenced \`\`\`${language} code block. Never dump a full solution without explaining the reasoning.
 
 The learner's current ${lang.label} code:
 \`\`\`${language}
@@ -229,11 +315,12 @@ ${code || "(empty)"}
   }
 
   const actions = [
+    { label: "Improve my code", icon: Wand2, title: "Improved version", req: `Rewrite my ${lang.label} code to be correct, clean, and idiomatic. Return the FULL updated file as one \`\`\`${language} code block, then 2-3 short bullet points explaining what you changed and why.` },
     { label: "Challenge me", icon: Trophy, title: "New challenge", req: `Give me one small ${lang.label} coding challenge suited to a ${profile?.level || "beginner"} learner${project ? ` and tied to ${project.name}` : ""}. State the problem with an example input/output. Don't give the solution — I'll attempt it.` },
     { label: "Review my code", icon: ClipboardCheck, title: "Code review", req: "Review my code above. Point out correctness issues, style, and edge cases, and explain the reasoning. Be specific but encouraging." },
     { label: "Hint", icon: Lightbulb, title: "A hint", req: "I'm stuck. Give me ONE small hint to move forward — not the full solution." },
     { label: "Trace & explain", icon: Sparkles, title: "Explanation", req: "Explain what my code does step by step and trace what it outputs. Highlight the key concepts I should understand." },
-    { label: "Find the bug", icon: Bug, title: "Debugging", req: "Is there a bug in my code? If so, guide me to it with a hint first, then explain the fix and why it works." },
+    { label: "Find the bug", icon: Bug, title: "Debugging", req: "Is there a bug in my code? If so, guide me to it with a hint first, then explain the fix. If you show a corrected version, put it in one fenced code block." },
   ];
 
   function submitQuestion(e) {
@@ -249,7 +336,6 @@ ${code || "(empty)"}
 
   return (
     <section className="peer-skin" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", background: "#07070e", color: COLORS.text }}>
-      {/* header */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "20px 30px 12px", flexWrap: "wrap" }}>
         <div style={{ flex: 1, minWidth: 200 }}>
           <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 23, fontWeight: 600, letterSpacing: "-.4px" }}>Code lab</div>
@@ -265,18 +351,34 @@ ${code || "(empty)"}
         </select>
       </div>
 
-      {/* body: editor + terminal | tutor */}
       <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1.3fr) minmax(320px,0.85fr)", gap: 16, padding: "0 30px 24px" }}>
-        {/* editor + terminal column */}
+        {/* editor + terminal */}
         <div style={{ display: "flex", flexDirection: "column", gap: 14, minHeight: 0 }}>
           <div style={{ ...panel, flex: 1, minHeight: 240, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            {/* VS Code-style title/tab bar */}
             <div className="vscode-tabbar">
               <div className="vscode-tab">
                 <span className="vscode-dot" style={{ background: GRADIENTS.accent }} />
                 <span>{lang.ext}</span>
               </div>
-              <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+              <div style={{ marginLeft: "auto", display: "flex", gap: 8, position: "relative" }}>
+                <button onClick={() => setShowExt((v) => !v)} style={btn(false)} title="Extensions — toggle coding assists"><Puzzle size={14} /> Extensions</button>
+                {showExt && (
+                  <>
+                    <div onClick={() => setShowExt(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+                    <div className="ext-popover">
+                      <div className="ext-title">Coding assists</div>
+                      {PLUGIN_LIST.map((pl) => (
+                        <button key={pl.id} className="ext-row" onClick={() => togglePlugin(pl.id)}>
+                          <span className={`ext-switch${plugins[pl.id] ? " on" : ""}`}><i /></span>
+                          <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+                            <span className="ext-label">{pl.label}</span>
+                            <span className="ext-desc">{pl.desc}</span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
                 {onSaveToBrain && (
                   <button onClick={() => onSaveToBrain({ language, code, title: `${lang.ext}`, projectId })} style={btn(false)} title="Save this snippet as a cell in your brain">
                     <BrainCircuit size={14} /> Save to brain
@@ -286,10 +388,9 @@ ${code || "(empty)"}
                 <button onClick={run} disabled={running} style={btn(true)}>{running ? <Loader2 size={15} className="spin" /> : <Play size={15} />} Run</button>
               </div>
             </div>
-            <CodeEditor value={code} onChange={setCode} language={language} />
+            <CodeEditor value={code} onChange={setCode} language={language} plugins={plugins} />
           </div>
 
-          {/* integrated terminal */}
           <div className="vscode-terminal" style={{ ...panel, height: 200, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <div className="term-tabbar">
               <span className="term-tab active">TERMINAL</span>
@@ -304,13 +405,13 @@ ${code || "(empty)"}
               ) : output.length === 0 ? (
                 <div className="term-line muted">Press Run to execute. JavaScript runs instantly; other languages run on the server.</div>
               ) : output.map((line, i) => (
-                <div key={i} className={`term-line ${line.k}`}>{line.t || " "}</div>
+                <div key={i} className={`term-line ${line.k}`}>{line.t || " "}</div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* AI tutor column */}
+        {/* AI tutor */}
         <div style={{ ...panel, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
           <div style={{ padding: "14px 16px 10px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 11 }}>
@@ -338,11 +439,16 @@ ${code || "(empty)"}
             ) : aiBusy ? (
               <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.text50, fontSize: 13 }}><Loader2 size={15} className="spin" /> Thinking…</div>
             ) : (
-              <div style={{ color: COLORS.text40, fontSize: 13, lineHeight: 1.6 }}>Write some code, then ask for a challenge, a hint, a review, or a bug hunt. Peer sees your editor and your learning brain — and teaches instead of just handing over the answer.</div>
+              <div style={{ color: COLORS.text40, fontSize: 13, lineHeight: 1.6 }}>Write some code, then ask for a challenge, a hint, a review, or a bug hunt. Peer sees your editor and your learning brain — and can rewrite your code: when it suggests code, an <strong style={{ color: COLORS.text60 }}>Apply to editor</strong> button drops it straight in.</div>
             )}
           </div>
+          {suggestedCode && !aiBusy && (
+            <button onClick={applySuggestion} className="apply-bar">
+              {applied ? <><Check size={15} /> Applied to editor</> : <><Wand2 size={15} /> Apply Peer's code to the editor</>}
+            </button>
+          )}
           <form onSubmit={submitQuestion} style={{ display: "flex", gap: 8, padding: "10px 12px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-            <input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ask about your code…" style={{ flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, color: "#fff", padding: "9px 12px", fontSize: 13, outline: "none", fontFamily: "Geist, sans-serif" }} />
+            <input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ask Peer to change your code…" style={{ flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, color: "#fff", padding: "9px 12px", fontSize: 13, outline: "none", fontFamily: "Geist, sans-serif" }} />
             <button type="submit" disabled={aiBusy || !question.trim()} style={{ ...btn(true), padding: "0 12px" }}><Send size={15} /></button>
           </form>
         </div>
