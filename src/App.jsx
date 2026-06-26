@@ -85,6 +85,7 @@ import {
 } from "./stateModel.js";
 import { LearningBrainPanel } from "./LearningBrain.jsx";
 import PeerNavRail from "./components/PeerNavRail.jsx";
+import CodingPanel from "./CodingPanel.jsx";
 
 function PeerLogo({ size = 28 }) {
   return (
@@ -1404,6 +1405,7 @@ export default function App() {
         {view === "settings" && <SettingsPanel state={state} updateState={updateState} resetData={resetData} loadSampleData={loadSampleData} />}
         {view === "profile" && <ProfilePanel profile={state.profile} activeProject={activeProject} activeChat={activeChat} insights={insights} activeMode={activeMode} updateState={updateState} />}
         {view === "brain" && <LearningBrainPanel state={state} activeProject={activeProject} setView={setView} updateState={updateState} setManagedProjectId={setManagedProjectId} setSelectedDocId={setSelectedDocId} />}
+        {view === "code" && <CodingPanel profile={state.profile} />}
         {view === "notes" && <NotesPanel notes={state.notes} projects={state.projects} deleteNote={deleteNote} toggleShareNote={toggleShareNote} />}
         {view === "flashcards" && <FlashcardsPanel flashcards={state.flashcards} projects={state.projects} setView={setView} deleteFlashcardDeck={deleteFlashcardDeck} />}
         {view === "community" && (
