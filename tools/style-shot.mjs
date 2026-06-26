@@ -196,5 +196,12 @@ for (const [label, key] of [["Notes","notes"],["Cards","flashcards"],["Rooms","c
   } catch (e) { console.log(label+" capture failed:", e.message); }
 }
 
+
+try {
+  const gc = await page.locator('[title="Settings"]').count();
+  console.log("settings gear present:", gc);
+  if (gc>0){ await page.locator('[title="Settings"]').first().click(); await page.waitForTimeout(700); await page.screenshot({ path: resolve(outDir, `${outPrefix}-settings.png`) }); }
+} catch(e){ console.log("settings capture:", e.message); }
+
 console.log("Saved screenshots to artifacts/");
 await browser.close();

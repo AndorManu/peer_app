@@ -1100,6 +1100,84 @@ export default function App() {
     });
   }
 
+  function loadSampleData() {
+    updateState((current) => {
+      if (current.projects.some((p) => p.demo)) {
+        showToast("Sample data is already loaded.");
+        return current;
+      }
+      const now = Date.now();
+      const day = 86_400_000;
+      const concept = (label, confidence, status, evidence, ago = 1) => ({
+        id: uid(), key: label.toLowerCase(), label, confidence, status, evidence,
+        createdAt: now - ago * day, updatedAt: now - ago * day,
+      });
+      const neuroId = uid();
+      const linAlgId = uid();
+      const neuro = {
+        id: neuroId, name: "Neuroscience (demo)", color: PROJECT_COLORS[0], demo: true, docs: [],
+        mastery: {
+          concepts: [
+            concept("Synaptic Plasticity", 0.32, "weak", "You mixed up LTP and LTD across two chats."),
+            concept("Action Potential", 0.74, "strong", "Explained the depolarization phases back correctly."),
+            concept("NMDA Receptor", 0.58, "learning", "Came up while discussing calcium timing."),
+            concept("Neurotransmitters", 0.61, "learning", "Referenced in several explanations."),
+            concept("Hippocampus", 0.28, "weak", "A confused follow-up flagged this."),
+          ],
+          misconceptions: [{ id: uid(), concept: "Synaptic Plasticity", belief: "LTP and LTD are unrelated.", correction: "They're two directions of the same calcium-dependent dial.", createdAt: now - 2 * day }],
+          reflections: [], updatedAt: now - day,
+        },
+      };
+      const linAlg = {
+        id: linAlgId, name: "Linear Algebra (demo)", color: PROJECT_COLORS[1], demo: true, docs: [],
+        mastery: {
+          concepts: [
+            concept("Eigenvectors", 0.66, "strong", "Got the 'directions that don't turn' intuition."),
+            concept("Determinants", 0.38, "weak", "Unsure why they measure volume scaling."),
+            concept("Vector Spaces", 0.55, "learning", "Foundational, revisited a few times."),
+            concept("Diagonalization", 0.22, "weak", "Stuck on the change-of-basis step."),
+          ],
+          misconceptions: [], reflections: [], updatedAt: now - 2 * day,
+        },
+      };
+      const sampleNotes = [
+        { id: uid(), projectId: neuroId, title: "Synaptic Plasticity", tags: ["ltp", "ltd", "calcium"], category: null, createdAt: now - 2 * 3_600_000, content: "LTP and LTD are the brain's volume knobs. Direction depends on the calcium pattern entering the postsynaptic cell.\n\nFast, large influx -> kinases -> AMPA receptors inserted -> LTP. Slow, small influx -> phosphatases -> AMPA removed -> LTD.\n\nMnemonic: \"high and fast, build it to last; low and slow, let it go.\"" },
+        { id: uid(), projectId: neuroId, title: "The NMDA coincidence detector", tags: ["nmda"], category: null, createdAt: now - day, content: "The NMDA receptor only opens when glutamate is bound AND the cell is already depolarized enough to eject the Mg2+ block. That's why it detects coincident activity." },
+        { id: uid(), projectId: linAlgId, title: "Eigenvectors — the directions that don't turn", tags: ["eigen"], category: null, createdAt: now - 2 * day, content: "An eigenvector is a direction the transformation only stretches or squishes — it never rotates off its own line. The eigenvalue is the stretch factor; negative flips along the same line." },
+        { id: uid(), projectId: linAlgId, title: "Why determinants matter", tags: ["determinants"], category: null, createdAt: now - 3 * day, content: "The determinant is the factor by which a transformation scales volume. Determinant 0 means the transform collapses space into a lower dimension." },
+      ];
+      const sampleDecks = [
+        { id: uid(), projectId: neuroId, chatName: "Synaptic Transmission", createdAt: now - day, cards: [
+          { id: uid(), question: "What does LTP stand for, and what does it do?", answer: "Long-Term Potentiation — it strengthens a synapse after coincident, high-frequency activity." },
+          { id: uid(), question: "Which receptor is the coincidence detector for LTP?", answer: "The NMDA receptor — it passes calcium only when depolarized AND glutamate is bound." },
+          { id: uid(), question: "What ion is the key second messenger in both LTP and LTD?", answer: "Calcium. A large fast influx drives LTP; a small slow rise drives LTD." },
+        ] },
+        { id: uid(), projectId: linAlgId, chatName: "Eigen-everything", createdAt: now - 2 * day, cards: [
+          { id: uid(), question: "What is an eigenvector, intuitively?", answer: "A direction a transformation only stretches/squishes, never rotates off its line." },
+          { id: uid(), question: "What does the determinant measure?", answer: "The factor by which the transformation scales volume." },
+        ] },
+      ];
+      const sampleChats = [
+        { id: uid(), name: "LTP vs LTD", projectId: neuroId, createdAt: now - 2 * 3_600_000, messages: [
+          { id: uid(), role: "user", content: "Can you explain synaptic plasticity? I keep mixing up LTP and LTD.", createdAt: now - 2 * 3_600_000 },
+          { id: uid(), role: "assistant", content: "They're two sides of the same dial. LTP strengthens a synapse when it fires in sync with its target; LTD turns weak, mistimed connections down.", createdAt: now - 2 * 3_600_000 + 1000 },
+        ] },
+        { id: uid(), name: "Eigenvectors intuition", projectId: linAlgId, createdAt: now - 2 * day, messages: [
+          { id: uid(), role: "user", content: "What's the intuition behind eigenvectors?", createdAt: now - 2 * day },
+          { id: uid(), role: "assistant", content: "They're the directions a transformation doesn't turn — it only stretches them along their own line.", createdAt: now - 2 * day + 1000 },
+        ] },
+      ];
+      showToast("Loaded 2 demo subjects with concepts, notes & decks.");
+      return {
+        ...current,
+        projects: [...current.projects, neuro, linAlg],
+        notes: [...sampleNotes, ...current.notes],
+        flashcards: [...sampleDecks, ...current.flashcards],
+        chats: [...current.chats, ...sampleChats],
+      };
+    });
+  }
+
   function completeAccount(account) {
     updateState((current) => ({
       ...current,
@@ -1170,6 +1248,7 @@ export default function App() {
     { label: "Open notes", hint: "Review saved explanations", icon: Save, run: () => setView("notes") },
     { label: "Open study rooms", hint: "Local peer-to-peer study prototype", icon: Users, run: () => setView("community") },
     { label: "Open settings", hint: "Theme, fonts, text size", icon: Settings, run: () => setView("settings") },
+    { label: "Load sample data", hint: "Add demo subjects, concepts, notes & decks to explore", icon: Sparkles, run: () => loadSampleData() },
     { label: "Quiz mode", hint: "Ask one question at a time", icon: Target, run: () => updateState((current) => ({ ...current, activeMode: "quiz" })) },
     { label: "Challenge mode", hint: "Turn learning into levels", icon: Trophy, run: () => updateState((current) => ({ ...current, activeMode: "challenge" })) },
     { label: "Upload material", hint: "Open current project library", icon: Paperclip, run: () => activeProject && setManagedProjectId(activeProject.id) },
@@ -1314,12 +1393,6 @@ export default function App() {
           <button className="topbar-action" onClick={() => setCommandOpen(true)}>
             <Command size={15} /> Ctrl K
           </button>
-          <button className="topbar-action" onClick={() => setView("brain")}>
-            <Brain size={15} /> Brain
-          </button>
-          <button className="topbar-action" onClick={() => setView("profile")}>
-            <UserRound size={15} /> Profile
-          </button>
           {speaking && (
             <button className="topbar-action speaking-badge" onClick={stopSpeaking}>
               <Volume2 size={15} className="speaking-icon" /> Stop
@@ -1328,7 +1401,7 @@ export default function App() {
           <div className="status-pill"><span /> Local app</div>
         </header>
 
-        {view === "settings" && <SettingsPanel state={state} updateState={updateState} resetData={resetData} />}
+        {view === "settings" && <SettingsPanel state={state} updateState={updateState} resetData={resetData} loadSampleData={loadSampleData} />}
         {view === "profile" && <ProfilePanel profile={state.profile} activeProject={activeProject} activeChat={activeChat} insights={insights} activeMode={activeMode} updateState={updateState} />}
         {view === "brain" && <LearningBrainPanel state={state} activeProject={activeProject} setView={setView} updateState={updateState} setManagedProjectId={setManagedProjectId} setSelectedDocId={setSelectedDocId} />}
         {view === "notes" && <NotesPanel notes={state.notes} projects={state.projects} deleteNote={deleteNote} toggleShareNote={toggleShareNote} />}
@@ -2497,7 +2570,7 @@ function SocialPanel({ state, activeProject, createStudyRoom, toggleShareNote, t
   );
 }
 
-function SettingsPanel({ state, updateState, resetData }) {
+function SettingsPanel({ state, updateState, resetData, loadSampleData }) {
   const [tab, setTab] = useState("appearance");
   const provider = AUTH_PROVIDERS.find((item) => item.id === state.account?.provider);
 
@@ -2599,13 +2672,22 @@ function SettingsPanel({ state, updateState, resetData }) {
           )}
 
           {tab === "data" && (
-            <div className="settings-group">
-              <h2>Reset data</h2>
-              <p className="settings-danger-desc">This clears all chats, projects, and flashcards from local storage. Your profile and preferences are kept.</p>
-              <button className="danger-btn" onClick={resetData}>
-                <Trash2 size={15} /> Reset local chats and projects
-              </button>
-            </div>
+            <>
+              <div className="settings-group">
+                <h2>Sample data</h2>
+                <p className="settings-danger-desc">Add two demo subjects (Neuroscience, Linear Algebra) fully populated with concepts, weak spots, notes, and flashcard decks — so the Brain, Notes, and Cards have something to show. Your existing data is untouched.</p>
+                <button className="primary-button" style={{ margin: 0, width: "fit-content" }} onClick={loadSampleData}>
+                  <Sparkles size={15} /> Load sample data
+                </button>
+              </div>
+              <div className="settings-group">
+                <h2>Reset data</h2>
+                <p className="settings-danger-desc">This clears all chats, projects, and flashcards from local storage. Your profile and preferences are kept.</p>
+                <button className="danger-btn" onClick={resetData}>
+                  <Trash2 size={15} /> Reset local chats and projects
+                </button>
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -2955,11 +3037,14 @@ function FlashcardsPanel({ flashcards, projects, setView, deleteFlashcardDeck })
           {flashcards.map((d) => {
             const proj = projects.find((p) => p.id === d.projectId);
             return (
-              <button
+              <div
                 key={d.id}
+                role="button"
+                tabIndex={0}
                 className={`deck-row ${d.id === activeDeckId ? "active" : ""}`}
                 style={{ "--deck-color": proj?.color || "var(--accent)" }}
                 onClick={() => selectDeck(d.id)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectDeck(d.id); } }}
               >
                 <BookOpen size={15} />
                 <span>
@@ -2971,7 +3056,7 @@ function FlashcardsPanel({ flashcards, projects, setView, deleteFlashcardDeck })
                   onClick={(e) => { e.stopPropagation(); deleteFlashcardDeck(d.id); }}
                   aria-label="Delete deck"
                 ><Trash2 size={13} /></button>
-              </button>
+              </div>
             );
           })}
         </div>
