@@ -89,12 +89,18 @@ async function streamAnthropic(system, messages, res, imageDataUrls = []) {
       if (!line.startsWith("data: ")) continue;
       const raw = line.slice(6).trim();
       if (!raw) continue;
+      let event;
       try {
-        const event = JSON.parse(raw);
-        if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
-          sendEvent(res, { chunk: event.delta.text });
-        }
-      } catch {}
+        event = JSON.parse(raw);
+      } catch {
+        continue; // skip malformed lines, but surface real error events below
+      }
+      if (event.type === "error") {
+        throw apiError(502, event.error?.message || "The AI request failed.");
+      }
+      if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
+        sendEvent(res, { chunk: event.delta.text });
+      }
     }
   }
 
@@ -153,11 +159,17 @@ async function streamOpenAI(system, messages, res) {
         res.end();
         return;
       }
+      let event;
       try {
-        const event = JSON.parse(raw);
-        const text = event.choices?.[0]?.delta?.content;
-        if (text) sendEvent(res, { chunk: text });
-      } catch {}
+        event = JSON.parse(raw);
+      } catch {
+        continue; // skip malformed lines, but surface real error events below
+      }
+      if (event.error) {
+        throw apiError(502, event.error.message || "The AI request failed.");
+      }
+      const text = event.choices?.[0]?.delta?.content;
+      if (text) sendEvent(res, { chunk: text });
     }
   }
 
