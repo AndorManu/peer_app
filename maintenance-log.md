@@ -4,6 +4,30 @@ Persistent memory for the daily maintenance agent. Newest entry on top. Never de
 
 ---
 
+## 2026-06-28 · Run 2
+
+No code changes since Run 1 (working tree was clean; `git diff 7e54c07 HEAD` empty). Focus this run: resolve the HIGH SSE error-handling gap flagged in Run 1, now that the provider error-event shape is confirmed.
+
+### Fixed
+- HIGH · server/handleChat.js · streamAnthropic · lines 88-104 — the Anthropic SSE parse loop swallowed mid-stream `error` events (the `catch {}` ate everything), so an upstream `{"type":"error",...}` produced a truncated answer followed by `done:true` and no surfaced error. Restructured per the Run 1 plan: JSON.parse now sits in its own try/catch (skips only malformed lines), and a parsed `event.type === "error"` throws OUTSIDE that catch → propagates to handleChatRequest's outer try/catch → `sendEvent(res,{error})` + `res.end()`. Error envelope shape confirmed via claude-api skill (`{"type":"error","error":{"type","message"}}`). Verified: node --check OK, build OK, 17/17 tests pass, server boots + responds 200.
+- HIGH · server/handleChat.js · streamOpenAI · lines 154-173 — same swallowing gap on the OpenAI path (minus the catch nuance). Applied the symmetric fix: parse isolated in its own try/catch; a parsed `event.error` throws `apiError(502, event.error.message)` outside the catch. OpenAI mid-stream error shape `{"error":{"message",...}}`. Same verification.
+
+### Flagged
+- (none this run — the sole open HIGH flag from Run 1 is now resolved above.)
+
+### Improvements noted
+- Carried forward from Run 1 (all still valid, none auto-fixed per run rules): peerPrompt.js no aggregate doc token cap (prompt content off-limits · moderate); markdown.jsx block parse on every render could useMemo on text (simple); vite build single 1.33MB JS chunk + eager pdf.worker (2.2MB) — React.lazy/dynamic import on Brain + PDF path would cut initial load (moderate); FlashcardsPanel keydown effect has no dep array (intentional · simple). Build still emits the >500kB chunk warning — unchanged from Run 1.
+
+### Clean (skip deep read next run unless changed)
+- All files from Run 1 remain unchanged (diff empty). server/handleChat.js now fully clean — the streaming error-event gap that was the last open concern is closed. Other CLEAN files carry over: storage.js, stateModel.js, LearningBrain.jsx, handleImage.js, dev.js, constants.js, PeerNavRail.jsx, peerTheme.js/peer-theme.css, main.jsx, materials.js, markdown.jsx, App.jsx, .env.example/.gitignore.
+
+### Notes
+- Recurring pattern resolved: the SSE error-handling gap watched since Run 1 is now fixed on both providers. The other watch item (learningModel mutation-vs-immutable boundary) was fixed in Run 1 and remains clean.
+- node_modules was not present in the fresh container; `npm install` needed before `vite build` (74 pkgs, 0 vulnerabilities). Tests run via `node --test` with no install. dist/ and node_modules/ correctly gitignored.
+- Model/version strings untouched per rules.
+
+---
+
 ## 2026-06-26 · Run 1
 
 First run — full scan of the entire codebase (no prior memory).
