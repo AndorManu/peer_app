@@ -4,6 +4,34 @@ Persistent memory for the daily maintenance agent. Newest entry on top. Never de
 
 ---
 
+## 2026-06-29 · Run 2
+
+No code changed since Run 1 (working tree clean at the PR #1 merge). Re-checked the one open FLAGGED item and resolved it; skimmed CLEAN files (unchanged).
+
+### Fixed
+- HIGH · server/handleChat.js · streamAnthropic · lines 88-105 — the SSE parse loop silently swallowed mid-stream `{"type":"error",...}` events (e.g. `overloaded_error`), so a truncated answer could end with `done:true` and no error surfaced. Restructured: `JSON.parse` now sits in its own try/catch (parse failure → `continue`), and the error-event check `throw`s OUTSIDE that catch so the throw propagates to `handleChatRequest`'s catch, which emits `{error}` over SSE and calls `res.end()`. Confirmed the exact Anthropic error-event shape against platform.claude.com/docs streaming reference (`event: error` / `{"type":"error","error":{"type","message"}}`) before fixing — this was the exact uncertainty that held the flag in Run 1. Verified: build passes, 17/17 tests pass, server boots clean.
+- HIGH · server/handleChat.js · streamOpenAI · lines ~148-166 — same gap on the OpenAI path (mid-stream `{"error":{...}}` swallowed). Applied the matching fix: parse in its own try/catch, `throw apiError(502, event.error.message)` outside it. (OpenAI's mid-stream error shape is the standard chat-completions `{"error":{"message",...}}`.)
+
+### Flagged
+- None this run. (Run 1's sole FLAGGED item — the SSE error gap — is now fixed above.)
+
+### Improvements noted
+- Carried forward from Run 1, still open (all prompt/perf, none auto-fixable under run rules):
+  - src/peerPrompt.js · buildSystemPrompt — no aggregate token cap across docs (bounded per-doc at 40k). · effort: moderate (prompt content off-limits)
+  - vite build — single 1.33MB JS chunk; LearningBrain (Three.js) + pdf.js (2.2MB worker) eager-loaded. React.lazy + dynamic import would cut initial load. · effort: moderate
+  - src/markdown.jsx · Markdown — block parsing runs every render; could useMemo on `text`. · effort: simple
+
+### Clean (skip deep read next run unless changed)
+- All files confirmed clean in Run 1 remain unchanged (no commits since the Run-1 merge): src/storage.js, src/stateModel.js, src/LearningBrain.jsx, server/handleImage.js, server/dev.js, src/constants.js, src/components/PeerNavRail.jsx, src/peerTheme.js, src/peer-theme.css, src/main.jsx, src/materials.js, src/markdown.jsx, src/App.jsx, src/learningModel.js, .env.example, .gitignore.
+- server/handleChat.js — now clean: error paths call res.end(), request-size guarded, no key leakage, AND mid-stream error events are surfaced (the last remaining gap).
+
+### Notes
+- Recurring pattern: the SSE streaming parser was the one persistently weak spot (flagged Run 1, fixed Run 2). Both provider paths now fail loudly instead of truncating silently.
+- Verification still leans on `npm run build` + `node --test` (17 learningModel tests) + server boot; server/React components remain untested.
+- Model strings untouched per rules.
+
+---
+
 ## 2026-06-26 · Run 1
 
 First run — full scan of the entire codebase (no prior memory).
