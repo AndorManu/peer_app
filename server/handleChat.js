@@ -91,6 +91,11 @@ async function streamAnthropic(system, messages, res, imageDataUrls = []) {
       if (!raw) continue;
       try {
         const event = JSON.parse(raw);
+        if (event.type === "error") {
+          sendEvent(res, { error: event.error?.message || "The AI request failed." });
+          res.end();
+          return;
+        }
         if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
           sendEvent(res, { chunk: event.delta.text });
         }
@@ -155,6 +160,11 @@ async function streamOpenAI(system, messages, res) {
       }
       try {
         const event = JSON.parse(raw);
+        if (event.error) {
+          sendEvent(res, { error: event.error.message || "The AI request failed." });
+          res.end();
+          return;
+        }
         const text = event.choices?.[0]?.delta?.content;
         if (text) sendEvent(res, { chunk: text });
       } catch {}
