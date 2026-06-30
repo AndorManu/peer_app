@@ -4,6 +4,34 @@ Persistent memory for the daily maintenance agent. Newest entry on top. Never de
 
 ---
 
+## 2026-06-30 · Run 2
+
+No code changes in the repo since Run 1 (only the Run 1 PR merge commit landed on main). Skimmed all CLEAN files — unchanged. Focus this run: resolving the open HIGH flag from Run 1.
+
+### Fixed
+- HIGH · server/handleChat.js · streamAnthropic · line 94 — mid-stream Anthropic SSE `error` events (e.g. `overloaded_error`) parsed fine but matched no branch, so they were silently swallowed and the user got a truncated answer followed by `done:true`. Now detects `event.type === "error"`, forwards `sendEvent(res, { error })`, calls `res.end()` and returns. Mirrors the top-level catch handler; uses non-throwing calls so it doesn't collide with the swallowing `catch {}`. (Resolves the Run 1 HIGH flag.)
+- HIGH · server/handleChat.js · streamOpenAI · line 161 — same gap on the OpenAI fallback path: a mid-stream `{ error: {...} }` object was swallowed. Now detects `event.error`, forwards it, ends and returns.
+
+Verified: re-read full file; frontend `streamRequest` (src/App.jsx:536) already throws on any `{error}` SSE event, so the contract is honored end-to-end. `npm run build` ✅, `npm test` 17/17 ✅, `node server/dev.js` boots ✅.
+
+### Flagged
+- None new. (Run 1's HIGH SSE flag is now resolved.)
+
+### Improvements noted
+- (Carried from Run 1, code unchanged — still valid.) src/peerPrompt.js · buildSystemPrompt — no aggregate token cap across docs (per-doc 40k cap exists). · effort: moderate · NOTE: prompt content off-limits per rules.
+- (Carried.) vite build emits a single 1.33MB JS chunk; LearningBrain (Three.js) + pdf.js (2.2MB worker) eager-loaded. `React.lazy` + dynamic import would cut initial load. · effort: moderate
+- (Carried.) src/markdown.jsx · Markdown — block parsing runs every render; could `useMemo` on `text`. · effort: simple
+- (Carried.) src/App.jsx · FlashcardsPanel keydown effect ~line 3003 — `useEffect` with no dep array re-binds listener each render; intentional, low value. · effort: simple
+
+### Clean (skip deep read next run unless changed)
+- All files confirmed clean in Run 1 remain unchanged (git diff 7e54c07..HEAD empty apart from merge). server/handleChat.js now also clears its one open flag.
+
+### Notes
+- Recurring pattern watch: the SSE streaming-robustness gap (Run 1 flagged, Run 2 fixed). Both provider paths now surface mid-stream errors symmetrically. Keep an eye on the parse loop if streaming logic changes.
+- Build chunk-size warning is pre-existing/expected (eager Three.js + pdf worker); tracked as an improvement, not a regression.
+
+---
+
 ## 2026-06-26 · Run 1
 
 First run — full scan of the entire codebase (no prior memory).
