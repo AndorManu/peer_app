@@ -4,6 +4,30 @@ Persistent memory for the daily maintenance agent. Newest entry on top. Never de
 
 ---
 
+## 2026-07-01 · Run 2
+
+No new commits since Run 1 (working tree clean, last commit `f2a585c` from 2026-06-26). Focused on the open HIGH flag from Run 1 and skimmed the files marked clean — no regressions.
+
+### Fixed
+- HIGH · server/handleChat.js · streamAnthropic · lines 88-101 — resolved the Run 1 flag. The SSE parse loop swallowed mid-stream `{"type":"error",...}` events inside a `catch {}`, so a provider error (e.g. `overloaded_error`) surfaced to the user as a truncated answer with `done:true` and no error. Restructured: JSON.parse now sits in its own try/catch that only `continue`s on malformed lines; a parsed `event.type === "error"` throws `apiError(502, event.error?.message || …)` OUTSIDE that catch, so it propagates to the `handleChatRequest` try/catch which emits `sendEvent(res,{error})` + `res.end()`. Confirmed the Anthropic streaming error-event shape (`{type:"error", error:{type,message}}`) against the claude-api reference before fixing — not guessed. Verified: build passes, 17/17 tests pass, server boots.
+
+### Flagged
+- (none new)
+
+### Improvements noted
+- Carried over from Run 1, still open: peerPrompt.js aggregate token cap (moderate; prompt content off-limits per rules), markdown.jsx block-parse useMemo (simple), lazy-load LearningBrain/pdf.js to shrink the 1.33MB initial chunk (moderate — build still warns about chunks >500kB). No new improvements surfaced.
+
+### Clean (skip deep read next run unless changed)
+- server/handleImage.js, server/dev.js, src/storage.js, src/stateModel.js, src/LearningBrain.jsx, src/constants.js, src/components/PeerNavRail.jsx, src/peer-theme.css, src/main.jsx, src/materials.js, src/App.jsx — all unchanged since Run 1's clean assessment (no intervening commits).
+- src/learningModel.js — unchanged; upsertConcept immutability fix from Run 1 still in place.
+- src/markdown.jsx — clean (improvement-only note stands).
+
+### Notes
+- The OpenAI path (streamOpenAI) uses the same parse-loop pattern but OpenAI's mid-stream error-event shape differs (`{"error":{...}}`, no `type:"error"`); left untouched to avoid guessing its exact shape — ANTHROPIC_API_KEY is the primary path anyway. Consider addressing on a future run only once the OpenAI error-event shape is confirmed.
+- Recurring pattern: the SSE error-handling gap flagged in Run 1 is now closed on the Anthropic path. Watch the learningModel mutation boundary and the OpenAI error path going forward.
+
+---
+
 ## 2026-06-26 · Run 1
 
 First run — full scan of the entire codebase (no prior memory).
