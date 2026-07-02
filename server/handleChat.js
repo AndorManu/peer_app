@@ -89,12 +89,19 @@ async function streamAnthropic(system, messages, res, imageDataUrls = []) {
       if (!line.startsWith("data: ")) continue;
       const raw = line.slice(6).trim();
       if (!raw) continue;
+      let event;
       try {
-        const event = JSON.parse(raw);
-        if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
-          sendEvent(res, { chunk: event.delta.text });
-        }
-      } catch {}
+        event = JSON.parse(raw);
+      } catch {
+        continue;
+      }
+      // surface mid-stream error events instead of ending with a silent done:true
+      if (event.type === "error") {
+        throw apiError(529, event.error?.message || "The AI request failed mid-stream.");
+      }
+      if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
+        sendEvent(res, { chunk: event.delta.text });
+      }
     }
   }
 

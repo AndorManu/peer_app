@@ -4,6 +4,31 @@ Persistent memory for the daily maintenance agent. Newest entry on top. Never de
 
 ---
 
+## 2026-07-02 · Run 2
+
+Codebase unchanged since Run 1 (branch/main at same commit; `git log --since 2026-06-26` empty). Skimmed CLEAN files, no drift. Resolved the top open flag from Run 1.
+
+### Fixed
+- HIGH · server/handleChat.js · streamAnthropic · lines 88-103 — the Anthropic SSE loop only handled `content_block_delta`/`text_delta`; a mid-stream `{"type":"error",...}` event was silently swallowed and the stream ended with `done:true`, so the user got a truncated answer with no error. Restructured the loop so `JSON.parse` sits in its own try/catch (malformed lines `continue`) and error events `throw apiError(529, ...)` OUTSIDE that catch — the throw propagates to `handleChatRequest`'s catch, which emits `{error}` and `res.end()`, skipping the misleading `done:true`. Confirmed the exact provider event shape via live streaming docs (`event: error` / `data: {"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}`) — this was the detail Run 1 held on. Verified: frontend already handles mid-stream `{error}` (App.jsx:536 `if (event.error) throw`); build passes; 17/17 tests pass; server boots + HTTP 200; standalone logic test covers mid-stream-error / normal / malformed-JSON cases (all pass).
+
+### Flagged
+- MEDIUM · server/handleChat.js · streamOpenAI · lines ~148-161 — OpenAI fallback path has the symmetric gap: mid-stream error objects would be swallowed by its `catch {}`. Held: OpenAI is the fallback path (only when ANTHROPIC_API_KEY is unset) and its exact mid-stream error-event shape isn't confirmed from a first-party doc, so I won't guess it per the 100%-certain rule. Low urgency; apply the same restructure once the OpenAI stream-error shape is confirmed.
+
+### Improvements noted
+- (carried from Run 1, still open) src/peerPrompt.js · buildSystemPrompt — no aggregate token cap across docs (bounded per-doc at ingestion). · effort: moderate · off-limits: prompt content
+- (carried) vite build — single 1.33MB JS chunk; LearningBrain (Three.js) + pdf.js (2.2MB worker) eager-loaded; React.lazy + dynamic import would cut initial load. · effort: moderate
+- (carried) src/markdown.jsx · Markdown — block parse runs every render; could useMemo on `text`. · effort: simple
+
+### Clean (skip deep read next run unless changed)
+- server/handleChat.js — error paths call res.end(); request-size guarded; no key leakage; SSE error gap now fixed (Anthropic path). OpenAI path flagged above.
+- All other files unchanged since Run 1's full scan and remain CLEAN: storage.js, stateModel.js, LearningBrain.jsx, handleImage.js, dev.js, constants.js, PeerNavRail.jsx, peerTheme.js/peer-theme.css, main.jsx, materials.js, markdown.jsx, App.jsx, learningModel.js, .env.example.
+
+### Notes
+- Hygiene re-check clean: only console noise is LearningBrain.jsx:462 (legit error handler) and dev.js:52 (startup banner); ANTHROPIC_API_KEY referenced only in server/, never in src/ or logs.
+- Recurring pattern: SSE error-handling in streaming endpoints — Anthropic path now closed, OpenAI path is the remaining instance of the same class. Watch this on future runs.
+
+---
+
 ## 2026-06-26 · Run 1
 
 First run — full scan of the entire codebase (no prior memory).
