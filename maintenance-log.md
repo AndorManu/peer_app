@@ -4,6 +4,33 @@ Persistent memory for the daily maintenance agent. Newest entry on top. Never de
 
 ---
 
+## 2026-07-03 · Run 2
+
+Codebase unchanged since Run 1's merge (`git diff 7e54c07..main` empty — no source files touched). Skipped deep re-reads of files marked CLEAN in Run 1; focused on the open FLAGGED item.
+
+### Fixed
+- HIGH · server/handleChat.js · streamAnthropic · line ~92 — resolved the Run 1 FLAGGED SSE gap. The Anthropic parse loop only handled `content_block_delta`/`text_delta`; a mid-stream `{"type":"error",...}` event was silently swallowed by `catch {}`, so a truncated answer reached the user with `done:true` and no error. Restructured: JSON.parse in its own try/catch (bad line → `continue`), then a check that `throw apiError(502, event.error?.message)` for `event.type === "error"` OUTSIDE the parse catch. The throw unwinds to the existing handler in `handleChatRequest` (line 30-33), which does `sendEvent(res,{error})` + `res.end()` — single end, no double-close. Confirmed Anthropic streaming error-event shape (`event: error` / `data: {"type":"error","error":{...}}`) against the claude-api reference.
+- HIGH · server/handleChat.js · streamOpenAI · line ~157 — same swallowing gap on the OpenAI path (noted in Run 1 as "same gap minus the catch issue"). Applied the symmetric fix: parse in its own try/catch, then `if (event.error) throw apiError(502, event.error.message)`. A normal chunk carries `choices`, never `error`, so the check is safe.
+
+### Flagged
+- None this run. (Run 1's SSE flag is now resolved above.)
+
+### Improvements noted
+- (carried from Run 1, still open) src/peerPrompt.js · buildSystemPrompt — no aggregate token cap across docs (bounded per-doc at 40k). · effort: moderate · not auto-fixed: prompt content is off-limits per run rules.
+- (carried) src/markdown.jsx · Markdown — block parsing runs every render; could `useMemo` on `text`. · effort: simple
+- (carried) vite build — single 1.33MB JS chunk; LearningBrain (Three.js) + pdf.js (2.2MB worker) eager-loaded. `React.lazy` + dynamic import would cut initial load. Build re-confirmed the warning this run. · effort: moderate
+
+### Clean (skip deep read next run unless changed)
+- All files confirmed unchanged since Run 1 via git diff. Run 1's CLEAN list stands: storage.js, stateModel.js, LearningBrain.jsx, handleImage.js, dev.js, constants.js, PeerNavRail.jsx, peer-theme.css/peerTheme.js, main.jsx, materials.js, markdown.jsx, App.jsx, .env.example.
+- server/handleChat.js — now clean after today's SSE error-handling fix (both provider paths surface mid-stream errors).
+
+### Notes
+- Verification: `npm run build` ✅, `npm test` 17/17 ✅, `node server/dev.js` boots + `GET /` → HTTP 200 ✅.
+- Recurring pattern: the SSE streaming error-handling gap flagged in Run 1 is the one carryover; now closed on both providers. Watch the learningModel immutable-vs-mutation boundary (Run 1 fix) on future changes.
+- Model strings (`claude-haiku-4-5-20251001`, `gpt-4.1-mini`) left untouched per rules.
+
+---
+
 ## 2026-06-26 · Run 1
 
 First run — full scan of the entire codebase (no prior memory).
