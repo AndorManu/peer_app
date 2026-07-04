@@ -1,4 +1,5 @@
 import { conceptTrajectory } from "./learningModel.js";
+import { classifySubject, domainForProject, getDomain } from "./subjects.js";
 
 export const BASE_PROMPT = `You are Peer, an adaptive AI study buddy inspired by peer-to-peer learning.
 
@@ -31,7 +32,8 @@ Rules:
 10. Match the medium to the subject: code-shaped examples for programming, step-by-step working for math, concrete real-world examples for the humanities and sciences.
 11. If example or visual signals are high, make the idea concrete before naming abstractions.
 12. If quiz or why-question signals are high, guide with one question instead of dumping an answer.
-13. If the learner asks for visuals, prefer clean, well-formatted structures: markdown tables, ordered/grouped lists, and short labeled steps. Avoid raw ASCII box-drawing art (│ ─ ┌ ↓ etc.) and large monospace diagrams — they render poorly. A simple bulleted hierarchy or a markdown table communicates the same thing and looks far cleaner.`;
+13. If the learner asks for visuals, prefer clean, well-formatted structures: markdown tables, ordered/grouped lists, and short labeled steps. Avoid raw ASCII box-drawing art (│ ─ ┌ ↓ etc.) and large monospace diagrams — they render poorly. A simple bulleted hierarchy or a markdown table communicates the same thing and looks far cleaner.
+14. Write ALL mathematical, chemical, and scientific notation in LaTeX: $...$ for inline math and $$...$$ on its own lines for display equations (e.g. $x^2$, $\\frac{dy}{dx}$, $$E = mc^2$$, $\\text{H}_2\\text{O}$). The app renders LaTeX beautifully. Never use plain-text approximations like x^2, sqrt(x), or 1/2 fractions when real notation is called for, and never put LaTeX inside code blocks.`;
 
 const MODE_INSTRUCTIONS = {
   auto: "No explicit mode selected. Infer the best teaching approach from the conversation and profile.",
@@ -59,6 +61,16 @@ const LANGUAGE_LABELS = {
 };
 
 export function buildSystemPrompt(project, profile, mode = "auto", recipe = []) {
+  // Domain-shaped teaching: the project's domain wins; a project-less chat
+  // falls back to classifying the profile's subject.
+  const domain = project
+    ? domainForProject(project)
+    : getDomain(classifySubject(profile?.subject || "", profile?.goal || ""));
+  const domainBlock = `
+
+Subject domain: ${domain.label}${project?.name ? ` (studying "${project.name}")` : ""}.
+Representation for this domain: ${domain.teach}`;
+
   const profileBlock = profile ? `
 
 Adaptive learner profile:
@@ -103,13 +115,13 @@ Project learning memory:
 Use this memory actively: build on concepts they're strong in, gently revisit slipping or weak ones without making them feel behind, correct any listed misconception if it resurfaces, and reference their progress when it's encouraging.`
     : "";
 
-  if (!project?.docs?.length) return `${BASE_PROMPT}${profileBlock}${modeBlock}${masteryBlock}`;
+  if (!project?.docs?.length) return `${BASE_PROMPT}${domainBlock}${profileBlock}${modeBlock}${masteryBlock}`;
 
   const documents = project.docs
     .map((doc) => `### Document: ${doc.name}\n${doc.text}`)
     .join("\n\n");
 
-  return `${BASE_PROMPT}${profileBlock}${modeBlock}${masteryBlock}
+  return `${BASE_PROMPT}${domainBlock}${profileBlock}${modeBlock}${masteryBlock}
 
 The learner is studying "${project.name}". They uploaded these study materials. Use them as context, cite document names when useful, and do not invent details that contradict the material.
 

@@ -2,15 +2,43 @@
 // the option lists can be imported by individual components and tested in
 // isolation without pulling in the whole app tree.
 import {
+  Atom,
   Brain,
+  Briefcase,
   Code2,
+  Cog,
+  Compass,
+  Globe2,
   GraduationCap,
+  HeartPulse,
+  Landmark,
+  Languages,
   Layers,
   Lightbulb,
   MessageSquare,
+  Music,
+  Sigma,
   Target,
   Trophy,
 } from "lucide-react";
+
+// Icon components for the subject taxonomy (subjects.js stays React-free so it
+// can be unit-tested; the icon *names* live there, the components live here).
+export const DOMAIN_ICONS = {
+  sigma: Sigma,
+  atom: Atom,
+  code: Code2,
+  languages: Languages,
+  landmark: Landmark,
+  globe: Globe2,
+  briefcase: Briefcase,
+  heart: HeartPulse,
+  cog: Cog,
+  music: Music,
+  graduation: GraduationCap,
+  compass: Compass,
+  brain: Brain,
+};
 
 export const PROJECT_COLORS = ["#6d5dfc", "#12a594", "#ef6f6c", "#e2a93b", "#2f9ed8", "#d65a9f"];
 
@@ -69,14 +97,19 @@ export const LEARNING_STYLE_OPTIONS = [
   { id: "examples", label: "Examples first" },
   { id: "socratic", label: "Guided questions" },
   { id: "challenge", label: "Mini challenges" },
-  { id: "code", label: "Code tutor" },
+  { id: "code", label: "Precise & technical" },
 ];
 
+// One challenge per domain family — learning any subject should feel invited.
 export const COMMUNITY_CHALLENGES = [
-  { id: "c-pointers", subject: "C", title: "Pointer address lab", level: "Beginner", prompt: "Give me a 20-minute C pointer challenge with checkpoints, hints, and one final self-test." },
-  { id: "cyber-web", subject: "Cybersecurity", title: "Web threat model sprint", level: "Intermediate", prompt: "Create a practical web security challenge about authentication mistakes, with hints and a debrief." },
-  { id: "math-proof", subject: "Math", title: "Explain then prove", level: "Intermediate", prompt: "Give me a peer-teaching challenge where I explain a theorem idea, then prove a small case." },
+  { id: "math-proof", subject: "Math", title: "Explain then prove", level: "Intermediate", prompt: "Give me a peer-teaching challenge where I explain a theorem idea, then prove a small case. Use LaTeX for the math." },
+  { id: "sci-mechanism", subject: "Science", title: "Mechanism chain", level: "Beginner", prompt: "Run a science challenge: pick a process (like photosynthesis or plate tectonics), have me build the cause-effect chain step by step, and check each link." },
   { id: "lang-recall", subject: "Languages", title: "Active recall dialogue", level: "Beginner", prompt: "Run a language-learning challenge using short dialogue, correction, and spaced recall." },
+  { id: "hist-timeline", subject: "History", title: "Timeline detective", level: "Beginner", prompt: "Run a history challenge: give me shuffled events around one turning point, have me order them and defend the causal links." },
+  { id: "biz-case", subject: "Business", title: "Decision case sprint", level: "Intermediate", prompt: "Give me a short business case with real numbers. I decide and justify; you probe my reasoning and show the worked math." },
+  { id: "med-vignette", subject: "Medicine", title: "System to symptom", level: "Intermediate", prompt: "Run a physiology challenge: pick a body system, quiz me from structure to function to what happens when it fails." },
+  { id: "music-ear", subject: "Music", title: "Interval builder", level: "Beginner", prompt: "Run a music theory challenge on intervals and chords, building from notes I already know, one question at a time." },
+  { id: "c-pointers", subject: "Coding", title: "Pointer address lab", level: "Beginner", prompt: "Give me a 20-minute C pointer challenge with checkpoints, hints, and one final self-test." },
 ];
 
 export const STARTERS = [

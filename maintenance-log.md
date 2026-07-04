@@ -1,5 +1,49 @@
 # Maintenance log
 
+## 2026-07-04 — M1: Universal-subject engine
+
+**What changed**
+- **Subject taxonomy** ([src/subjects.js](src/subjects.js)): 12 domains (Mathematics,
+  Natural Sciences, CS, Languages, Humanities, Social Sciences, Business, Health,
+  Engineering, Arts & Music, Test Prep, Life Skills) + a General fallback. Each domain
+  carries an icon, accent color, subject list, classification keywords (word-boundary
+  matched so "sat/act/ap/ib" don't fire inside words), concept-extraction hints, and
+  teaching/practice guidance. `classifySubject()` infers a domain from a free-text
+  subject name; projects store `domainId` (inferred on create/normalize, overridable).
+- **Math rendering (KaTeX)**: the markdown renderer now parses `$$…$$`, `\[…\]`,
+  `\(…\)`, and money-safe `$…$` ([src/math.js](src/math.js)) and renders through a
+  lazy-loaded KaTeX chunk (260KB that only loads when math first appears) with
+  MathML output for screen readers. The tutor prompt now instructs LaTeX for all
+  mathematical/chemical notation.
+- **Domain-aware teaching**: `buildSystemPrompt` injects the domain's representation
+  guidance (worked LaTeX steps for math, conjugation tables for languages, timelines
+  + sources for history, vignettes for medicine, …); the practice generator and
+  flashcard prompts shape questions per domain (e.g. language decks put the
+  target-language item on Q).
+- **Coding bias removed**: concept extraction now works for any subject (domain hints
+  from the taxonomy + asked-about phrases like "what is the subjunctive mood" +
+  mid-sentence proper phrases like "French Revolution"), the skill tree groups by
+  mastery level instead of CS keywords, note tags cover formulas/definitions/vocab/
+  dates, the Brain's seed concepts come from the project's domain, community
+  challenges span 8 domains, misconception detection gained physics/psych/biology
+  classics, and code-flavored placeholders/copy were generalized.
+- **UI**: domain picker in the project modal (live accent + toast), domain badge on
+  the chat welcome, domain-accented project dots + tooltips in the sidebar.
+
+**What I tested**
+- Created the plan's five subjects in the browser — Organic Chemistry → Natural
+  Sciences, AP US History → Test Prep, Spanish B2 → Languages, Music Theory → Arts,
+  MCAT → Test Prep — each with its domain accent; overrode Spanish B2's domain via
+  the picker and back.
+- Asked chat for the quadratic formula: model answered in LaTeX; 17 formulas rendered
+  (5 display + 12 inline), all with MathML, zero raw `$` outside math, clean at 375px
+  with no horizontal overflow. Zero console errors.
+- `npm test` 43/43 (adds 7 taxonomy + 11 math-parsing + 5 universal-extraction tests);
+  `npm run build` clean; KaTeX properly code-split.
+
+**Deferred**
+- Domain clustering inside the Brain graph is M2. Per-domain badge tracks are M10.
+
 ## 2026-07-04 — M0: Stabilize & full audit
 
 **What changed**
