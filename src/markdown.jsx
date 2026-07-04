@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { containsMath, matchBlockMath, splitInlineMath } from "./math.js";
 import hljs from "highlight.js/lib/core";
 import c from "highlight.js/lib/languages/c";
 import cpp from "highlight.js/lib/languages/cpp";
@@ -43,6 +44,16 @@ export function Markdown({ text }) {
 
   while (i < lines.length) {
     const line = lines[i];
+
+    // display math: $$...$$ or \[...\] (single- or multi-line)
+    if (containsMath(line)) {
+      const math = matchBlockMath(lines, i);
+      if (math) {
+        blocks.push({ type: "math", text: math.tex });
+        i = math.nextIndex;
+        continue;
+      }
+    }
 
     if (line.startsWith("```")) {
       const lang = line.slice(3).trim();
@@ -107,6 +118,7 @@ export function Markdown({ text }) {
     <div className="markdown">
       {blocks.map((block, idx) => {
         if (block.type === "code") return <CodeBlock key={idx} lang={block.lang} code={block.text} />;
+        if (block.type === "math") return <MathTex key={idx} tex={block.text} display />;
         if (block.type === "table") return (
           <div key={idx} className="md-table-wrap">
             <table className="md-table">
@@ -156,13 +168,68 @@ function CodeBlock({ lang, code }) {
   );
 }
 
+// Lazy KaTeX: the library (and its CSS/fonts) only load the first time math
+// actually appears, so text-only subjects never pay the bundle cost.
+let katexPromise = null;
+function loadKatex() {
+  if (!katexPromise) {
+    katexPromise = Promise.all([
+      import("katex"),
+      import("katex/dist/katex.min.css"),
+    ]).then(([module]) => module.default || module);
+  }
+  return katexPromise;
+}
+
+export function MathTex({ tex, display = false }) {
+  const [html, setHtml] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    loadKatex().then((katex) => {
+      if (!active) return;
+      setHtml(katex.renderToString(tex, {
+        displayMode: display,
+        throwOnError: false,
+        // htmlAndMathml embeds MathML so screen readers get real math.
+        output: "htmlAndMathml",
+      }));
+    }).catch(() => {
+      if (active) setHtml(null);
+    });
+    return () => { active = false; };
+  }, [tex, display]);
+
+  if (html === null) {
+    // Raw TeX as a readable placeholder while KaTeX loads.
+    return display
+      ? <div className="math-block math-loading">{tex}</div>
+      : <span className="math-inline math-loading">{tex}</span>;
+  }
+  return display
+    // KaTeX escapes its own output (throwOnError:false renders bad TeX as
+    // literal text), so this HTML is library-generated, never raw model text.
+    ? <div className="math-block" dangerouslySetInnerHTML={{ __html: html }} />
+    : <span className="math-inline" dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
+// Inline math splitting for a non-code text run.
+function mathify(text, keyPrefix) {
+  if (!containsMath(text)) return [text];
+  return splitInlineMath(text).map((segment, j) => (
+    segment.type === "inline"
+      ? <MathTex key={`${keyPrefix}-m${j}`} tex={segment.value} />
+      : segment.value
+  ));
+}
+
 function inline(text) {
   return String(text)
     .split(/(`[^`]+`|\*\*[^*]+\*\*|\*[^*\n]+\*)/)
-    .map((part, i) => {
-      if (part.startsWith("**") && part.endsWith("**")) return <strong key={i}>{part.slice(2, -2)}</strong>;
+    .flatMap((part, i) => {
+      if (part.startsWith("**") && part.endsWith("**")) return <strong key={i}>{mathify(part.slice(2, -2), `b${i}`)}</strong>;
       if (part.startsWith("`") && part.endsWith("`")) return <code key={i}>{part.slice(1, -1)}</code>;
-      if (part.startsWith("*") && part.endsWith("*")) return <em key={i}>{part.slice(1, -1)}</em>;
-      return part;
+      if (part.startsWith("*") && part.endsWith("*")) return <em key={i}>{mathify(part.slice(1, -1), `e${i}`)}</em>;
+      return mathify(part, i);
     });
 }
