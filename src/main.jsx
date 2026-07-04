@@ -6,6 +6,7 @@ import "open-dyslexic/open-dyslexic-regular.css";
 import "./styles.css";
 import "./peer-theme.css";
 import "./peer-skin.css";
+import "./peer-responsive.css";
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
