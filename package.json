@@ -12,6 +12,7 @@
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.0",
     "highlight.js": "^11.11.1",
+    "katex": "^0.17.0",
     "lucide-react": "^0.468.0",
     "open-dyslexic": "^1.0.3",
     "pdfjs-dist": "^4.10.38",

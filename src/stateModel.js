@@ -3,6 +3,7 @@
 // independently of the React tree.
 import { makeMastery, makeProfile, normalizeMastery, normalizeProfile } from "./learningModel.js";
 import { AUTH_PROVIDERS, FONT_OPTIONS, PROJECT_COLORS, STUDY_MODES } from "./constants.js";
+import { classifySubject, getDomain } from "./subjects.js";
 
 export const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -29,7 +30,7 @@ export const defaultState = () => {
     profile: makeProfile(),
     notes: [],
     studyRooms: [],
-    projects: [{ id: projectId, name: "My first topic", color: PROJECT_COLORS[0], docs: [], mastery: makeMastery() }],
+    projects: [{ id: projectId, name: "My first topic", domainId: "general", color: PROJECT_COLORS[0], docs: [], mastery: makeMastery() }],
     chats: [chat],
     activeId: chat.id,
     flashcards: [],
@@ -44,6 +45,10 @@ export function normalizeState(stored) {
     ? stored.projects.map((project, index) => ({
         id: project?.id || uid(),
         name: project?.name || "Untitled project",
+        // keep an explicitly chosen domain; otherwise infer it from the name
+        domainId: project?.domainId && getDomain(project.domainId).id === project.domainId
+          ? project.domainId
+          : classifySubject(project?.name || ""),
         color: project?.color || PROJECT_COLORS[index % PROJECT_COLORS.length],
         mastery: normalizeMastery(project?.mastery),
         docs: Array.isArray(project?.docs)

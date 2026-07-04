@@ -5,6 +5,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { Brain, GitBranch, RotateCcw, Search } from "lucide-react";
+import { DOMAINS, domainForProject } from "./subjects.js";
 
 export function LearningBrainPanel({ state, activeProject, setView, updateState, setManagedProjectId, setSelectedDocId, onPractice }) {
   const firstProjectId = state.projects[0]?.id || "";
@@ -188,7 +189,7 @@ export function LearningBrainPanel({ state, activeProject, setView, updateState,
                 </div>
               )}
               {(selectedNode.type === "concept" || selectedNode.type === "weak") && onPractice && (
-                <button className="brain-open-btn" onClick={() => onPractice(selectedNode.label, { context: selectedNode.evidence })}>
+                <button className="brain-open-btn" onClick={() => onPractice(selectedNode.label, { context: selectedNode.evidence, projectId: selectedNode.projectId })}>
                   Practice this
                 </button>
               )}
@@ -1229,11 +1230,13 @@ function inferBrainConceptsFromActivity(state, project) {
     ...state.notes.filter((note) => !project || note.projectId === project.id).map((note) => `${note.title} ${note.content}`),
     ...state.chats.filter((chat) => !project || chat.projectId === project.id).map((chat) => `${chat.name} ${(chat.messages || []).map((message) => message.content).join(" ")}`),
   ].join(" ").toLowerCase();
-  const candidates = [
-    "pointers", "memory", "arrays", "loops", "functions", "structs", "debugging", "security", "state",
-    "components", "networking", "algorithms", "recursion", "api", "terminal", "authentication",
-  ];
-  const found = candidates.filter((item) => text.includes(item.replace(/s$/, "")));
+  // Seed candidates from the project's own domain so a history or language
+  // project sprouts history/language concepts, not programming ones.
+  const domain = domainForProject(project);
+  const candidates = domain.conceptHints.length
+    ? domain.conceptHints
+    : DOMAINS.flatMap((item) => item.conceptHints.slice(0, 3));
+  const found = candidates.filter((item) => text.includes(item.toLowerCase().replace(/s$/, "")));
   return (found.length ? found : [project?.name || state.profile.subject || "Core concepts", "Practice", "Questions"]).slice(0, 10);
 }
 

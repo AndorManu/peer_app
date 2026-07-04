@@ -183,6 +183,46 @@ test("buildLearnerRecap summarizes concepts across projects", () => {
   assert.ok(Array.isArray(recap.weakSpots));
 });
 
+test("updateMasteryFromMessage tracks non-coding subjects via asked phrases", () => {
+  const mastery = updateMasteryFromMessage(makeMastery(), "What is the subjunctive mood? I keep mixing it up.");
+  assert.ok(
+    mastery.concepts.some((c) => c.key.includes("subjunctive")),
+    `asked-about phrase tracked, got: ${mastery.concepts.map((c) => c.key).join(", ")}`,
+  );
+});
+
+test("updateMasteryFromMessage tracks mid-sentence proper phrases (history, science)", () => {
+  const mastery = updateMasteryFromMessage(makeMastery(), "I'm confused about the French Revolution and its causes");
+  assert.ok(
+    mastery.concepts.some((c) => c.label.includes("French Revolution")),
+    `proper phrase tracked, got: ${mastery.concepts.map((c) => c.label).join(", ")}`,
+  );
+});
+
+test("updateMasteryFromMessage uses domain hints from the taxonomy", () => {
+  const mastery = updateMasteryFromMessage(
+    makeMastery(),
+    "so supply goes up when demand falls?",
+    ["supply", "demand", "elasticity"],
+  );
+  const keys = mastery.concepts.map((c) => c.key);
+  assert.ok(keys.includes("supply") && keys.includes("demand"), `domain hints tracked, got: ${keys.join(", ")}`);
+});
+
+test("detectMisconception catches classic non-coding misconceptions", () => {
+  const physics = updateMasteryFromMessage(makeMastery(), "so heavier objects fall faster right?");
+  assert.equal(physics.misconceptions.length, 1);
+  assert.match(physics.misconceptions[0].correction, /vacuum|air resistance/i);
+});
+
+test("buildSkillTree groups any subject's concepts by mastery level", () => {
+  let mastery = makeMastery();
+  mastery = updateMasteryFromMessage(mastery, "What is the subjunctive mood?");
+  const tree = buildSkillTree({ name: "Spanish B2", mastery });
+  assert.equal(tree.label, "Spanish B2");
+  assert.ok(tree.groups.length >= 1, "non-CS concepts still group");
+});
+
 test("normalizeMastery tolerates junk input", () => {
   assert.doesNotThrow(() => normalizeMastery(undefined));
   const repaired = normalizeMastery({ concepts: "nope", misconceptions: null });

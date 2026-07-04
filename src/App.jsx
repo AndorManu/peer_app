@@ -68,6 +68,7 @@ import {
   AUTH_PROVIDERS,
   COMMUNITY_CHALLENGES,
   DEPTH_OPTIONS,
+  DOMAIN_ICONS,
   FONT_OPTIONS,
   LANGUAGE_OPTIONS,
   LEARNING_STYLE_OPTIONS,
@@ -84,6 +85,7 @@ import {
   normalizeState,
   uid,
 } from "./stateModel.js";
+import { DOMAINS, GENERAL_DOMAIN, classifySubject, domainForProject, getDomain } from "./subjects.js";
 import { LearningBrainPanel } from "./LearningBrain.jsx";
 import PeerNavRail from "./components/PeerNavRail.jsx";
 import CodingPanel from "./CodingPanel.jsx";
@@ -304,16 +306,39 @@ export default function App() {
     if (!name) return;
 
     const id = uid();
+    const domainId = classifySubject(name);
+    const domain = getDomain(domainId);
     updateState((current) => ({
       ...current,
       projects: [
         ...current.projects,
-        { id, name, color: PROJECT_COLORS[current.projects.length % PROJECT_COLORS.length], docs: [], mastery: makeMastery() },
+        {
+          id,
+          name,
+          domainId,
+          color: domainId === "general" ? PROJECT_COLORS[current.projects.length % PROJECT_COLORS.length] : domain.accent,
+          docs: [],
+          mastery: makeMastery(),
+        },
       ],
     }));
     setExpanded((current) => ({ ...current, [id]: true }));
     setNewProjectName("");
-    showToast(`Project "${name}" created`);
+    showToast(domainId === "general" ? `Subject "${name}" created` : `Subject "${name}" created · ${domain.label}`);
+  }
+
+  // Explicit domain choice from the project modal — overrides inference.
+  function setProjectDomain(projectId, domainId) {
+    const domain = getDomain(domainId);
+    updateState((current) => ({
+      ...current,
+      projects: current.projects.map((project) => (
+        project.id === projectId
+          ? { ...project, domainId: domain.id, color: domain.id === "general" ? project.color : domain.accent }
+          : project
+      )),
+    }));
+    showToast(`Domain set to ${domain.label}`);
   }
 
   function deleteProject(id) {
@@ -441,11 +466,19 @@ export default function App() {
     }
 
     const projectId = uid();
+    const domainId = classifySubject(name, state.profile.goal);
     updateState((current) => ({
       ...current,
       projects: [
         ...current.projects,
-        { id: projectId, name, color: PROJECT_COLORS[current.projects.length % PROJECT_COLORS.length], docs: [], mastery: makeMastery() },
+        {
+          id: projectId,
+          name,
+          domainId,
+          color: domainId === "general" ? PROJECT_COLORS[current.projects.length % PROJECT_COLORS.length] : getDomain(domainId).accent,
+          docs: [],
+          mastery: makeMastery(),
+        },
       ],
       chats: current.chats.map((chat) => chat.id === activeChat.id ? { ...chat, projectId } : chat),
     }));
@@ -539,7 +572,7 @@ export default function App() {
       profile: applyFeedback(current.profile, type),
       projects: current.projects.map((project) => (
         project.id === activeChat.projectId
-          ? { ...project, mastery: updateMasteryFromFeedback(project.mastery, type, message.content) }
+          ? { ...project, mastery: updateMasteryFromFeedback(project.mastery, type, message.content, domainForProject(project).conceptHints) }
           : project
       )),
     }));
@@ -626,15 +659,19 @@ export default function App() {
     return content;
   }
 
-  // Practice generator — turn any topic/concept/note into a targeted quiz.
+  // Practice generator — turn any topic/concept/note into a targeted quiz,
+  // shaped to the subject's domain (worked problems for math, production
+  // exercises for languages, vignettes for medicine, ...).
   function generatePractice(topic, opts = {}) {
     const t = String(topic || "").trim();
     if (!t) { showToast("Pick a concept or note to practice."); return; }
     const n = opts.count || 5;
+    const project = state.projects.find((item) => item.id === opts.projectId) || activeProject;
+    const domain = domainForProject(project);
     const grounding = opts.context ? `\n\nGround the questions in this material:\n${String(opts.context).slice(0, 1500)}` : "";
     setView("chat");
     sendMessage(
-      `Create a focused ${n}-question practice set on "${t}". Ask one question at a time, wait for my answer, then give brief feedback before moving on. Mix recall and application. Start with question 1 now.${grounding}`,
+      `Create a focused ${n}-question practice set on "${t}". Ask one question at a time, wait for my answer, then give brief feedback before moving on. Shape the questions for ${domain.label}: use ${domain.practice}. Start with question 1 now.${grounding}`,
       { mode: "quiz" },
     );
   }
@@ -663,7 +700,7 @@ export default function App() {
         ...current,
         projects: projects.map((p) =>
           p.id === targetId
-            ? { ...p, docs: [...(p.docs || []), doc], mastery: updateMasteryFromMessage(p.mastery, trimmed) }
+            ? { ...p, docs: [...(p.docs || []), doc], mastery: updateMasteryFromMessage(p.mastery, trimmed, domainForProject(p).conceptHints) }
             : p,
         ),
       };
@@ -683,7 +720,7 @@ export default function App() {
     const learnedProfile = recordStudyActivity(inferProfileFromMessage(state.profile, visibleContent));
     const currentProject = state.projects.find((item) => item.id === activeChat.projectId);
     const learnedProject = currentProject
-      ? { ...currentProject, mastery: updateMasteryFromMessage(currentProject.mastery, visibleContent) }
+      ? { ...currentProject, mastery: updateMasteryFromMessage(currentProject.mastery, visibleContent, domainForProject(currentProject).conceptHints) }
       : null;
     const userMessage = {
       id: uid(),
@@ -1093,7 +1130,7 @@ export default function App() {
     setLoading(true);
     showToast("Generating flashcards...");
     try {
-      const prompt = buildFlashcardPrompt("this explanation", message.content);
+      const prompt = buildFlashcardPrompt("this explanation", message.content, domainForProject(activeProject));
       let fullText = "";
       await streamRequest(
         [{ role: "user", content: prompt }],
@@ -1133,7 +1170,7 @@ export default function App() {
       let fullText = "";
       const project = state.projects.find((item) => item.id === projectId) || activeProject;
       await streamRequest(
-        [{ role: "user", content: buildFlashcardPrompt(title, content) }],
+        [{ role: "user", content: buildFlashcardPrompt(title, content, domainForProject(project)) }],
         "auto",
         (partial) => { fullText = partial; },
         state.profile,
@@ -1214,9 +1251,18 @@ export default function App() {
       },
     }));
     if (profileDraft.subject.trim() && state.projects.length === 1 && state.projects[0].name === "My first topic") {
+      const subjectName = profileDraft.subject.trim();
+      const domainId = classifySubject(subjectName, profileDraft.goal);
       updateState((current) => ({
         ...current,
-        projects: current.projects.map((project, index) => index === 0 ? { ...project, name: profileDraft.subject.trim() } : project),
+        projects: current.projects.map((project, index) => index === 0
+          ? {
+              ...project,
+              name: subjectName,
+              domainId,
+              color: domainId === "general" ? project.color : getDomain(domainId).accent,
+            }
+          : project),
       }));
     }
   }
@@ -1638,6 +1684,7 @@ export default function App() {
           removeDoc={removeDoc}
           deleteProject={confirmDeleteProject}
           runDocAction={runDocAction}
+          setProjectDomain={setProjectDomain}
         />
       )}
 
@@ -1824,6 +1871,19 @@ function ShieldCheckIcon() {
   return <CheckCircle2 size={15} />;
 }
 
+// Small icon+label chip for a subject domain (color-blind safe: icon + text,
+// never color alone).
+function DomainBadge({ domain, size = 13 }) {
+  if (!domain) return null;
+  const Icon = DOMAIN_ICONS[domain.icon] || DOMAIN_ICONS.brain;
+  return (
+    <span className="domain-badge" style={{ "--domain-accent": domain.accent }}>
+      <Icon size={size} aria-hidden="true" />
+      {domain.label}
+    </span>
+  );
+}
+
 function ViewTitle({ view, activeChat, activeProject }) {
   if (view === "settings") return <div className="topbar-title"><Settings size={17} /><span>Settings</span></div>;
   if (view === "profile") return <div className="topbar-title"><UserRound size={17} /><span>Learning profile</span></div>;
@@ -1956,7 +2016,7 @@ function Sidebar(props) {
                     <ChevronRight className={isOpen ? "rotated" : ""} size={15} />
                   </button>
                   <span className="project-dot" style={{ background: project.color }} />
-                  <span className="project-name">{project.name}</span>
+                  <span className="project-name" title={`${project.name} · ${domainForProject(project).label}`}>{project.name}</span>
                   {project.docs.length > 0 && <span className="doc-count"><FileText size={12} />{project.docs.length}</span>}
                   <button className="ghost-icon" onClick={() => manageProject(project.id)} aria-label="Manage project"><Settings size={14} /></button>
                 </div>
@@ -2088,6 +2148,9 @@ function ChatArea({ activeChat, activeProject, activeMode, loading, error, sendM
       <section className="welcome">
         <div className="welcome-mark"><Brain size={31} /></div>
         <h1>{activeProject ? `Studying ${activeProject.name}` : "What do you want to understand?"}</h1>
+        {activeProject && domainForProject(activeProject).id !== "general" && (
+          <DomainBadge domain={domainForProject(activeProject)} />
+        )}
         <p>
           Start in your own words. Peer adapts through the conversation and remembers what explanation styles work for you.
           {activeProject?.docs?.length ? ` This project has ${activeProject.docs.length} document${activeProject.docs.length > 1 ? "s" : ""} in its library.` : ""}
@@ -2530,7 +2593,7 @@ function ProfilePanel({ profile, activeProject, activeChat, insights, activeMode
             </label>
             <label>
               Goal
-              <input value={profile.goal} onChange={(event) => updateState((current) => ({ ...current, profile: { ...current.profile, goal: event.target.value } }))} placeholder="Pass an exam, understand pointers, prepare for Codam..." />
+              <input value={profile.goal} onChange={(event) => updateState((current) => ({ ...current, profile: { ...current.profile, goal: event.target.value } }))} placeholder="Pass an exam, hold a conversation in Spanish, master calculus..." />
             </label>
             <label>
               Language
@@ -2869,7 +2932,7 @@ function SettingsPanel({ state, updateState, resetData, loadSampleData }) {
                         {font.label}
                         {font.tag && <small>{font.tag}</small>}
                       </span>
-                      <span>The quick brown fox jumps over memory addresses.</span>
+                      <span>The quick brown fox jumps over the lazy dog.</span>
                     </button>
                   ))}
                 </div>
@@ -2938,7 +3001,7 @@ function SettingsPanel({ state, updateState, resetData, loadSampleData }) {
   );
 }
 
-function ProjectModal({ project, selectedDoc, selectedDocId, setSelectedDocId, extracting, error, close, pickFile, addMaterials, removeDoc, deleteProject, runDocAction }) {
+function ProjectModal({ project, selectedDoc, selectedDocId, setSelectedDocId, extracting, error, close, pickFile, addMaterials, removeDoc, deleteProject, runDocAction, setProjectDomain }) {
   const [dragging, setDragging] = useState(false);
   const [selectedExcerpt, setSelectedExcerpt] = useState("");
   const trapRef = useFocusTrap(true, { onEscape: close });
@@ -2986,8 +3049,20 @@ function ProjectModal({ project, selectedDoc, selectedDocId, setSelectedDocId, e
           <span className="project-dot" style={{ background: project.color }} />
           <div>
             <h2>{project.name}</h2>
-            <p>Project library, extracted text, and document-grounded study prompts.</p>
+            <p>Subject library, extracted text, and document-grounded study prompts.</p>
           </div>
+          <label className="domain-picker">
+            Domain
+            <select
+              value={domainForProject(project).id}
+              onChange={(event) => setProjectDomain(project.id, event.target.value)}
+              aria-label="Subject domain"
+            >
+              {[...DOMAINS, GENERAL_DOMAIN].map((domain) => (
+                <option key={domain.id} value={domain.id}>{domain.label}</option>
+              ))}
+            </select>
+          </label>
           <button className="icon-button" onClick={close} aria-label="Close"><X size={18} /></button>
         </header>
 
@@ -3093,7 +3168,7 @@ function OnboardingModal({ profileDraft, setProfileDraft, complete, skip }) {
         </label>
         <label>
           What is your goal?
-          <input value={profileDraft.goal} onChange={(event) => setProfileDraft((current) => ({ ...current, goal: event.target.value }))} placeholder="Understand pointers, pass an exam, finish a project..." />
+          <input value={profileDraft.goal} onChange={(event) => setProfileDraft((current) => ({ ...current, goal: event.target.value }))} placeholder="Pass an exam, speak with confidence, truly get calculus..." />
         </label>
         <label>
           Current level
@@ -3541,9 +3616,13 @@ function parseFlashcards(text) {
   return cards;
 }
 
-function buildFlashcardPrompt(title, content) {
+function buildFlashcardPrompt(title, content, domain = null) {
+  const domainLine = domain && domain.id !== "general"
+    ? `Shape the cards for ${domain.label}: prefer ${domain.practice}.${domain.id === "language" ? " Put the target-language word or phrase on Q and its meaning plus one example sentence on A." : ""}`
+    : "Write questions that test understanding, not just word recall.";
   return [
     `Generate 5-8 study flashcards from "${title}".`,
+    domainLine,
     "Output ONLY Q&A pairs in this exact format with no intro text or commentary:",
     "",
     "Q: [concise question]",
@@ -3567,17 +3646,22 @@ function friendlyError(err, fallback = "Something went wrong. Try again.") {
 }
 
 function inferNoteTags(content) {
-  const text = String(content || "").toLowerCase();
+  const raw = String(content || "");
+  const text = raw.toLowerCase();
   const tags = [];
   const checks = [
-    ["code", /\b(code|function|bug|compile|react|python|javascript|c programming)\b/],
-    ["memory", /\b(memory|pointer|malloc|free|address)\b/],
-    ["visual", /\b(diagram|visual|analogy|model|flowchart)\b/],
-    ["exam", /\b(exam|test|quiz|practice|recall)\b/],
-    ["concept", /\b(concept|means|because|why|how)\b/],
+    ["formula", /\$[^$\n]+\$|\\\(|\\\[|\b(equation|formula|theorem|proof)\b/],
+    ["definition", /\b(is defined as|refers to|definition|means that)\b/],
+    ["example", /\b(for example|for instance|e\.g\.)\b/],
+    ["steps", /\b(step \d|first,|then,|finally,|worked solution)\b/],
+    ["dates", /\b1[0-9]{3}\b|\b20[0-2][0-9]\b/],
+    ["vocab", /\b(vocabulary|conjugat|pronunciation|translation|plural|tense)\b/],
+    ["visual", /\b(diagram|visual|analogy|model|flowchart|timeline)\b/],
+    ["exam", /\b(exam|test|quiz|practice|recall|mnemonic)\b/],
+    ["code", /```|\b(function|compile|bug|variable|algorithm)\b/],
   ];
   for (const [tag, regex] of checks) {
-    if (regex.test(text)) tags.push(tag);
+    if (regex.test(text) || (tag === "formula" && /\$[^$\n]+\$/.test(raw))) tags.push(tag);
   }
   return tags.length ? tags.slice(0, 4) : ["study"];
 }
@@ -3596,11 +3680,11 @@ function buildBuddyMatches(profile, activeProject) {
       fit: visual >= technical ? "High fit: examples and visuals" : "Medium fit: adds concrete examples",
     },
     {
-      id: "debugger",
-      initials: "DR",
-      name: "Debug Reviewer",
-      reason: `Pairs well when you want precise feedback, bugs, and edge cases.`,
-      fit: technical > 1 ? "High fit: technical signals detected" : "Medium fit: useful for code sessions",
+      id: "precision",
+      initials: "PP",
+      name: "Precision Partner",
+      reason: `Pairs well when you want exact terminology, edge cases, and rigorous feedback.`,
+      fit: technical > 1 ? "High fit: precision signals detected" : "Medium fit: sharpens detail-heavy topics",
     },
     {
       id: "coach",

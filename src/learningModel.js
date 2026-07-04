@@ -281,26 +281,21 @@ export function buildTeachingRecipe(profile, project, mode) {
   return recipe.slice(0, 6);
 }
 
+// Universal skill tree: concepts group by how solid they are, which is
+// meaningful for any subject (the old keyword groups only understood CS).
 export function buildSkillTree(project, subject = "Current subject") {
   const mastery = normalizeMastery(project?.mastery);
+  const weak = (concept) => concept.status === "weak" || concept.status === "misconception" || (concept.confidence || 0) < 0.4;
+  const solid = (concept) => !weak(concept) && (concept.confidence || 0) >= 0.65;
   const groups = [
-    { id: "foundations", label: "Foundations", match: ["variable", "function", "loop", "array", "memory"] },
-    { id: "advanced", label: "Advanced concepts", match: ["pointer", "recursion", "struct", "algorithm", "binary search"] },
-    { id: "tools", label: "Tools and practice", match: ["debugging", "terminal", "compile", "api", "react", "component", "state", "network", "cybersecurity"] },
+    { id: "solid", label: "Solid ground", concepts: mastery.concepts.filter(solid) },
+    { id: "building", label: "Building now", concepts: mastery.concepts.filter((c) => !solid(c) && !weak(c)) },
+    { id: "attention", label: "Needs attention", concepts: mastery.concepts.filter(weak) },
   ];
-  const nodes = groups.map((group) => ({
-    ...group,
-    concepts: mastery.concepts.filter((concept) => group.match.some((term) => concept.key.includes(term))),
-  }));
-  const used = new Set(nodes.flatMap((group) => group.concepts.map((concept) => concept.id)));
-  const other = mastery.concepts.filter((concept) => !used.has(concept.id));
 
   return {
     label: project?.name || subject || "Current subject",
-    groups: [
-      ...nodes,
-      ...(other.length ? [{ id: "other", label: "Emerging topics", concepts: other }] : []),
-    ].filter((group) => group.concepts.length),
+    groups: groups.filter((group) => group.concepts.length),
   };
 }
 
@@ -343,9 +338,9 @@ export function buildSessionRecap(chat, project) {
   };
 }
 
-export function updateMasteryFromMessage(mastery, content) {
+export function updateMasteryFromMessage(mastery, content, domainHints = []) {
   const next = normalizeMastery(mastery);
-  const concepts = extractConcepts(content);
+  const concepts = extractConcepts(content, domainHints);
   const misconception = detectMisconception(content);
 
   for (const label of concepts) {
@@ -375,9 +370,9 @@ export function updateMasteryFromMessage(mastery, content) {
   return next;
 }
 
-export function updateMasteryFromFeedback(mastery, feedback, activeText = "") {
+export function updateMasteryFromFeedback(mastery, feedback, activeText = "", domainHints = []) {
   const next = normalizeMastery(mastery);
-  const concepts = extractConcepts(activeText);
+  const concepts = extractConcepts(activeText, domainHints);
   for (const label of concepts) {
     const positive = feedback === "understood" || feedback === "goodExample";
     const negative = feedback === "confused" || feedback === "tooAdvanced" || feedback === "tooVague";
@@ -470,19 +465,70 @@ function upsertConcept(mastery, label, update) {
   mastery.concepts = mastery.concepts.slice(0, 40);
 }
 
-function extractConcepts(content) {
+// Programming terms stay as a built-in hint list (compat with existing data);
+// every other domain contributes hints via the `domainHints` parameter, which
+// the app fills from the subject taxonomy (src/subjects.js).
+const CS_TERMS = [
+  "pointer", "pointers", "array", "arrays", "recursion", "binary search", "memory", "malloc", "free",
+  "function", "loop", "struct", "api", "react", "state", "component", "variable", "algorithm",
+  "cybersecurity", "network", "terminal", "compile", "debugging",
+];
+
+// Phrases the learner explicitly asks about — works for any subject.
+const ASK_PATTERNS = [
+  /\bwhat (?:is|are|was|were) (?:a |an |the )?([a-z][a-z0-9' -]{2,40}?)[?.,;!]/gi,
+  /\bhow (?:does|do|did) (?:a |an |the )?([a-z][a-z0-9' -]{2,40}?) work/gi,
+  /\b(?:explain|define) (?:a |an |the )?([a-z][a-z0-9' -]{2,40}?)(?:[?.,;!]| to me| in\b| like\b| using\b|$)/gi,
+  /\btell me about (?:a |an |the )?([a-z][a-z0-9' -]{2,40}?)(?:[?.,;!]|$)/gi,
+  /\bquiz me on (?:a |an |the )?([a-z][a-z0-9' -]{2,40}?)(?:[?.,;!]|$)/gi,
+];
+
+const PHRASE_STOPWORDS = new Set(["it", "this", "that", "them", "these", "those", "me", "you", "stuff", "things", "difference", "it all"]);
+
+function extractAskedPhrases(content) {
+  const found = [];
+  for (const pattern of ASK_PATTERNS) {
+    pattern.lastIndex = 0;
+    let match;
+    while ((match = pattern.exec(content)) !== null) {
+      const phrase = match[1].trim().replace(/\s+/g, " ");
+      const words = phrase.split(" ");
+      if (words.length >= 1 && words.length <= 5 && !PHRASE_STOPWORDS.has(phrase.toLowerCase())) {
+        found.push(phrase);
+      }
+      if (found.length >= 3) return found;
+    }
+  }
+  return found;
+}
+
+// Mid-sentence Title Case runs ("French Revolution", "Krebs Cycle") are strong
+// concept signals in the humanities and sciences.
+function extractProperPhrases(content) {
+  const found = [];
+  const pattern = /[A-Z][a-zA-Z-]+(?: (?:of |the |and )?[A-Z][a-zA-Z-]+){1,3}/g;
+  let match;
+  while ((match = pattern.exec(content)) !== null) {
+    const start = match.index;
+    const before = content.slice(0, start).trimEnd();
+    // skip sentence starters — only mid-sentence capitals are meaningful
+    if (!before || /[.!?:\n]$/.test(before)) continue;
+    if (match[0].length <= 44) found.push(match[0]);
+    if (found.length >= 3) break;
+  }
+  return found;
+}
+
+function extractConcepts(content, domainHints = []) {
   const text = content.toLowerCase();
   const matches = new Set();
-  const known = [
-    "pointer", "pointers", "array", "arrays", "recursion", "binary search", "memory", "malloc", "free",
-    "function", "loop", "struct", "api", "react", "state", "component", "variable", "algorithm",
-    "cybersecurity", "network", "terminal", "compile", "debugging",
-  ];
-  for (const concept of known) {
-    if (text.includes(concept)) matches.add(concept.replace(/s$/, ""));
+  for (const concept of [...domainHints, ...CS_TERMS]) {
+    if (text.includes(concept.toLowerCase())) matches.add(concept.toLowerCase().replace(/s$/, ""));
   }
   const quoted = content.match(/"([^"]{3,40})"/g) || [];
   for (const item of quoted.slice(0, 3)) matches.add(item.replaceAll('"', ""));
+  for (const phrase of extractAskedPhrases(content)) matches.add(phrase);
+  for (const phrase of extractProperPhrases(content)) matches.add(phrase);
   return Array.from(matches).slice(0, 6);
 }
 
@@ -500,6 +546,27 @@ function detectMisconception(content) {
       concept: "array",
       belief: "Arrays and pointers are exactly the same.",
       correction: "Arrays can decay to pointers in expressions, but they are not identical objects.",
+    };
+  }
+  if (/heavier (?:objects?|things?) falls? faster/.test(text)) {
+    return {
+      concept: "gravity",
+      belief: "Heavier objects fall faster.",
+      correction: "In a vacuum all objects fall at the same rate; air resistance, not weight, causes the difference.",
+    };
+  }
+  if (/only use (?:about )?10% of (?:our|your|the) brain/.test(text)) {
+    return {
+      concept: "brain function",
+      belief: "We only use 10% of our brain.",
+      correction: "Virtually all brain regions are active over a day; the 10% figure is a myth.",
+    };
+  }
+  if (/evolution .{0,30}just a theory/.test(text)) {
+    return {
+      concept: "evolution",
+      belief: "Evolution is 'just a theory' (a guess).",
+      correction: "In science a theory is a well-tested explanatory framework; evolution is supported by overwhelming evidence.",
     };
   }
   return null;
