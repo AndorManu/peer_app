@@ -4,6 +4,31 @@ Persistent memory for the daily maintenance agent. Newest entry on top. Never de
 
 ---
 
+## 2026-07-04 · Run 2
+
+Codebase unchanged since Run 1 (all files same mtime, branch fresh off main). Focused on the open FLAGGED SSE issue from Run 1; skimmed the files marked CLEAN — no new changes.
+
+### Fixed
+- HIGH · server/handleChat.js · streamAnthropic · lines 92-104 — the Anthropic SSE parse loop only handled `content_block_delta`/`text_delta`; a mid-stream `{"type":"error",...}` event was silently swallowed by the surrounding `catch {}`, so the user got a truncated answer ending in `done:true` with no error surfaced. Restructured: `JSON.parse` now runs in its own try/catch (malformed chunks `continue`), and an `error`-type event throws OUTSIDE that catch → propagates to the `handleChatRequest` catch, which emits `{error}` and `res.end()`. Confirmed the exact Anthropic error-event shape (`{type:"error",error:{message}}`) against the claude-api reference. This resolves the Run 1 flag.
+- HIGH · server/handleChat.js · streamOpenAI · lines 156-166 — same gap on the OpenAI fallback path (minus the catch issue noted in Run 1). Applied the same pattern: parse in its own try/catch, throw on `event.error`.
+
+### Flagged
+- (none this run — the Run 1 SSE flag is now resolved)
+
+### Improvements noted
+- Carried over from Run 1, still open (not auto-fixed per run rules / low value): peerPrompt.js aggregate doc token cap (prompt content off-limits · moderate); markdown.jsx `useMemo` on block parse (simple); code-split LearningBrain + pdf.js via React.lazy — build still emits one 1.33MB JS chunk + 2.2MB pdf worker (moderate); FlashcardsPanel keydown effect missing dep array (simple, intentional).
+
+### Clean (skip deep read next run unless changed)
+- All files confirmed CLEAN in Run 1 remain unchanged (same mtime): storage.js, stateModel.js, LearningBrain.jsx, handleImage.js, dev.js, constants.js, PeerNavRail.jsx, peerTheme.js/peer-theme.css, main.jsx, materials.js, markdown.jsx, App.jsx, .env.example.
+- server/handleChat.js — now clean end-to-end after today's SSE error-handling fix (error paths call res.end(); request-size guarded; no key leakage; error events surfaced on both providers).
+
+### Notes
+- Verification: `npm run build` ✅ (vite 6.4.3, built in 6.4s), `npm test` ✅ 17/17, `node server/dev.js` ✅ (serves HTTP 200 at 127.0.0.1:5173). Had to `npm install` first — node_modules not present in fresh clone.
+- Client already handles the surfaced error: App.jsx streamRequest line 536 `if (event.error) throw new Error(event.error)` — the server fix and client are aligned.
+- Recurring pattern: the SSE streaming parser was the one real reliability gap across both runs; now closed on both providers. Nothing else outstanding.
+
+---
+
 ## 2026-06-26 · Run 1
 
 First run — full scan of the entire codebase (no prior memory).
