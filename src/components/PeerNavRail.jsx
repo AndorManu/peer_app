@@ -1,10 +1,10 @@
-// Peer — Visual Identity Rebuild · left vertical nav rail
-// Ported from Peer.dc.html (NAV RAIL block). Floating gradient logo, a gradient
-// pill that measures the active item and slides to it, avatar at the bottom.
-// Wired to the existing `view` / `setView` routing — design keys map to app keys.
+// Peer — Visual Identity Rebuild · primary navigation
+// Desktop/tablet: left vertical rail with a gradient pill that slides to the
+// active item. Mobile (≤760px, via .peer-rail CSS): a fixed bottom nav bar.
+// Real <nav>/<button> semantics: keyboard focusable, aria-current on the
+// active view. Wired to the existing `view` / `setView` routing.
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Settings } from "lucide-react";
-import { COLORS, GRADIENTS, EASE, SHADOW, SURFACE } from "../peerTheme.js";
 
 // design rail order; `key` is the app's `view` routing key
 const NAV_ITEMS = [
@@ -27,7 +27,8 @@ export default function PeerNavRail({ view, setView, account, onAvatar }) {
   const listRef = useRef(null);
   const [pill, setPill] = useState({ top: 0, height: 0 });
 
-  // measure the active item and slide the pill to it (matches the design's measure())
+  // measure the active item and slide the pill to it (desktop rail only —
+  // the pill is hidden by CSS in the mobile bottom-nav layout)
   useLayoutEffect(() => {
     const el = listRef.current?.querySelector(`[data-nav="${view}"]`);
     if (el) setPill({ top: el.offsetTop, height: el.offsetHeight });
@@ -43,107 +44,67 @@ export default function PeerNavRail({ view, setView, account, onAvatar }) {
   }, [view]);
 
   return (
-    <div
-      style={{
-        position: "relative",
-        zIndex: 40,
-        width: 78,
-        flex: "0 0 78px",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        padding: "20px 0 22px",
-        background: SURFACE.s025,
-        backdropFilter: "blur(34px)",
-        WebkitBackdropFilter: "blur(34px)",
-        borderRight: "1px solid rgba(255,255,255,0.06)",
-      }}
-    >
+    <nav className="peer-rail" aria-label="Primary">
       {/* floating logo */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 7, marginBottom: 26 }}>
-        <div
-          style={{
-            width: 38, height: 38, borderRadius: 13, background: GRADIENTS.accent140,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: SHADOW.glowViolet, animation: "pfloat 6s ease-in-out infinite",
-          }}
-        >
+      <div className="peer-rail-logo" aria-hidden="true">
+        <div className="peer-rail-logo-mark">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="#0b0b16">
             <path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z" />
           </svg>
         </div>
-        <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: ".5px", color: COLORS.text50 }}>
-          Peer
-        </div>
+        <div className="peer-rail-logo-word">Peer</div>
       </div>
 
       {/* nav list with gliding gradient pill */}
-      <div ref={listRef} style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, width: "100%" }}>
-        <div
-          style={{
-            position: "absolute", left: 15, top: pill.top, width: 48, height: pill.height || 48,
-            borderRadius: 14, background: GRADIENTS.accent155, boxShadow: SHADOW.navPill,
-            transition: `top .3s ${EASE}`, opacity: pill.height ? 1 : 0, pointerEvents: "none", zIndex: 1,
-          }}
+      <div ref={listRef} className="peer-rail-list">
+        <span
+          className="peer-rail-pill"
+          aria-hidden="true"
+          style={{ top: pill.top, height: pill.height || 48, opacity: pill.height ? 1 : 0 }}
         />
         {NAV_ITEMS.map((item) => {
           const active = view === item.key;
           return (
-            <div
+            <button
               key={item.key}
+              type="button"
+              className={`peer-rail-item${active ? " active" : ""}`}
+              aria-current={active ? "page" : undefined}
               onClick={() => setView(item.key)}
-              style={{
-                position: "relative", zIndex: 2, display: "flex", flexDirection: "column",
-                alignItems: "center", gap: 5, width: "100%", cursor: "pointer", userSelect: "none",
-              }}
             >
-              <div
-                data-nav={item.key}
-                style={{
-                  width: 48, height: 48, borderRadius: 14, display: "flex", alignItems: "center",
-                  justifyContent: "center", color: active ? "#fff" : COLORS.text42,
-                  transition: `color .25s ${EASE}`,
-                }}
-              >
-                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <span className="peer-rail-icon" data-nav={item.key}>
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d={item.d} />
                 </svg>
-              </div>
-              <div style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: ".3px", color: active ? COLORS.text : COLORS.text40, transition: "color .25s" }}>
-                {item.label}
-              </div>
-            </div>
+              </span>
+              <span className="peer-rail-label">{item.label}</span>
+            </button>
           );
         })}
       </div>
 
       {/* bottom cluster: settings gear + avatar (profile) */}
-      <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-        <div
+      <div className="peer-rail-bottom">
+        <button
+          type="button"
+          className={`peer-rail-item peer-rail-settings${view === "settings" ? " active" : ""}`}
+          aria-current={view === "settings" ? "page" : undefined}
           onClick={() => setView("settings")}
-          title="Settings"
-          style={{
-            width: 40, height: 40, borderRadius: 13, display: "flex", alignItems: "center", justifyContent: "center",
-            cursor: "pointer", color: view === "settings" ? "#fff" : COLORS.text42,
-            background: view === "settings" ? "rgba(255,255,255,0.06)" : "transparent",
-            transition: `color .25s ${EASE}, background .25s ease`,
-          }}
         >
-          <Settings size={20} strokeWidth={1.7} />
-        </div>
-        <div
+          <span className="peer-rail-icon"><Settings size={20} strokeWidth={1.7} aria-hidden="true" /></span>
+          <span className="peer-rail-label">Settings</span>
+        </button>
+        <button
+          type="button"
+          className={`peer-rail-item peer-rail-profile${view === "profile" ? " active" : ""}`}
+          aria-current={view === "profile" ? "page" : undefined}
+          aria-label={`Profile — ${account?.name || "learner"}`}
           onClick={onAvatar}
-          title="Profile"
-          style={{
-            width: 34, height: 34, borderRadius: 999, background: GRADIENTS.avatarWarm,
-            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 600,
-            color: "#0b0b16", boxShadow: "0 0 16px -3px rgba(251,113,133,.7)", cursor: "pointer",
-            outline: view === "profile" ? "2px solid rgba(255,255,255,0.4)" : "none", outlineOffset: 2,
-          }}
         >
-          {initialsOf(account)}
-        </div>
+          <span className="peer-rail-avatar">{initialsOf(account)}</span>
+          <span className="peer-rail-label">Profile</span>
+        </button>
       </div>
-    </div>
+    </nav>
   );
 }

@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import * as THREE from "three";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useFocusTrap, useMediaQuery } from "./a11y.js";
 import {
   BookOpen,
   Bot,
@@ -125,7 +125,8 @@ export default function App() {
   const [view, setView] = useState("chat");
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => typeof window === "undefined" || window.innerWidth >= 820);
+  const [confirmRequest, setConfirmRequest] = useState(null);
   const [expanded, setExpanded] = useState({});
   const [editingChatId, setEditingChatId] = useState(null);
   const [editingName, setEditingName] = useState("");
@@ -175,13 +176,11 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     setSaveErrorHandler((error) => {
-      setToast({
-        id: uid(),
-        message:
-          error?.name === "QuotaExceededError"
-            ? "Local storage is full. Remove some documents or notes to keep saving."
-            : "Could not save your latest changes locally.",
-      });
+      showToast(
+        error?.name === "QuotaExceededError"
+          ? "Local storage is full. Remove some documents or notes to keep saving."
+          : "Could not save your latest changes locally.",
+      );
     });
     loadState().then((stored) => {
       if (cancelled) return;
@@ -209,7 +208,18 @@ export default function App() {
   useEffect(() => {
     if (hydrated) saveState(state);
   }, [state, hydrated]);
-  useEffect(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), [activeChat?.messages, loading]);
+  // Scroll to the newest message only when one is added (or the thread
+  // switches) — not on every streamed chunk; StreamingMessage handles those.
+  // Scroll the .messages container directly: scrollIntoView also scrolls the
+  // overflow-hidden .main ancestor, which shifts the whole layout upward.
+  const messageCount = activeChat?.messages.length || 0;
+  const activeChatId = activeChat?.id;
+  useEffect(() => {
+    const container = bottomRef.current?.closest(".messages");
+    if (!container) return;
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    container.scrollTo({ top: container.scrollHeight, behavior: reduceMotion ? "auto" : "smooth" });
+  }, [activeChatId, messageCount, loading]);
   useEffect(() => { loadingRef.current = loading; }, [loading]);
   useEffect(() => {
     if (typeof window === "undefined" || !window.speechSynthesis) return undefined;
@@ -221,12 +231,15 @@ export default function App() {
       window.speechSynthesis.cancel();
     };
   }, []);
+  // Open/close the sidebar only when the layout actually crosses the mobile
+  // breakpoint — never on plain resizes, so a manual toggle isn't overridden.
+  const isMobile = useMediaQuery("(max-width: 820px)");
   useEffect(() => {
-    const onResize = () => setSidebarOpen(window.innerWidth >= 820);
-    onResize();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
+    setSidebarOpen(!isMobile);
+  }, [isMobile]);
+  const drawerRef = useFocusTrap(isMobile && sidebarOpen && view === "chat", {
+    onEscape: () => setSidebarOpen(false),
+  });
   useEffect(() => {
     const onKeyDown = (event) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
@@ -242,11 +255,15 @@ export default function App() {
   }, []);
 
   const updateState = (updater) => setState((current) => (typeof updater === "function" ? updater(current) : updater));
-  const showToast = (message) => {
+  const toastTimerRef = useRef(null);
+  const showToast = useCallback((message) => {
     setToast({ id: uid(), message });
-    window.clearTimeout(showToast.timer);
-    showToast.timer = window.setTimeout(() => setToast(null), 2800);
-  };
+    window.clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = window.setTimeout(() => setToast(null), 2800);
+  }, []);
+
+  // Ask before destructive actions. `action` runs only on explicit confirm.
+  const requestConfirm = useCallback((options) => setConfirmRequest(options), []);
 
   function createChat(projectId = null) {
     const chat = makeChat(projectId);
@@ -307,6 +324,62 @@ export default function App() {
     }));
     setManagedProjectId(null);
     showToast("Project deleted");
+  }
+
+  function confirmDeleteChat(id) {
+    const chat = state.chats.find((item) => item.id === id);
+    if (!chat || chat.messages.length === 0) {
+      deleteChat(id);
+      return;
+    }
+    requestConfirm({
+      title: "Delete this chat?",
+      body: `"${chat.name}" and its ${chat.messages.length} message${chat.messages.length === 1 ? "" : "s"} will be removed. This cannot be undone.`,
+      confirmLabel: "Delete chat",
+      action: () => deleteChat(id),
+    });
+  }
+
+  function confirmDeleteProject(id) {
+    const project = state.projects.find((item) => item.id === id);
+    if (!project) return;
+    const docCount = project.docs?.length || 0;
+    requestConfirm({
+      title: `Delete "${project.name}"?`,
+      body: `${docCount ? `Its ${docCount} document${docCount === 1 ? "" : "s"} and tracked concepts` : "Its tracked concepts"} will be removed; its chats move to Recents. This cannot be undone.`,
+      confirmLabel: "Delete project",
+      action: () => deleteProject(id),
+    });
+  }
+
+  function confirmDeleteNote(noteId) {
+    const note = state.notes.find((item) => item.id === noteId);
+    requestConfirm({
+      title: "Delete this note?",
+      body: `"${note?.title || "This note"}" will be removed. This cannot be undone.`,
+      confirmLabel: "Delete note",
+      action: () => deleteNote(noteId),
+    });
+  }
+
+  function confirmDeleteDeck(id) {
+    const deck = state.flashcards.find((item) => item.id === id);
+    const cardCount = deck?.cards?.length || 0;
+    requestConfirm({
+      title: "Delete this deck?",
+      body: `"${deck?.chatName || "This deck"}"${cardCount ? ` and its ${cardCount} card${cardCount === 1 ? "" : "s"}` : ""} will be removed, including review progress. This cannot be undone.`,
+      confirmLabel: "Delete deck",
+      action: () => deleteFlashcardDeck(id),
+    });
+  }
+
+  function confirmResetData() {
+    requestConfirm({
+      title: "Reset local data?",
+      body: "All chats, projects, documents, notes, and flashcards on this device will be erased. Your profile and appearance settings are kept. This cannot be undone.",
+      confirmLabel: "Erase everything",
+      action: resetData,
+    });
   }
 
   async function handleMaterialInput(event) {
@@ -1383,6 +1456,7 @@ export default function App() {
         "--text-size": `${state.textSize}px`,
       }}
     >
+      <a className="skip-link" href="#peer-main">Skip to content</a>
       <PeerNavRail
         view={view}
         setView={setView}
@@ -1403,8 +1477,14 @@ export default function App() {
         onChange={handleMaterialInput}
       />
 
+      {sidebarOpen && isMobile && view === "chat" && (
+        <div className="drawer-backdrop" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
+      )}
       {sidebarOpen && (
         <Sidebar
+          drawerRef={drawerRef}
+          isDrawer={isMobile}
+          closeSidebar={() => setSidebarOpen(false)}
           state={state}
           activeChat={activeChat}
           expanded={expanded}
@@ -1413,7 +1493,7 @@ export default function App() {
           chatSearch={chatSearch}
           setChatSearch={setChatSearch}
           createChat={createChat}
-          deleteChat={deleteChat}
+          deleteChat={confirmDeleteChat}
           editingChatId={editingChatId}
           editingName={editingName}
           setEditingName={setEditingName}
@@ -1422,6 +1502,7 @@ export default function App() {
             setEditingName(chat.name);
           }}
           renameChat={renameChat}
+          cancelRename={() => setEditingChatId(null)}
           newProjectName={newProjectName}
           setNewProjectName={setNewProjectName}
           addProject={addProject}
@@ -1434,6 +1515,7 @@ export default function App() {
           manageProject={(id) => {
             setManagedProjectId(id);
             setSelectedDocId(null);
+            if (isMobile) setSidebarOpen(false);
           }}
           setView={setView}
           view={view}
@@ -1441,6 +1523,7 @@ export default function App() {
       )}
 
       <main
+        id="peer-main"
         className={`main ${composerDragging && view === "chat" ? "chat-dragging" : ""}`}
         onDragOver={(event) => {
           if (view !== "chat" || !Array.from(event.dataTransfer.types || []).includes("Files")) return;
@@ -1475,12 +1558,12 @@ export default function App() {
           <div className="status-pill"><span /> Local app</div>
         </header>
 
-        {view === "settings" && <SettingsPanel state={state} updateState={updateState} resetData={resetData} loadSampleData={loadSampleData} />}
+        {view === "settings" && <SettingsPanel state={state} updateState={updateState} resetData={confirmResetData} loadSampleData={loadSampleData} />}
         {view === "profile" && <ProfilePanel profile={state.profile} activeProject={activeProject} activeChat={activeChat} insights={insights} activeMode={activeMode} updateState={updateState} recap={buildLearnerRecap(state)} />}
         {view === "brain" && <LearningBrainPanel state={state} activeProject={activeProject} setView={setView} updateState={updateState} setManagedProjectId={setManagedProjectId} setSelectedDocId={setSelectedDocId} onPractice={generatePractice} />}
         {view === "code" && <CodingPanel profile={state.profile} projects={state.projects} onSaveToBrain={saveCodeToBrain} />}
-        {view === "notes" && <NotesPanel notes={state.notes} projects={state.projects} deleteNote={deleteNote} toggleShareNote={toggleShareNote} onPractice={generatePractice} />}
-        {view === "flashcards" && <FlashcardsPanel flashcards={state.flashcards} projects={state.projects} setView={setView} deleteFlashcardDeck={deleteFlashcardDeck} gradeFlashcard={gradeFlashcard} />}
+        {view === "notes" && <NotesPanel notes={state.notes} projects={state.projects} deleteNote={confirmDeleteNote} toggleShareNote={toggleShareNote} onPractice={generatePractice} />}
+        {view === "flashcards" && <FlashcardsPanel flashcards={state.flashcards} projects={state.projects} setView={setView} deleteFlashcardDeck={confirmDeleteDeck} gradeFlashcard={gradeFlashcard} />}
         {view === "community" && (
           <SocialPanel
             state={state}
@@ -1553,7 +1636,7 @@ export default function App() {
           pickFile={() => fileRef.current?.click()}
           addMaterials={(files) => addMaterials(files, managedProject.id)}
           removeDoc={removeDoc}
-          deleteProject={deleteProject}
+          deleteProject={confirmDeleteProject}
           runDocAction={runDocAction}
         />
       )}
@@ -1576,7 +1659,20 @@ export default function App() {
         />
       )}
 
-      {toast && <div className="toast"><CheckCircle2 size={16} />{toast.message}</div>}
+      {confirmRequest && (
+        <ConfirmDialog
+          request={confirmRequest}
+          onCancel={() => setConfirmRequest(null)}
+          onConfirm={() => {
+            confirmRequest.action?.();
+            setConfirmRequest(null);
+          }}
+        />
+      )}
+
+      <div className="toast-region" role="status" aria-live="polite">
+        {toast && <div className="toast"><CheckCircle2 size={16} aria-hidden="true" />{toast.message}</div>}
+      </div>
     </div>
   );
 }
@@ -1745,6 +1841,9 @@ function ViewTitle({ view, activeChat, activeProject }) {
 
 function Sidebar(props) {
   const {
+    drawerRef,
+    isDrawer,
+    closeSidebar,
     state,
     activeChat,
     expanded,
@@ -1759,6 +1858,7 @@ function Sidebar(props) {
     setEditingName,
     startRename,
     renameChat,
+    cancelRename,
     newProjectName,
     setNewProjectName,
     addProject,
@@ -1777,7 +1877,19 @@ function Sidebar(props) {
   const onChatDragEnd = () => { setDraggingChatId(null); setDropProjectId(null); };
 
   return (
-    <aside className="sidebar">
+    <aside
+      className={`sidebar ${isDrawer ? "sidebar-drawer" : ""}`}
+      ref={drawerRef}
+      role={isDrawer ? "dialog" : undefined}
+      aria-modal={isDrawer ? "true" : undefined}
+      aria-label="Chats and projects"
+    >
+      {isDrawer && (
+        <div className="sidebar-drawer-head">
+          <span>Chats & projects</span>
+          <button className="icon-button" onClick={closeSidebar} aria-label="Close sidebar"><X size={18} /></button>
+        </div>
+      )}
       <div className="brand">
         <PeerLogo size={28} />
         <div>
@@ -1791,8 +1903,8 @@ function Sidebar(props) {
       </button>
 
       <div className="sidebar-search">
-        <Search size={14} />
-        <input value={chatSearch} onChange={(event) => setChatSearch(event.target.value)} placeholder="Search chats..." />
+        <Search size={14} aria-hidden="true" />
+        <input value={chatSearch} onChange={(event) => setChatSearch(event.target.value)} placeholder="Search chats..." aria-label="Search chats" />
       </div>
 
       <div className="sidebar-scroll">
@@ -1863,6 +1975,7 @@ function Sidebar(props) {
                         editingName={editingName}
                         setEditingName={setEditingName}
                         renameChat={renameChat}
+                        cancelRename={cancelRename}
                         selectChat={selectChat}
                         startRename={startRename}
                         deleteChat={deleteChat}
@@ -1892,6 +2005,7 @@ function Sidebar(props) {
                   editingName={editingName}
                   setEditingName={setEditingName}
                   renameChat={renameChat}
+                  cancelRename={cancelRename}
                   selectChat={selectChat}
                   startRename={startRename}
                   deleteChat={deleteChat}
@@ -1919,7 +2033,7 @@ function Sidebar(props) {
   );
 }
 
-function ChatRow({ chat, active, editing, editingName, setEditingName, renameChat, selectChat, startRename, deleteChat, draggable, dragging, onChatDragStart, onChatDragEnd }) {
+function ChatRow({ chat, active, editing, editingName, setEditingName, renameChat, cancelRename, selectChat, startRename, deleteChat, draggable, dragging, onChatDragStart, onChatDragEnd }) {
   return (
     <div
       className={`chat-row ${active ? "active" : ""} ${dragging ? "dragging" : ""}`}
@@ -1931,17 +2045,28 @@ function ChatRow({ chat, active, editing, editingName, setEditingName, renameCha
       }}
       onDragEnd={() => onChatDragEnd?.()}
       onClick={() => selectChat(chat.id)}
+      onKeyDown={(event) => {
+        if (!editing && (event.key === "Enter" || event.key === " ") && event.target === event.currentTarget) {
+          event.preventDefault();
+          selectChat(chat.id);
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-current={active ? "true" : undefined}
     >
-      <MessageSquare size={15} />
+      <MessageSquare size={15} aria-hidden="true" />
       {editing ? (
         <input
           autoFocus
           value={editingName}
+          aria-label="Chat name"
           onClick={(event) => event.stopPropagation()}
           onChange={(event) => setEditingName(event.target.value)}
           onBlur={renameChat}
           onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === "Escape") renameChat();
+            if (event.key === "Enter") renameChat();
+            if (event.key === "Escape") cancelRename();
           }}
         />
       ) : (
@@ -1981,13 +2106,18 @@ function ChatArea({ activeChat, activeProject, activeMode, loading, error, sendM
             );
           })}
         </div>
-        {error && <div className="inline-error">{error}</div>}
+        {error && <div className="inline-error" role="alert">{error}</div>}
       </section>
     );
   }
 
+  const streamingNow = loading || activeChat.messages.some((message) => message.streaming);
+
   return (
-    <section className="messages">
+    <section className="messages" aria-label="Conversation">
+      <div className="sr-only" role="status" aria-live="polite">
+        {streamingNow ? "Peer is responding" : ""}
+      </div>
       <div className="mode-banner">
         <activeMode.icon size={16} />
         <span>{activeMode.label} mode</span>
@@ -2032,11 +2162,11 @@ function ChatArea({ activeChat, activeProject, activeMode, loading, error, sendM
       ))}
       {loading && (
         <article className="message assistant">
-          <div className="avatar"><Brain size={17} /></div>
-          <div className="typing"><span /><span /><span /></div>
+          <div className="avatar" aria-hidden="true"><Brain size={17} /></div>
+          <div className="typing" role="status" aria-label="Peer is thinking"><span /><span /><span /></div>
         </article>
       )}
-      {error && <div className="inline-error">{error}</div>}
+      {error && <div className="inline-error" role="alert">{error}</div>}
       <div ref={bottomRef} />
     </section>
   );
@@ -2044,7 +2174,7 @@ function ChatArea({ activeChat, activeProject, activeMode, loading, error, sendM
 
 function MessageActions({ message, index, handleFeedback, saveNote, regenerateFrom, sendMessage, makeFlashcards, generateImage, requestVisualBlueprint }) {
   return (
-    <div className="message-actions">
+    <div className="message-actions" role="group" aria-label="Response feedback and actions">
       <button className={message.feedback === "understood" ? "active" : ""} onClick={() => handleFeedback(message, "understood")}><CheckCircle2 size={14} /> I get it</button>
       <button className={message.feedback === "confused" ? "active" : ""} onClick={() => handleFeedback(message, "confused")}><HelpCircle size={14} /> I'm confused</button>
       <button className={message.feedback === "alternate" ? "active" : ""} onClick={() => handleFeedback(message, "alternate")}><Wand2 size={14} /> Explain differently</button>
@@ -2182,6 +2312,7 @@ function Composer({
             }
           }}
           placeholder={listening ? "Listening… speak now" : activeProject ? `Ask about ${activeProject.name}...` : "Ask a question or explain what you are stuck on..."}
+          aria-label="Message Peer"
           rows={1}
         />
         {hasSpeech && (
@@ -2505,10 +2636,10 @@ function NotesPanel({ notes, projects, deleteNote, toggleShareNote, onPractice }
       </div>
       <div className="notebook-tools">
         <label>
-          <Search size={14} />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search notes, tags, concepts..." />
+          <Search size={14} aria-hidden="true" />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search notes, tags, concepts..." aria-label="Search notes" />
         </label>
-        <select value={projectFilter} onChange={(event) => setProjectFilter(event.target.value)}>
+        <select value={projectFilter} onChange={(event) => setProjectFilter(event.target.value)} aria-label="Filter notes by project">
           <option value="all">All projects</option>
           {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
         </select>
@@ -2534,9 +2665,9 @@ function NotesPanel({ notes, projects, deleteNote, toggleShareNote, onPractice }
                       <header>
                         <strong>{note.title}</strong>
                         <span>
-                          {onPractice && <button onClick={() => onPractice(note.title, { context: note.content })} title="Practice this note"><Target size={14} /></button>}
-                          <button onClick={() => toggleShareNote(note.id)} title={note.shared ? "Unshare note" : "Share note locally"}><Share2 size={14} /></button>
-                          <button onClick={() => deleteNote(note.id)}><Trash2 size={14} /></button>
+                          {onPractice && <button onClick={() => onPractice(note.title, { context: note.content })} title="Practice this note" aria-label={`Practice "${note.title}"`}><Target size={14} /></button>}
+                          <button onClick={() => toggleShareNote(note.id)} title={note.shared ? "Unshare note" : "Share note locally"} aria-label={note.shared ? `Unshare "${note.title}"` : `Share "${note.title}"`}><Share2 size={14} /></button>
+                          <button onClick={() => deleteNote(note.id)} aria-label={`Delete "${note.title}"`}><Trash2 size={14} /></button>
                         </span>
                       </header>
                       <small>{project?.name || "Unfiled"} - {new Date(note.createdAt).toLocaleDateString()} {note.shared ? "- shared" : ""}</small>
@@ -2810,6 +2941,7 @@ function SettingsPanel({ state, updateState, resetData, loadSampleData }) {
 function ProjectModal({ project, selectedDoc, selectedDocId, setSelectedDocId, extracting, error, close, pickFile, addMaterials, removeDoc, deleteProject, runDocAction }) {
   const [dragging, setDragging] = useState(false);
   const [selectedExcerpt, setSelectedExcerpt] = useState("");
+  const trapRef = useFocusTrap(true, { onEscape: close });
   const codeFile = selectedDoc && /\.(c|h|cpp|hpp|js|jsx|ts|tsx|py|java|rs|go|sh|html|css)$/i.test(selectedDoc.name);
 
   useEffect(() => {
@@ -2835,7 +2967,11 @@ function ProjectModal({ project, selectedDoc, selectedDocId, setSelectedDocId, e
   return (
     <div className="modal-backdrop" onClick={close}>
       <section
+        ref={trapRef}
         className={`modal document-modal ${dragging ? "dragging" : ""}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${project.name} — project library`}
         onClick={(event) => event.stopPropagation()}
         onDragOver={(event) => {
           event.preventDefault();
@@ -2938,11 +3074,18 @@ function ProjectModal({ project, selectedDoc, selectedDocId, setSelectedDocId, e
 }
 
 function OnboardingModal({ profileDraft, setProfileDraft, complete, skip }) {
+  const trapRef = useFocusTrap(true, { onEscape: skip });
   return (
     <div className="modal-backdrop onboarding-backdrop">
-      <section className="onboarding-modal">
-        <div className="welcome-mark"><Brain size={30} /></div>
-        <h1>Set up Peer</h1>
+      <section
+        ref={trapRef}
+        className="onboarding-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="onboarding-title"
+      >
+        <div className="welcome-mark"><Brain size={30} aria-hidden="true" /></div>
+        <h1 id="onboarding-title">Set up Peer</h1>
         <p>A tiny bit of context helps Peer start closer to how you actually learn.</p>
         <label>
           What are you studying?
@@ -2980,25 +3123,88 @@ function OnboardingModal({ profileDraft, setProfileDraft, complete, skip }) {
   );
 }
 
+function ConfirmDialog({ request, onConfirm, onCancel }) {
+  const trapRef = useFocusTrap(true, { onEscape: onCancel });
+  return (
+    <div className="modal-backdrop confirm-backdrop" onClick={onCancel}>
+      <section
+        ref={trapRef}
+        className="confirm-dialog"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="confirm-dialog-title"
+        aria-describedby="confirm-dialog-body"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h2 id="confirm-dialog-title">{request.title}</h2>
+        <p id="confirm-dialog-body">{request.body}</p>
+        <div className="confirm-actions">
+          <button type="button" onClick={onCancel} data-autofocus>Cancel</button>
+          <button type="button" className="danger-btn" onClick={onConfirm}>{request.confirmLabel || "Delete"}</button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function CommandPalette({ query, setQuery, close, commands }) {
   const filtered = commands.filter((command) => `${command.label} ${command.hint}`.toLowerCase().includes(query.toLowerCase()));
+  const [activeIndex, setActiveIndex] = useState(0);
+  const trapRef = useFocusTrap(true, { onEscape: close });
+  const listRef = useRef(null);
+  const clampedIndex = Math.min(activeIndex, Math.max(0, filtered.length - 1));
+
+  function moveActive(delta) {
+    if (!filtered.length) return;
+    const next = (clampedIndex + delta + filtered.length) % filtered.length;
+    setActiveIndex(next);
+    listRef.current?.children[next]?.scrollIntoView({ block: "nearest" });
+  }
+
+  function onInputKeyDown(event) {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      moveActive(1);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      moveActive(-1);
+    } else if (event.key === "Enter" && filtered[clampedIndex]) {
+      event.preventDefault();
+      filtered[clampedIndex].run();
+      close();
+    }
+  }
+
   return (
     <div className="command-backdrop" onClick={close}>
-      <section className="command-palette" role="dialog" aria-modal="true" aria-label="Command palette" onClick={(event) => event.stopPropagation()}>
+      <section ref={trapRef} className="command-palette" role="dialog" aria-modal="true" aria-label="Command palette" onClick={(event) => event.stopPropagation()}>
         <div className="command-header">
           <span>Command menu</span>
           <button type="button" onClick={close} aria-label="Close command menu"><X size={16} /></button>
         </div>
         <div className="command-input">
-          <Search size={17} />
-          <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Run a command..." />
+          <Search size={17} aria-hidden="true" />
+          <input
+            autoFocus
+            data-autofocus
+            value={query}
+            onChange={(event) => { setQuery(event.target.value); setActiveIndex(0); }}
+            onKeyDown={onInputKeyDown}
+            placeholder="Run a command..."
+            aria-label="Search commands"
+          />
         </div>
-        <div className="command-list">
-          {filtered.length ? filtered.map((command) => {
+        <div className="command-list" ref={listRef}>
+          {filtered.length ? filtered.map((command, index) => {
             const Icon = command.icon;
             return (
-              <button key={command.label} onClick={() => { command.run(); close(); }}>
-                <Icon size={17} />
+              <button
+                key={command.label}
+                className={index === clampedIndex ? "kbd-active" : ""}
+                onMouseEnter={() => setActiveIndex(index)}
+                onClick={() => { command.run(); close(); }}
+              >
+                <Icon size={17} aria-hidden="true" />
                 <span><strong>{command.label}</strong><small>{command.hint}</small></span>
               </button>
             );
@@ -3017,13 +3223,37 @@ function CommandPalette({ query, setQuery, close, commands }) {
 
 function LanguagePicker({ value, onChange }) {
   const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
   const selected = LANGUAGE_OPTIONS.find((language) => language.value === value) || LANGUAGE_OPTIONS[0];
 
+  // Close on outside click / Escape so the popover never sticks open.
+  useEffect(() => {
+    if (!open) return undefined;
+    function onPointerDown(event) {
+      if (!rootRef.current?.contains(event.target)) setOpen(false);
+    }
+    function onKeyDown(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
   return (
-    <div className={`language-picker ${open ? "open" : ""}`}>
-      <button type="button" className="language-trigger" onClick={() => setOpen((current) => !current)}>
+    <div className={`language-picker ${open ? "open" : ""}`} ref={rootRef}>
+      <button
+        type="button"
+        className="language-trigger"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
         <span>{selected.label}</span>
-        <ChevronRight size={15} />
+        <ChevronRight size={15} aria-hidden="true" />
       </button>
       {open && (
         <div className="language-popover">
@@ -3051,15 +3281,21 @@ function StreamingMessage({ content, streaming }) {
   const [displayed, setDisplayed] = useState(wasStreaming.current ? "" : content);
   const contentRef = useRef(content);
   contentRef.current = content;
+  const streamingRef = useRef(streaming);
+  streamingRef.current = streaming;
   const anchorRef = useRef(null);
 
   useEffect(() => {
-    if (!wasStreaming.current) return;
+    if (!wasStreaming.current) return undefined;
     const interval = setInterval(() => {
       setDisplayed((prev) => {
         const target = contentRef.current;
         const remaining = target.length - prev.length;
-        if (remaining <= 0) return prev;
+        if (remaining <= 0) {
+          // Fully caught up and the stream is over: this reveal loop is done.
+          if (!streamingRef.current) clearInterval(interval);
+          return prev;
+        }
         // catch-up reveal: fast for long bursts, still smooth for short ones
         const step = Math.max(4, Math.ceil(remaining / 5));
         return target.slice(0, prev.length + step);
@@ -3147,6 +3383,8 @@ function FlashcardsPanel({ flashcards, projects, setView, deleteFlashcardDeck, g
 
   useEffect(() => {
     function onKey(e) {
+      // Never hijack keys while the user is typing or a dialog is open.
+      if (e.target.closest?.('input, textarea, select, [contenteditable="true"], [role="dialog"], [role="alertdialog"]')) return;
       if (e.key === "ArrowRight") next();
       else if (e.key === "ArrowLeft") prev();
       else if (e.key === " ") { e.preventDefault(); setFlipped((f) => !f); }
@@ -3230,6 +3468,7 @@ function FlashcardsPanel({ flashcards, projects, setView, deleteFlashcardDeck, g
               onClick={() => setFlipped((f) => !f)}
               role="button"
               tabIndex={0}
+              aria-label={flipped ? `Answer: ${card.answer}. Press Enter to show the question.` : `Question: ${card.question}. Press Enter to reveal the answer.`}
               onKeyDown={(e) => e.key === "Enter" && setFlipped((f) => !f)}
             >
               <div className={`flashcard-inner ${flipped ? "flipped" : ""}`}>

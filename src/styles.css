@@ -432,19 +432,18 @@ textarea:focus {
   padding: 32px 36px 48px !important;
   overflow-y: auto !important;
 }
+/* Grid, not flex: the "premium polish" block and the mobile media query both
+   set grid-template-columns, which silently did nothing under flex and let
+   .settings-body collapse to zero width on phones. */
 .settings-layout {
-  display: flex;
-  gap: 0;
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 36px;
   max-width: 860px;
   min-height: 480px;
 }
 .settings-sidenav {
-  width: 180px;
-  flex-shrink: 0;
   padding-top: 4px;
-  padding-right: 24px;
-  border-right: 1px solid rgba(109, 94, 240, 0.08);
-  margin-right: 36px;
 }
 .settings-sidenav-label {
   font-size: 9px;
@@ -2037,10 +2036,25 @@ textarea:focus {
 @media (max-width: 860px) {
   .settings-layout {
     grid-template-columns: 1fr !important;
+    gap: 18px !important;
   }
 
   .settings-sidenav {
     position: static !important;
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+  }
+
+  .settings-sidenav-label {
+    display: none !important;
+  }
+
+  .settings-sidenav-btn {
+    flex: 1 0 auto !important;
+    width: auto !important;
+    justify-content: center !important;
   }
 
   .message.user .bubble {
@@ -2049,13 +2063,20 @@ textarea:focus {
 }
 
 @media (max-width: 620px) {
+  /* Keep voice controls on phones — voice matters most there. Buttons slim
+     down instead of disappearing. */
   .composer {
-    grid-template-columns: 44px minmax(0, 1fr) 44px !important;
+    grid-template-columns: 40px minmax(0, 1fr) 40px 40px 44px !important;
+    gap: 6px !important;
+    padding: 6px !important;
   }
 
+  .composer .attach-button,
   .composer .mic-button,
-  .composer .voice-toggle {
-    display: none !important;
+  .composer .voice-toggle,
+  .composer .send-button {
+    width: 100% !important;
+    min-width: 0 !important;
   }
 
   .segmented {
@@ -3958,3 +3979,160 @@ code, pre, kbd, samp, .hljs, .code-block, .code-block code, .markdown code, .mar
 .side-heading, .brain-kicker, .landing-kicker { letter-spacing: 0.01em !important; font-weight: 600 !important; }
 /* Soften any leftover heavy glows on focus/hover into clean rings. */
 .starter-card, .profile-card, .note-card, .concept-row { box-shadow: var(--shadow-soft) !important; }
+
+/* ============================================================
+   M0 STABILIZATION — accessibility + responsive baseline
+   ============================================================ */
+
+/* Screen-reader-only utility (live regions, hidden labels). */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+}
+
+/* Skip link — hidden until keyboard-focused, then a clear pill top-left. */
+.skip-link {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 200;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: var(--accent, #6d5ef0);
+  color: #0b0b16;
+  font-weight: 600;
+  font-size: 13px;
+  text-decoration: none;
+  transform: translateY(-64px);
+  opacity: 0;
+  pointer-events: none;
+}
+.skip-link:focus-visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* The toast lives inside a persistent polite live region. */
+.toast-region {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 120;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.toast-region .toast { pointer-events: auto; }
+
+/* Chat row actions must be reachable without hover: show them on keyboard
+   focus and always on touch devices. */
+.chat-row:focus-visible .row-actions,
+.chat-row:focus-within .row-actions {
+  display: flex !important;
+}
+@media (pointer: coarse) {
+  .row-actions { display: flex !important; }
+  .row-actions button { padding: 8px !important; min-width: 36px; min-height: 36px; }
+}
+
+/* Confirm dialog for destructive actions. */
+.confirm-backdrop { z-index: 130 !important; }
+.confirm-dialog {
+  width: min(440px, calc(100vw - 32px));
+  padding: 26px 26px 22px;
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(109, 94, 240, 0.06), rgba(109, 94, 240, 0.015)),
+    var(--panel, #0c0c11);
+  border: 1px solid rgba(109, 94, 240, 0.22);
+  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.55);
+}
+.confirm-dialog h2 {
+  margin: 0 0 10px;
+  font-size: 18px;
+  color: var(--text, #f4f4f7);
+}
+.confirm-dialog p {
+  margin: 0 0 22px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted, #8b8b9b);
+}
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.confirm-actions button {
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 11px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--panel-3, #1a1a22);
+  color: var(--text, #f4f4f7);
+  border: 1px solid var(--border, #1c1c25);
+}
+.confirm-actions .danger-btn {
+  background: rgba(242, 104, 95, 0.14);
+  border: 1px solid rgba(242, 104, 95, 0.45);
+  color: #ff9d96;
+}
+.confirm-actions .danger-btn:hover {
+  background: rgba(242, 104, 95, 0.24);
+}
+
+/* Keyboard-highlighted command palette row. */
+.command-list button.kbd-active {
+  background: color-mix(in srgb, var(--accent, #6d5ef0) 16%, transparent) !important;
+}
+
+/* Comfortable touch targets on coarse pointers. */
+@media (pointer: coarse) {
+  .message-actions button,
+  .mode-strip button,
+  .depth-strip button,
+  .brain-filter-row button {
+    min-height: 40px !important;
+  }
+  .icon-button,
+  .ghost-icon {
+    min-width: 40px !important;
+    min-height: 40px !important;
+  }
+}
+
+/* Mode/depth strips scroll sideways on narrow screens instead of clipping. */
+@media (max-width: 720px) {
+  .mode-strip {
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+    justify-content: flex-start !important;
+  }
+  .mode-strip::-webkit-scrollbar { display: none !important; }
+  .mode-strip button { flex: 0 0 auto !important; white-space: nowrap !important; }
+  .depth-strip { max-width: 100% !important; }
+  .depth-strip button { flex: 0 0 auto !important; white-space: nowrap !important; }
+  .welcome { padding-bottom: 40px !important; }
+  .starter-grid { grid-template-columns: 1fr !important; }
+}
+
+/* Landing: stack calmly on small screens, no giant dead space. */
+@media (max-width: 900px) {
+  .landing-shell { align-content: start !important; }
+  .landing-hero {
+    justify-content: flex-start !important;
+    padding-top: 8px !important;
+  }
+}

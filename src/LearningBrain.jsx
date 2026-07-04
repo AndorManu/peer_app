@@ -597,12 +597,19 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
       setLabels(next);
     }
 
+    const reduceMotion = typeof window !== "undefined"
+      && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
     function tick() {
       animationId = requestAnimationFrame(tick);
       frame += 1;
       const dt = 0.85;
-      hazeMaterial.opacity = 0.26 + Math.sin(frame * 0.018) * 0.06;
-      stars.rotation.y = frame * 0.0004;
+      // Decorative motion (star drift, breathing haze) pauses under
+      // prefers-reduced-motion; the graph itself stays interactive.
+      if (!reduceMotion) {
+        hazeMaterial.opacity = 0.26 + Math.sin(frame * 0.018) * 0.06;
+        stars.rotation.y = frame * 0.0004;
+      }
 
       const ready = state.nodes.length > 0
         && state.pos.length === state.nodes.length
@@ -834,7 +841,12 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
 
   return (
     <div className="brain-3d-shell">
-      <div ref={mountRef} className="brain-3d-canvas" />
+      <div
+        ref={mountRef}
+        className="brain-3d-canvas"
+        role="img"
+        aria-label={`3D concept map with ${graph.nodes.length} node${graph.nodes.length === 1 ? "" : "s"}. Node details and actions are available in the detail panel beside the map.`}
+      />
       <div className="brain-3d-labels" aria-hidden="true">
         {labels.map((label) => (
           <span

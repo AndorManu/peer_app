@@ -10,15 +10,9 @@ loadDotEnv();
 
 const port = Number(process.env.PORT || 5173);
 
-const vite = await createViteServer({
-  appType: "spa",
-  resolve: {
-    preserveSymlinks: true,
-  },
-  server: {
-    middlewareMode: true,
-  },
-});
+// `vite` is assigned right after the server is constructed; requests only
+// arrive once listen() runs, so the closure below never sees it undefined.
+let vite;
 
 const server = createHttpServer(async (req, res) => {
   try {
@@ -52,6 +46,19 @@ const server = createHttpServer(async (req, res) => {
     res.setHeader("Content-Type", "application/json");
     res.end(JSON.stringify({ error: err.message || "Unexpected server error" }));
   }
+});
+
+vite = await createViteServer({
+  appType: "spa",
+  resolve: {
+    preserveSymlinks: true,
+  },
+  server: {
+    middlewareMode: true,
+    // Bind HMR's websocket to this same http server so hot reload works on
+    // whatever port we were given (instead of trying Vite's default port).
+    hmr: { server },
+  },
 });
 
 server.listen(port, "127.0.0.1", () => {
