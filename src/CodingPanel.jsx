@@ -205,6 +205,7 @@ function CodeEditor({ value, onChange, language, plugins }) {
           onKeyDown={onKeyDown}
           spellCheck={false}
           autoComplete="off" autoCorrect="off" autoCapitalize="off"
+          aria-label={`Code editor, ${language}`}
         />
       </div>
     </div>
@@ -336,24 +337,24 @@ ${code || "(empty)"}
 
   return (
     <section className="peer-skin" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", background: "#07070e", color: COLORS.text }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "20px 30px 12px", flexWrap: "wrap" }}>
+      <div className="code-lab-head" style={{ display: "flex", alignItems: "center", gap: 12, padding: "20px 30px 12px", flexWrap: "wrap" }}>
         <div style={{ flex: 1, minWidth: 200 }}>
           <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 23, fontWeight: 600, letterSpacing: "-.4px" }}>Code lab</div>
           <div style={{ fontSize: 13, color: COLORS.text45, marginTop: 2 }}>Write, run any language, and learn with a tutor that sees your code and your brain.</div>
         </div>
         {projects.length > 0 && (
-          <select value={projectId} onChange={(e) => setProjectId(e.target.value)} style={selStyle} title="Which subject this connects to in your brain">
+          <select value={projectId} onChange={(e) => setProjectId(e.target.value)} style={selStyle} title="Which subject this connects to in your brain" aria-label="Subject to connect in your brain">
             {projects.map((p) => <option key={p.id} value={p.id} style={{ background: "#14141b" }}>{p.name}</option>)}
           </select>
         )}
-        <select value={language} onChange={(e) => changeLanguage(e.target.value)} style={selStyle}>
+        <select value={language} onChange={(e) => changeLanguage(e.target.value)} style={selStyle} aria-label="Programming language">
           {LANGUAGES.map((l) => <option key={l.id} value={l.id} style={{ background: "#14141b" }}>{l.label}</option>)}
         </select>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1.3fr) minmax(320px,0.85fr)", gap: 16, padding: "0 30px 24px" }}>
+      <div className="code-lab-layout" style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1.3fr) minmax(320px,0.85fr)", gap: 16, padding: "0 30px 24px" }}>
         {/* editor + terminal */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 14, minHeight: 0 }}>
+        <div className="code-lab-editor-col" style={{ display: "flex", flexDirection: "column", gap: 14, minHeight: 0 }}>
           <div style={{ ...panel, flex: 1, minHeight: 240, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <div className="vscode-tabbar">
               <div className="vscode-tab">
@@ -412,7 +413,7 @@ ${code || "(empty)"}
         </div>
 
         {/* AI tutor */}
-        <div style={{ ...panel, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+        <div className="code-lab-tutor" style={{ ...panel, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
           <div style={{ padding: "14px 16px 10px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 11 }}>
               <span style={{ width: 22, height: 22, borderRadius: 7, background: GRADIENTS.accent, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -448,7 +449,7 @@ ${code || "(empty)"}
             </button>
           )}
           <form onSubmit={submitQuestion} style={{ display: "flex", gap: 8, padding: "10px 12px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-            <input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ask Peer to change your code…" style={{ flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, color: "#fff", padding: "9px 12px", fontSize: 13, outline: "none", fontFamily: "Geist, sans-serif" }} />
+            <input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ask Peer to change your code…" aria-label="Ask Peer about your code" style={{ flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, color: "#fff", padding: "9px 12px", fontSize: 13, outline: "none", fontFamily: "Geist, sans-serif" }} />
             <button type="submit" disabled={aiBusy || !question.trim()} style={{ ...btn(true), padding: "0 12px" }}><Send size={15} /></button>
           </form>
         </div>
