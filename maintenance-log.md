@@ -1,5 +1,29 @@
 # Maintenance log
 
+## 2026-07-05 — M6: Voice-to-voice (perfected)
+
+**What changed**
+- **Low latency**: Peer now speaks sentence-by-sentence WHILE the answer streams
+  (it used to wait for the entire response). Sentence extraction is code-fence and
+  display-math aware (never starts reading inside an unclosed ``` or $$ block);
+  code blocks read as "(code block)", equations as "(equation)".
+- **Utterance queue**: the hands-free listen loop resumes only after the LAST
+  queued sentence finishes (a counter, not per-utterance events).
+- **Barge-in**: sending a new message (typed or spoken) cancels the current
+  speech queue instantly; the mic button already interrupted speech.
+- **Voice HUD**: a live status chip above the composer — Listening (green pulse) /
+  Thinking (cyan) / Speaking with an "interrupt" hint (violet) — `role="status"`
+  so screen readers hear state changes. The chat thread remains the full
+  transcript (captions requirement).
+
+**What I tested**
+- Live in the browser with an instrumented speechSynthesis: signed in, voice
+  mode on, asked for a 3-sentence answer → exactly 3 utterances queued as the
+  stream arrived, first sentence spoken before the answer finished, markdown
+  stripped, HUD cycled through states and settled. 59/59 tests; build clean.
+- Real audio + mic can't run headlessly — flagged for a physical-device pass
+  (M12 matrix) alongside pinch-zoom.
+
 ## 2026-07-05 — M5: Paywall + daily free tokens
 
 **What changed**

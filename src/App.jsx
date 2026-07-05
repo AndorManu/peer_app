@@ -174,6 +174,8 @@ export default function App() {
   const [speaking, setSpeaking] = useState(false);
   const [listening, setListening] = useState(false);
   const voiceModeRef = useRef(false);
+  const spokenOffsetRef = useRef(0);
+  const speechQueueRef = useRef(0);
   const listeningRef = useRef(false);
   const recognitionRef = useRef(null);
   const voicesRef = useRef([]);
@@ -907,6 +909,9 @@ export default function App() {
     setPendingFiles([]);
     setError("");
     setLoading(true);
+    // fresh voice turn: cut off any answer still being spoken (barge-in)
+    stopSpeaking();
+    spokenOffsetRef.current = 0;
     updateState((current) => ({
       ...current,
       activeMode: modeId,
@@ -950,6 +955,7 @@ export default function App() {
               ),
             }));
           }
+          speakStreamingChunk(partial);
         },
         learnedProfile,
         learnedProject,
@@ -964,7 +970,7 @@ export default function App() {
               : chat
           ),
         }));
-        speak(finalContent);
+        finishStreamingSpeech(finalContent);
       }
     } catch (err) {
       const message = friendlyError(err);
@@ -1120,34 +1126,40 @@ export default function App() {
     showToast(`Depth set to ${DEPTH_OPTIONS.find((item) => item.id === depth)?.label || "Normal"}`);
   }
 
-  function speak(text) {
-    if (!voiceModeRef.current || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const clean = text
+  function cleanForSpeech(text) {
+    return String(text || "")
       .replace(/```[\s\S]*?```/g, " (code block) ")
+      .replace(/\$\$[\s\S]*?\$\$/g, " (equation) ")
       .replace(/`([^`]+)`/g, "$1")
       .replace(/\*\*([^*]+)\*\*/g, "$1")
-      .replace(/\*([^*]+)\*/g, "$1")
+      .replace(/\*([^*\n]+)\*/g, "$1")
       .replace(/#{1,3} /g, "")
       .replace(/^[-*] /gm, "")
       .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
       .trim();
-    if (!clean) {
-      maybeListenAfterSpeak();
-      return;
-    }
+  }
+
+  // Low-latency voice: Peer speaks sentence-by-sentence WHILE the answer
+  // streams, instead of waiting for the full response. A queue counter tracks
+  // pending utterances so the hands-free listen loop resumes only after the
+  // last one finishes.
+  function queueUtterance(text) {
+    const clean = cleanForSpeech(text);
+    if (!clean || !window.speechSynthesis) return;
     const utterance = new SpeechSynthesisUtterance(clean);
     utterance.rate = 1.04;
     utterance.pitch = 1;
+    speechQueueRef.current += 1;
+    const settle = () => {
+      speechQueueRef.current = Math.max(0, speechQueueRef.current - 1);
+      if (speechQueueRef.current === 0) {
+        setSpeaking(false);
+        maybeListenAfterSpeak();
+      }
+    };
     utterance.onstart = () => setSpeaking(true);
-    utterance.onend = () => {
-      setSpeaking(false);
-      maybeListenAfterSpeak();
-    };
-    utterance.onerror = () => {
-      setSpeaking(false);
-      maybeListenAfterSpeak();
-    };
+    utterance.onend = settle;
+    utterance.onerror = settle;
     const langCode = SPEECH_LANG_MAP[state.profile.language] || "";
     if (langCode) {
       const voices = voicesRef.current.length ? voicesRef.current : window.speechSynthesis.getVoices();
@@ -1158,7 +1170,32 @@ export default function App() {
     window.speechSynthesis.speak(utterance);
   }
 
+  // Extract the next complete sentence(s) from a streaming answer — never
+  // starts speaking from inside an unclosed code fence or display equation.
+  function speakStreamingChunk(content) {
+    if (!voiceModeRef.current || !window.speechSynthesis) return;
+    const fenceCount = (content.match(/```/g) || []).length;
+    const mathCount = (content.match(/\$\$/g) || []).length;
+    let safeEnd = content.length;
+    if (fenceCount % 2 === 1) safeEnd = Math.min(safeEnd, content.lastIndexOf("```"));
+    if (mathCount % 2 === 1) safeEnd = Math.min(safeEnd, content.lastIndexOf("$$"));
+    const region = content.slice(spokenOffsetRef.current, safeEnd);
+    const match = region.match(/^[\s\S]*[.!?\n](?=\s|$)/);
+    if (!match || cleanForSpeech(match[0]).length < 2) return;
+    spokenOffsetRef.current += match[0].length;
+    queueUtterance(match[0]);
+  }
+
+  function finishStreamingSpeech(finalContent) {
+    if (!voiceModeRef.current || !window.speechSynthesis) return;
+    const rest = finalContent.slice(spokenOffsetRef.current);
+    spokenOffsetRef.current = finalContent.length;
+    if (cleanForSpeech(rest)) queueUtterance(rest);
+    else if (speechQueueRef.current === 0) maybeListenAfterSpeak();
+  }
+
   function stopSpeaking() {
+    speechQueueRef.current = 0;
     window.speechSynthesis?.cancel();
     setSpeaking(false);
   }
@@ -2398,6 +2435,18 @@ function Composer({
           </button>
         ))}
       </div>
+      {voiceMode && (
+        <div className="voice-hud" role="status">
+          <span className={`voice-hud-dot ${listening ? "hud-listening" : loading ? "hud-thinking" : speaking ? "hud-speaking" : ""}`} aria-hidden="true" />
+          {listening
+            ? "Listening — just talk, Peer is writing it down"
+            : loading
+              ? "Thinking…"
+              : speaking
+                ? "Speaking — tap the mic to interrupt"
+                : "Voice conversation on — tap the mic to talk"}
+        </div>
+      )}
       {pendingFiles.length > 0 && (
         <div className="attachment-tray">
           {pendingFiles.map((file) => (
