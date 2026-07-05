@@ -36,6 +36,21 @@ function lightenInt(hex, amount) {
   return (up(r) << 16) | (up(g) << 8) | up(b);
 }
 
+// Hub nodes wear the ACTIVE theme's accent — WebGL materials can't consume
+// CSS var(), so LearningBrain calls this when it builds a scene. Node TYPE
+// colors (concept/weak/file/note/chat/quiz/code) are semantic data-viz
+// coding and deliberately stay fixed across themes.
+export function refreshBrainThemeAccent() {
+  let glow = 0xe0a039;
+  try {
+    const v = getComputedStyle(document.documentElement).getPropertyValue("--sh-accent").trim();
+    if (/^#[0-9a-f]{6}$/i.test(v)) glow = parseInt(v.slice(1), 16);
+  } catch { /* non-DOM (tests) keep the default */ }
+  BRAIN_PALETTE.brain = { core: lightenInt(glow, 0.55), glow };
+  BRAIN_PALETTE.domain = { core: lightenInt(glow, 0.55), glow };
+  BRAIN_PALETTE.project = { core: lightenInt(glow, 0.4), glow };
+}
+
 // Accepts a node (preferred) or a bare type string. Domain nodes tint to
 // their taxonomy accent so each cluster reads as its subject.
 export function brainPalette(nodeOrType) {

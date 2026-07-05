@@ -204,6 +204,12 @@ export default function App() {
   const bottomRef = useRef(null);
   const fileRef = useRef(null);
 
+  // Color theme: data-theme on <html> drives the CSS variable contract
+  // (studyhall / indigo / mono) — applies instantly, no reload.
+  useEffect(() => {
+    document.documentElement.dataset.theme = state.colorTheme || "studyhall";
+  }, [state.colorTheme]);
+
   const studyPulse = useMemo(
     () => computeStudyPulse(state),
     [state.chats, state.flashcards, state.notes, state.projects, state.profile],
@@ -3356,6 +3362,27 @@ function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSyn
                         {font.tag && <small>{font.tag}</small>}
                       </span>
                       <span>The quick brown fox jumps over the lazy dog.</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="settings-group">
+                <h2>Palette</h2>
+                <p className="settings-danger-desc">Three complete looks — switching is instant and applies everywhere.</p>
+                <div className="segmented palette-picker">
+                  {[
+                    { id: "studyhall", label: "Study Hall", hint: "warm amber" },
+                    { id: "indigo", label: "Indigo Night", hint: "violet & cyan" },
+                    { id: "mono", label: "Monochrome", hint: "black & white" },
+                  ].map((option) => (
+                    <button
+                      key={option.id}
+                      className={(state.colorTheme || "studyhall") === option.id ? "active" : ""}
+                      onClick={() => updateState((c) => ({ ...c, colorTheme: option.id }))}
+                    >
+                      <span className={`palette-dot palette-${option.id}`} aria-hidden="true" />
+                      {option.label}
                     </button>
                   ))}
                 </div>

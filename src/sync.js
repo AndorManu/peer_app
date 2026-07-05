@@ -173,6 +173,7 @@ export function stateToRows(state, userId) {
     data: state.profile || {},
     settings: {
       theme: state.theme,
+      colorTheme: state.colorTheme,
       fontId: state.fontId,
       textSize: state.textSize,
       activeMode: state.activeMode,
@@ -460,6 +461,7 @@ export function applyPull(state, pulledByTable, dirtyKeys = new Set()) {
         }
         const settings = row.settings || {};
         if (settings.theme === "light" || settings.theme === "dark") target.theme = settings.theme;
+        if (["studyhall", "indigo", "mono"].includes(settings.colorTheme)) target.colorTheme = settings.colorTheme;
         if (settings.fontId) target.fontId = settings.fontId;
         if (Number.isFinite(Number(settings.textSize))) target.textSize = Number(settings.textSize);
         if (settings.activeMode) target.activeMode = settings.activeMode;

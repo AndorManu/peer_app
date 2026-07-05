@@ -21,6 +21,7 @@ export const defaultState = () => {
 
   return {
     theme: "dark",
+    colorTheme: "studyhall", // studyhall | indigo | mono
     fontId: "inter",
     textSize: 15,
     activeMode: "auto",
@@ -105,6 +106,7 @@ export function normalizeState(stored) {
 
   return {
     theme: stored.theme === "light" ? "light" : "dark",
+    colorTheme: ["studyhall", "indigo", "mono"].includes(stored.colorTheme) ? stored.colorTheme : "studyhall",
     fontId: FONT_OPTIONS.some((font) => font.id === stored.fontId) ? stored.fontId : "inter",
     textSize: Number.isFinite(Number(stored.textSize)) ? Number(stored.textSize) : 15,
     activeMode,
