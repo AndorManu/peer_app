@@ -738,3 +738,134 @@
     flex: 1 1 100%;
   }
 }
+
+/* ============================================================================
+   M9 — LIVE PEER ROOMS: create/join, presence, chat, co-op quiz.
+   ============================================================================ */
+.room-join-form { display: flex; gap: 10px; flex-wrap: wrap; }
+.room-join-form input {
+  flex: 1 1 220px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 11px;
+  font-size: 14px;
+  color: var(--text, #f4f4f7);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.room-join-form .primary-button { margin: 0; min-height: 44px; }
+.room-code {
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  color: #22d3ee;
+  letter-spacing: 0.5px;
+}
+.room-copy {
+  margin-left: 6px;
+  padding: 4px 7px;
+  border-radius: 7px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.7);
+  vertical-align: -2px;
+}
+.live-room-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.live-room-main { display: flex; flex-direction: column; min-height: 480px; }
+.live-room-side { display: flex; flex-direction: column; gap: 16px; }
+.room-feed {
+  flex: 1;
+  min-height: 300px;
+  max-height: 46vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 2px;
+}
+.room-feed-empty { color: var(--muted, #8b8b9b); font-size: 13px; line-height: 1.6; }
+.room-msg {
+  max-width: 85%;
+  padding: 9px 13px;
+  border-radius: 4px 13px 13px 13px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.room-msg.mine {
+  align-self: flex-end;
+  border-radius: 13px 4px 13px 13px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.16), rgba(34, 211, 238, 0.1));
+  border-color: rgba(139, 92, 246, 0.3);
+}
+.room-msg strong {
+  display: block;
+  font-size: 11px;
+  margin-bottom: 2px;
+  color: rgba(139, 92, 246, 0.95);
+}
+.room-msg.mine strong { color: #22d3ee; }
+.room-composer { display: flex; gap: 8px; margin-top: 12px; }
+.room-composer input {
+  flex: 1;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 11px;
+  font-size: 14px;
+  color: var(--text, #f4f4f7);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.room-composer .primary-button { margin: 0; min-width: 48px; }
+.room-presence { display: flex; flex-wrap: wrap; gap: 8px; }
+.room-presence-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  background: rgba(52, 211, 153, 0.09);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  color: #34d399;
+}
+.room-presence-chip i {
+  width: 8px; height: 8px; border-radius: 999px;
+  background: #34d399;
+  animation: plive 1.8s ease-out infinite;
+}
+.room-quiz { display: flex; flex-direction: column; gap: 10px; }
+.room-quiz label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--muted); }
+.room-quiz select {
+  min-height: 40px;
+  border-radius: 10px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text, #f4f4f7);
+}
+.room-quiz-q { font-family: 'Space Grotesk', sans-serif; font-size: 16px; font-weight: 600; margin: 4px 0; }
+.room-quiz-a {
+  padding: 10px 13px;
+  border-radius: 11px;
+  background: rgba(52, 211, 153, 0.09);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  color: #6ee7b7;
+  font-size: 14px;
+}
+.room-quiz-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.room-quiz-actions .primary-button { margin: 0; }
+.theme-light .room-join-form input,
+.theme-light .room-composer input,
+.theme-light .room-quiz select { background: #fff; border-color: rgba(29, 34, 51, 0.14); color: #1d2233; }
+.theme-light .room-msg { background: #fff; border-color: rgba(29, 34, 51, 0.1); color: #262b40; }
+@media (max-width: 900px) {
+  .live-room-grid { grid-template-columns: 1fr; }
+  .room-feed { max-height: 38vh; }
+}
