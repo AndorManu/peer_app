@@ -12,7 +12,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import StyledSelect from "./components/StyledSelect.jsx";
-import { Brain, GitBranch, List, Minus, Orbit, RotateCcw, Search, TrendingDown, TrendingUp } from "lucide-react";
+import { Brain, GitBranch, List, Maximize2, Minimize2, Minus, Orbit, RotateCcw, Search, TrendingDown, TrendingUp } from "lucide-react";
 import {
   brainLinkRest,
   brainNodeRadius,
@@ -56,11 +56,45 @@ export function LearningBrainPanel({ state, activeProject, setView, updateState,
     catch { return "map"; }
   });
   const effectiveMode = webglFailed ? "list" : viewMode;
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   function chooseViewMode(mode) {
     setViewMode(mode);
     try { localStorage.setItem("peer-brain-view", mode); } catch { /* private mode */ }
   }
+
+  // Fullscreen = immersive mode: the app chrome (nav rail / bottom nav)
+  // collapses so the canvas genuinely fills the viewport, PLUS true browser
+  // fullscreen wherever the environment allows it (some webviews deny the
+  // Fullscreen API — the chrome collapse must not depend on it).
+  const browserFsRef = useRef(false);
+  async function toggleFullscreen() {
+    if (isFullscreen) {
+      setIsFullscreen(false);
+      if (document.fullscreenElement) { try { await document.exitFullscreen(); } catch { /* fine */ } }
+      return;
+    }
+    setIsFullscreen(true);
+    try {
+      await document.documentElement.requestFullscreen();
+      browserFsRef.current = true;
+    } catch { browserFsRef.current = false; }
+  }
+  useEffect(() => {
+    // leaving REAL browser fullscreen (Escape/F11) also leaves immersive mode
+    const onChange = () => {
+      if (!document.fullscreenElement && browserFsRef.current) {
+        browserFsRef.current = false;
+        setIsFullscreen(false);
+      }
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+  useEffect(() => {
+    document.body.classList.toggle("brain-fullscreen", isFullscreen);
+    return () => document.body.classList.remove("brain-fullscreen");
+  }, [isFullscreen]);
 
   useEffect(() => {
     if (!projectId && firstProjectId) setProjectId(firstProjectId);
@@ -214,6 +248,15 @@ export function LearningBrainPanel({ state, activeProject, setView, updateState,
               <RotateCcw size={14} aria-hidden="true" /> Reset
             </button>
           )}
+          <button
+            className="brain-reset-view"
+            onClick={toggleFullscreen}
+            aria-pressed={isFullscreen}
+            title={isFullscreen ? "Exit fullscreen" : "Fullscreen — the map takes the whole screen"}
+          >
+            {isFullscreen ? <Minimize2 size={14} aria-hidden="true" /> : <Maximize2 size={14} aria-hidden="true" />}
+            {isFullscreen ? " Exit" : " Fullscreen"}
+          </button>
         </div>
       </div>
 
