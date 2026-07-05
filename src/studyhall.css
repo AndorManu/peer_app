@@ -189,7 +189,7 @@ code, pre, kbd, samp, .hljs, .term-body, .vscode-code, .room-code {
   box-shadow: 0 6px 18px -6px rgba(var(--sh-accent-rgb), 0.5);
   animation: none;
 }
-.peer-rail-avatar { background: #3f8f74; color: #0d1a16; box-shadow: none; }
+.peer-rail-avatar { background: linear-gradient(140deg, var(--sh-accent), var(--sh-accent-hi)); color: var(--sh-accent-ink); box-shadow: none; }
 .peer-rail-pill {
   background: var(--sh-accent-soft);
   box-shadow: inset 0 0 0 1px rgba(var(--sh-accent-rgb), 0.35);
@@ -402,3 +402,6 @@ label > .sh-select { display: flex; width: 100%; }
 .palette-dot.palette-studyhall { background: linear-gradient(135deg, #e0a039, #f0b354); }
 .palette-dot.palette-indigo { background: linear-gradient(135deg, #8b7cf7, #22d3ee); }
 .palette-dot.palette-mono { background: linear-gradient(135deg, #ffffff, #4a4a4a); }
+
+/* native range sliders wear the theme accent */
+input[type="range"] { accent-color: var(--sh-accent); }
