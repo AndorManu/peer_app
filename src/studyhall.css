@@ -405,3 +405,8 @@ label > .sh-select { display: flex; width: 100%; }
 
 /* native range sliders wear the theme accent */
 input[type="range"] { accent-color: var(--sh-accent); }
+
+/* ---------- Brain fullscreen: chrome collapses, canvas takes everything ---------- */
+.brain-fullscreen .peer-rail { display: none !important; }
+.brain-fullscreen .peer-skin.app { padding-bottom: 0 !important; }
+.brain-fullscreen .study-reminder { display: none !important; }
