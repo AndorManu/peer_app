@@ -5,6 +5,7 @@ import { LandingAuthFlow, accountFromUser } from "./auth.jsx";
 import { getSupabase } from "./supabase.js";
 import { aiRequestHeaders } from "./peerChat.js";
 import {
+  Bell,
   BookOpen,
   Bot,
   Brain,
@@ -14,6 +15,7 @@ import {
   Code2,
   Command,
   FileText,
+  Flame,
   GitBranch,
   GraduationCap,
   HelpCircle,
@@ -93,6 +95,7 @@ import { DOMAINS, GENERAL_DOMAIN, classifySubject, domainForProject, getDomain }
 import { computeBadges, detectNewBadges, getBadgeDef } from "./badges.js";
 import { hapticTap } from "./native.js";
 import { LegalDialog, downloadDataExport } from "./legal.jsx";
+import { computeStudyPulse, buildReminder, REMINDER_SNOOZE_KEY } from "./studyPulse.js";
 import PeerNavRail from "./components/PeerNavRail.jsx";
 
 // Heavy screens load on demand: the Brain pulls in Three.js (~600KB) and the
@@ -175,6 +178,9 @@ export default function App() {
     level: state.profile.level,
     learningPreference: state.profile.learningPreference,
   }));
+  // Study pulse: dashboard numbers + the once-per-open reminder banner.
+  const [autoReview, setAutoReview] = useState(false);
+  const [reminder, setReminder] = useState(null);
   const [voiceMode, setVoiceMode] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [listening, setListening] = useState(false);
@@ -187,6 +193,31 @@ export default function App() {
   const loadingRef = useRef(false);
   const bottomRef = useRef(null);
   const fileRef = useRef(null);
+
+  const studyPulse = useMemo(
+    () => computeStudyPulse(state),
+    [state.chats, state.flashcards, state.notes, state.projects, state.profile],
+  );
+
+  // One reminder per app open, decided after real data has hydrated.
+  useEffect(() => {
+    if (!hydrated || !state.landingComplete) return;
+    let snoozed = null;
+    try { snoozed = localStorage.getItem(REMINDER_SNOOZE_KEY); } catch { /* private mode */ }
+    setReminder(buildReminder(computeStudyPulse(state), { snoozedDay: snoozed }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per open, not per keystroke
+  }, [hydrated, state.landingComplete]);
+
+  function startReviewNow() {
+    setReminder(null);
+    setAutoReview(true);
+    setView("flashcards");
+  }
+
+  function dismissReminder() {
+    try { localStorage.setItem(REMINDER_SNOOZE_KEY, new Date().toISOString().slice(0, 10)); } catch { /* fine */ }
+    setReminder(null);
+  }
 
   // Real auth: mirror the Supabase session into app state. Signing in flips
   // past the landing; signing out returns there (local data stays put).
@@ -1938,7 +1969,7 @@ export default function App() {
         </header>
 
         {view === "settings" && <SettingsPanel state={state} updateState={updateState} resetData={confirmResetData} loadSampleData={loadSampleData} cloudSync={cloudSync} signOut={signOut} confirmDeleteAccount={confirmDeleteAccount} />}
-        {view === "profile" && <ProfilePanel profile={state.profile} activeProject={activeProject} activeChat={activeChat} insights={insights} activeMode={activeMode} updateState={updateState} recap={buildLearnerRecap(state)} badgeInfo={computeBadges(state)} showToast={showToast} />}
+        {view === "profile" && <ProfilePanel profile={state.profile} activeProject={activeProject} activeChat={activeChat} insights={insights} activeMode={activeMode} updateState={updateState} recap={buildLearnerRecap(state)} badgeInfo={computeBadges(state)} showToast={showToast} pulse={studyPulse} onReviewNow={startReviewNow} />}
         {view === "brain" && (
           <React.Suspense fallback={<PanelLoading label="Waking up your brain…" />}>
             <LearningBrainPanel state={state} activeProject={activeProject} setView={setView} updateState={updateState} setManagedProjectId={setManagedProjectId} setSelectedDocId={setSelectedDocId} onPractice={generatePractice} onExplain={explainConcept} />
@@ -1950,7 +1981,7 @@ export default function App() {
           </React.Suspense>
         )}
         {view === "notes" && <NotesPanel notes={state.notes} projects={state.projects} deleteNote={confirmDeleteNote} toggleShareNote={toggleShareNote} onPractice={generatePractice} />}
-        {view === "flashcards" && <FlashcardsPanel flashcards={state.flashcards} projects={state.projects} setView={setView} deleteFlashcardDeck={confirmDeleteDeck} gradeFlashcard={gradeFlashcard} />}
+        {view === "flashcards" && <FlashcardsPanel flashcards={state.flashcards} projects={state.projects} setView={setView} deleteFlashcardDeck={confirmDeleteDeck} gradeFlashcard={gradeFlashcard} autoStartReview={autoReview} onAutoStartConsumed={() => setAutoReview(false)} />}
         {view === "community" && (
           <React.Suspense fallback={<PanelLoading label="Opening peer rooms…" />}>
             <RoomsPanel
@@ -1964,6 +1995,18 @@ export default function App() {
               onRoomSession={recordRoomSession}
             />
           </React.Suspense>
+        )}
+        {view === "chat" && reminder && (
+          <div className="study-reminder" role="status">
+            {reminder.kind === "streak" ? <Flame size={15} aria-hidden="true" /> : <Bell size={15} aria-hidden="true" />}
+            <span>{reminder.text}</span>
+            <button type="button" className="study-reminder-cta" onClick={reminder.kind === "due-cards" ? startReviewNow : dismissReminder}>
+              {reminder.cta}
+            </button>
+            <button type="button" className="icon-button" onClick={dismissReminder} aria-label="Dismiss reminder for today">
+              <X size={14} />
+            </button>
+          </div>
         )}
         {view === "chat" && (
           <ChatArea
@@ -2669,7 +2712,7 @@ function BadgeMedallion({ def, earned, progress = 0, current = 0, onShare }) {
   );
 }
 
-function ProfilePanel({ profile, activeProject, activeChat, insights, activeMode, updateState, recap, badgeInfo, showToast }) {
+function ProfilePanel({ profile, activeProject, activeChat, insights, activeMode, updateState, recap, badgeInfo, showToast, pulse, onReviewNow }) {
   const [showAllBadges, setShowAllBadges] = useState(false);
   function shareBadge(def) {
     const text = `I just earned "${def.title}" on Peer — ${def.description}`;
@@ -2697,6 +2740,49 @@ function ProfilePanel({ profile, activeProject, activeChat, insights, activeMode
       </div>
 
       <div className="profile-grid">
+        {pulse && (
+          <div className="profile-card wide pulse-card">
+            <h2>Today</h2>
+            <div className="pulse-row">
+              <div className="pulse-stat">
+                <strong><Flame size={17} aria-hidden="true" /> {pulse.streak}</strong>
+                <span>day streak</span>
+              </div>
+              <div className="pulse-stat">
+                <strong>{pulse.dueNow}</strong>
+                <span>card{pulse.dueNow === 1 ? "" : "s"} due</span>
+              </div>
+              <div className="pulse-stat">
+                <strong>{pulse.improving}</strong>
+                <span>improving ↗</span>
+              </div>
+              <div className="pulse-stat">
+                <strong>{pulse.slipping}</strong>
+                <span>slipping ↘</span>
+              </div>
+              <div
+                className="pulse-bars"
+                role="img"
+                aria-label={`Study activity, last 7 days: ${pulse.activity.map((d) => `${d.label} ${d.count}`).join(", ")}`}
+              >
+                {pulse.activity.map((d, i) => {
+                  const max = Math.max(1, ...pulse.activity.map((x) => x.count));
+                  return (
+                    <div key={i} className={`pulse-bar-col${d.isToday ? " today" : ""}`} title={`${d.label}: ${d.count}`}>
+                      <div className="pulse-bar" style={{ height: `${Math.max(8, (d.count / max) * 100)}%` }} />
+                      <span aria-hidden="true">{d.label.slice(0, 1)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            {pulse.dueNow > 0 && (
+              <button type="button" className="primary-button pulse-review-btn" onClick={onReviewNow}>
+                <BookOpen size={15} /> Review {pulse.dueNow} due card{pulse.dueNow === 1 ? "" : "s"} now
+              </button>
+            )}
+          </div>
+        )}
         {recap && recap.totalConcepts > 0 && (
           <div className="profile-card wide recap-card">
             <h2>What Peer remembers</h2>
@@ -3674,7 +3760,7 @@ function StreamingMessage({ content, streaming }) {
   );
 }
 
-function FlashcardsPanel({ flashcards, projects, setView, deleteFlashcardDeck, gradeFlashcard }) {
+function FlashcardsPanel({ flashcards, projects, setView, deleteFlashcardDeck, gradeFlashcard, autoStartReview, onAutoStartConsumed }) {
   const [activeDeckId, setActiveDeckId] = useState(flashcards[0]?.id || null);
   const [cardIndex, setCardIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -3684,6 +3770,14 @@ function FlashcardsPanel({ flashcards, projects, setView, deleteFlashcardDeck, g
 
   const reviewQueue = useMemo(() => dueQueue(flashcards), [flashcards]);
   const due = reviewQueue.length;
+
+  // "Review now" from the dashboard/reminder lands here with intent to start.
+  useEffect(() => {
+    if (!autoStartReview) return;
+    onAutoStartConsumed?.();
+    if (due > 0) { setReviewMode(true); setReviewTotal(due); setReviewDone(0); setFlipped(false); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fire once per intent
+  }, [autoStartReview]);
 
   // Review mode always works the FRONT of the live due queue; grading reschedules
   // a card out of "due", so the queue shifts forward on its own.
