@@ -192,6 +192,40 @@ layer has before/after tests plus at least one live proof.
   reaches the model only as aggregates + max 9 one-line directives —
   never raw history dumps.
 
+## Bug-fix + multi-theme pass (owner-reported, 2026-07-05, second session)
+
+- **REAL BUG — Code lab tutor had no memory** (`057df93`): askPeer sent only
+  the current message every time. Bounded history now threads (12 msgs, 4k
+  cap each; per-turn system prompt still rebuilds with current code).
+  Live-proven: turn 3 recalled a nickname set in turn 1.
+- **REAL BUG — Brain overlap at 1920px+** (`7047d51`): four legacy
+  width/centering rules in styles.css over-constrained the skin's absolute
+  lanes (workspace centered at 1480px while heading/toolbar stayed
+  full-bleed). Removed at the source; heading now RESERVES the toolbar lane.
+  DOM-geometry verified: zero overlaps at 1280/1920/2560, map + outline.
+- **Styled select** (`86a061a`): one skinned-native dropdown component;
+  all 12 native selects replaced (Code lab, Brain, notes filter, profile,
+  project modal, onboarding, Rooms).
+- **Off-palette chat icon** (`9d3d4d1`): assistant avatar was hardcoded pine
+  green with a generic lucide Brain — now Peer's own PeerLogo mark on theme
+  variables (welcome marks + avatars).
+- **Multi-theme system** (`f09a1ce`): Study Hall (default) / Indigo Night
+  (violet→cyan) / Monochrome (true B&W) via data-theme + the --sh-* variable
+  contract; picker in Settings→Appearance, persisted + synced, instant.
+  The audit converted ~830 hardcoded literals across 5 stylesheets +
+  peerTheme.js to theme variables; Brain hubs resolve the accent at scene
+  build (WebGL can't read var()); node TYPE colors stay fixed (data-viz
+  semantics — intentional). Verified on Chat/Brain/Settings per theme
+  (screenshots; mono Brain shows WHITE hubs proving the pipeline).
+- **Sweep** (this commit): audited every AI call site for lost context —
+  chat/regenerate/practice thread history ✓, flashcard generation is
+  one-shot by design ✓, Rooms/Notes have no direct AI calls ✓. Rail profile
+  avatar was still hardcoded green → themed. Native range slider →
+  accent-color themed. hexA fallback repaired. Wide-viewport text-overlap
+  detector run on all six other screens at 2560px: zero findings.
+  Remaining native controls: two hidden file pickers (behind styled
+  buttons — fine).
+
 ## Polish pass (owner-requested sweep, 2026-07-05)
 
 - **Chat chips**: 19-chip wall → 5 contextual chips + "More" expander; the

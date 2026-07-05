@@ -137,7 +137,7 @@ export const PROJECT_PALETTE = [
 
 // hex → rgba helper, identical to the prototype's hexA()
 export function hexA(hex, a) {
-  const h = String(hex || "var(--sh-accent)").replace("#", "");
+  const h = String(hex || "#e0a039").replace("#", "");
   const r = parseInt(h.substring(0, 2), 16);
   const g = parseInt(h.substring(2, 4), 16);
   const b = parseInt(h.substring(4, 6), 16);
