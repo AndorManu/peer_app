@@ -262,6 +262,26 @@ function rowToCard(row) {
   };
 }
 
+// Every fresh device starts with an untouched "My first topic" starter
+// project. When bootstrap pulls real projects from the cloud, that local
+// starter (never renamed, no docs, no tracked concepts, no chat messages)
+// is just a duplicate-in-waiting — drop it before it gets pushed.
+export function prunePristineStarter(state, pulledProjectIds = new Set()) {
+  if (!pulledProjectIds.size) return state;
+  const isPristine = (project) =>
+    project.name === "My first topic"
+    && !pulledProjectIds.has(project.id)
+    && !(project.docs || []).length
+    && !(project.mastery?.concepts || []).length
+    && (state.chats || []).filter((chat) => chat.projectId === project.id).every((chat) => !(chat.messages || []).length);
+  const pruned = (state.projects || []).filter((project) => !isPristine(project));
+  if (pruned.length === (state.projects || []).length || !pruned.length) return state;
+  const prunedIds = new Set((state.projects || []).filter(isPristine).map((project) => project.id));
+  const chats = (state.chats || []).filter((chat) => !prunedIds.has(chat.projectId));
+  const activeId = chats.some((chat) => chat.id === state.activeId) ? state.activeId : chats[0]?.id || null;
+  return { ...state, projects: pruned, chats, activeId };
+}
+
 // Apply pulled rows to local state. `dirtyKeys` are local rows changed since
 // the last sync — those keep their local version (they win, and re-push).
 export function applyPull(state, pulledByTable, dirtyKeys = new Set()) {
@@ -501,8 +521,9 @@ export async function runSyncCycle({ client, userId, getState, applyState, meta 
     bootPulledCount = boot.count;
     if (boot.maxSeen > maxSeen) maxSeen = boot.maxSeen;
     if (boot.count) {
-      applyState((current) => applyPull(current, boot.pulled, new Set()));
-      workingState = applyPull(workingState, boot.pulled, new Set());
+      const pulledProjectIds = new Set((boot.pulled.projects || []).map((row) => row.id));
+      applyState((current) => prunePristineStarter(applyPull(current, boot.pulled, new Set()), pulledProjectIds));
+      workingState = prunePristineStarter(applyPull(workingState, boot.pulled, new Set()), pulledProjectIds);
     }
   }
 
