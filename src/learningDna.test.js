@@ -145,6 +145,58 @@ test("setDnaOverride toggles: same verdict twice returns to pure inference", asy
   assert.equal(p.dnaOverrides.concise, undefined);
 });
 
+// ---- Layer 4: calibration, mood pacing, targeted practice ----
+
+test("a missed review on a 'strong' concept records a confidence/reality gap and changes the recipe", async () => {
+  const { recordReviewMiss } = await import("./learningModel.js");
+  const mastery = {
+    ...makeMastery(),
+    concepts: [{ id: "c1", key: "eigenvectors", label: "Eigenvectors", confidence: 0.8, status: "strengthening" }],
+  };
+  const missed = recordReviewMiss(mastery, "What are Eigenvectors and why do they matter?");
+  const concept = missed.concepts[0];
+  assert.equal(concept.selfReportGap, 1);
+  assert.ok(concept.confidence < 0.8);
+  const recipe = buildTeachingRecipe(makeProfile(), { id: "p", mastery: missed }, "auto").join(" ");
+  assert.match(recipe, /CALIBRATION/);
+  assert.match(recipe, /Eigenvectors/);
+  assert.match(recipe, /never mention this gap/);
+  // a weak concept missing a card is expected, not a gap
+  const weak = recordReviewMiss({ ...makeMastery(), concepts: [{ id: "c2", key: "limits", label: "Limits", confidence: 0.3, status: "weak" }] }, "question about Limits");
+  assert.equal(weak.concepts[0].selfReportGap, undefined);
+});
+
+test("recent frustration softens pace; stale frustration doesn't haunt", () => {
+  const freshly = { ...makeProfile(), traits: { ...makeProfile().traits, lastFrustrationAt: Date.now() - 5 * 60_000 } };
+  assert.match(buildTeachingRecipe(freshly, null, "auto").join(" "), /soften the pace/);
+  const longAgo = { ...makeProfile(), traits: { ...makeProfile().traits, lastFrustrationAt: Date.now() - 3 * 3_600_000 } };
+  assert.doesNotMatch(buildTeachingRecipe(longAgo, null, "auto").join(" "), /soften the pace/);
+});
+
+test("cram cues flip deadline mode for 48h, then expire", () => {
+  const cramming = { ...makeProfile(), traits: { ...makeProfile().traits, lastCramAt: Date.now() - 3_600_000 } };
+  assert.match(buildTeachingRecipe(cramming, null, "auto").join(" "), /DEADLINE MODE/);
+  const lastWeek = { ...makeProfile(), traits: { ...makeProfile().traits, lastCramAt: Date.now() - 7 * 24 * 3_600_000 } };
+  assert.doesNotMatch(buildTeachingRecipe(lastWeek, null, "auto").join(" "), /DEADLINE MODE/);
+});
+
+test("practice generation targets recurring misconceptions and gapped concepts", async () => {
+  const { practiceFocus } = await import("./learningModel.js");
+  const mastery = {
+    ...makeMastery(),
+    misconceptions: [
+      { id: "m1", concept: "ionic bonds", belief: "electrons are shared", correction: "transferred", createdAt: 1 },
+      { id: "m2", concept: "ionic bonds", belief: "electrons are shared", correction: "transferred", createdAt: 2 },
+    ],
+    concepts: [{ id: "c1", key: "molarity", label: "Molarity", confidence: 0.5, status: "review", selfReportGap: 2 }],
+  };
+  const focus = practiceFocus(mastery);
+  assert.match(focus, /repeatedly believed "electrons are shared" about ionic bonds/);
+  assert.match(focus, /catch exactly that mistake/);
+  assert.match(focus, /Molarity.*lagged their confidence/);
+  assert.equal(practiceFocus(makeMastery()), "", "no trouble -> no targeting clause");
+});
+
 test("DNA fields survive normalization (persistence + sync round-trips)", () => {
   const profile = normalizeProfile({
     ...makeProfile(),
