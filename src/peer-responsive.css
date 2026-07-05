@@ -50,11 +50,11 @@
   display: flex; flex-direction: column; align-items: center; gap: 5px;
   width: 100%; padding: 0; margin: 0;
   background: transparent; border: 0; cursor: pointer;
-  color: rgba(244,232,213,0.42);
+  color: rgba(244,232,213,0.66);
   transition: color .25s cubic-bezier(.19,1,.22,1);
   font-family: inherit;
 }
-.peer-rail-item:hover { color: rgba(244,232,213,0.75); }
+.peer-rail-item:hover { color: rgba(244,232,213,0.88); }
 .peer-rail-item.active { color: #fff; }
 .peer-rail-icon {
   width: 48px; height: 48px; border-radius: 14px;
@@ -62,7 +62,7 @@
 }
 .peer-rail-label {
   font-size: 10px; font-weight: 500; letter-spacing: .3px;
-  color: rgba(244,232,213,0.4);
+  color: rgba(244,232,213,0.66);
   transition: color .25s;
 }
 .peer-rail-item.active .peer-rail-label { color: rgba(244,232,213,0.92); }
@@ -81,7 +81,7 @@
   font-size: 12px; font-weight: 600; color: #1c1509;
   box-shadow: 0 0 16px -3px rgba(201,106,90,.7);
 }
-.peer-rail-profile.active .peer-rail-avatar { outline: 2px solid rgba(244,232,213,0.4); outline-offset: 2px; }
+.peer-rail-profile.active .peer-rail-avatar { outline: 2px solid rgba(244,232,213,0.6); outline-offset: 2px; }
 
 /* ---------- mobile: rail becomes a fixed bottom nav; content clears it ---------- */
 @media (max-width: 820px) {
@@ -279,9 +279,9 @@
 .theme-light .peer-rail-item { color: rgba(29,34,51,0.55); }
 .theme-light .peer-rail-item:hover { color: rgba(29,34,51,0.9); }
 .theme-light .peer-rail-item.active { color: #fff; }
-.theme-light .peer-rail-label { color: rgba(29,34,51,0.55); }
+.theme-light .peer-rail-label { color: rgba(29,34,51,0.75); }
 .theme-light .peer-rail-item.active .peer-rail-label { color: #4c3fd4; }
-.theme-light .peer-rail-logo-word { color: rgba(29,34,51,0.6); }
+.theme-light .peer-rail-logo-word { color: rgba(29,34,51,0.78); }
 @media (max-width: 820px) {
   .theme-light .peer-rail { background: rgba(252,252,255,0.95); }
 }
@@ -303,6 +303,7 @@
   color: #1d2233 !important;
 }
 .peer-skin.theme-light .chat-row.active span { color: #1d2233 !important; }
+.peer-skin.theme-light .new-project-chat { color: rgba(29,34,51,0.72) !important; }
 .peer-skin.theme-light .new-project-chat:hover { background: rgba(29,34,51,0.05) !important; color: rgba(29,34,51,0.85) !important; }
 
 /* mode / depth strips */

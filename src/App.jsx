@@ -2096,17 +2096,19 @@ function DomainBadge({ domain, size = 13 }) {
 }
 
 function ViewTitle({ view, activeChat, activeProject }) {
-  if (view === "settings") return <div className="topbar-title"><Settings size={17} /><span>Settings</span></div>;
-  if (view === "profile") return <div className="topbar-title"><UserRound size={17} /><span>Learning profile</span></div>;
-  if (view === "brain") return <div className="topbar-title"><Brain size={17} /><span>Learning brain</span></div>;
-  if (view === "notes") return <div className="topbar-title"><Save size={17} /><span>Saved notes</span></div>;
-  if (view === "flashcards") return <div className="topbar-title"><BookOpen size={17} /><span>Flashcards</span></div>;
-  if (view === "community") return <div className="topbar-title"><Users size={17} /><span>Study rooms</span></div>;
+  // h1: the topbar only renders on the chat view, where this is the page's
+  // one level-one heading (every other view brings its own h1).
+  if (view === "settings") return <h1 className="topbar-title"><Settings size={17} /><span>Settings</span></h1>;
+  if (view === "profile") return <h1 className="topbar-title"><UserRound size={17} /><span>Learning profile</span></h1>;
+  if (view === "brain") return <h1 className="topbar-title"><Brain size={17} /><span>Learning brain</span></h1>;
+  if (view === "notes") return <h1 className="topbar-title"><Save size={17} /><span>Saved notes</span></h1>;
+  if (view === "flashcards") return <h1 className="topbar-title"><BookOpen size={17} /><span>Flashcards</span></h1>;
+  if (view === "community") return <h1 className="topbar-title"><Users size={17} /><span>Study rooms</span></h1>;
   return (
-    <div className="topbar-title">
+    <h1 className="topbar-title">
       {activeProject ? <span className="project-dot" style={{ background: activeProject.color }} /> : <Bot size={17} />}
       <span>{activeChat?.name || "Peer"}</span>
-    </div>
+    </h1>
   );
 }
 
@@ -2147,8 +2149,11 @@ function Sidebar(props) {
   const onChatDragStart = (chatId) => setDraggingChatId(chatId);
   const onChatDragEnd = () => { setDraggingChatId(null); setDropProjectId(null); };
 
+  // As a mobile drawer this is a modal dialog; ARIA disallows role="dialog"
+  // on <aside>, so the element itself switches.
+  const SidebarTag = isDrawer ? "div" : "aside";
   return (
-    <aside
+    <SidebarTag
       className={`sidebar ${isDrawer ? "sidebar-drawer" : ""}`}
       ref={drawerRef}
       role={isDrawer ? "dialog" : undefined}
@@ -2300,7 +2305,7 @@ function Sidebar(props) {
         <button className={view === "community" ? "active" : ""} onClick={() => setView("community")}><Users size={16} /> Rooms</button>
         <button className={view === "settings" ? "active" : ""} onClick={() => setView("settings")}><Settings size={16} /> Settings</button>
       </nav>
-    </aside>
+    </SidebarTag>
   );
 }
 
@@ -3122,7 +3127,7 @@ function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSyn
                 <h2>Text size</h2>
                 <div className="range-row">
                   <span style={{ fontSize: 13 }}>A</span>
-                  <input type="range" min="13" max="19" value={state.textSize} onChange={(e) => updateState((c) => ({ ...c, textSize: Number(e.target.value) }))} />
+                  <input type="range" min="13" max="19" aria-label="Text size" value={state.textSize} onChange={(e) => updateState((c) => ({ ...c, textSize: Number(e.target.value) }))} />
                   <span style={{ fontSize: 18, fontWeight: 700 }}>A</span>
                   <strong className="settings-size-label">{state.textSize}px</strong>
                 </div>

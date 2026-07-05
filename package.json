@@ -34,6 +34,7 @@
     "@capacitor/cli": "^8.4.1",
     "@capacitor/ios": "^8.4.1",
     "@tauri-apps/cli": "^2.11.4",
+    "axe-core": "^4.12.1",
     "playwright-core": "^1.61.0"
   }
 }
