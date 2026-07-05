@@ -3,24 +3,45 @@
 // isolation without pulling in the whole app tree.
 import {
   Atom,
+  BookOpen,
   Brain,
   Briefcase,
   Code2,
   Cog,
   Compass,
+  Flame,
   Globe2,
   GraduationCap,
   HeartPulse,
+  Image as ImageIcon,
   Landmark,
   Languages,
   Layers,
   Lightbulb,
+  Megaphone,
   MessageSquare,
   Music,
+  Save,
   Sigma,
+  Sparkles,
   Target,
+  TrendingUp,
   Trophy,
+  Users,
 } from "lucide-react";
+
+// Icon components for badge medallions beyond the domain set (badges.js stays
+// React-free; names live there, components here).
+export const BADGE_ICONS = {
+  spark: Sparkles,
+  flame: Flame,
+  notes: Save,
+  trending: TrendingUp,
+  cards: BookOpen,
+  megaphone: Megaphone,
+  users: Users,
+  image: ImageIcon,
+};
 
 // Icon components for the subject taxonomy (subjects.js stays React-free so it
 // can be unit-tested; the icon *names* live there, the components live here).

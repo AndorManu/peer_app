@@ -70,6 +70,7 @@ import {
 } from "./learningModel.js";
 import {
   AUTH_PROVIDERS,
+  BADGE_ICONS,
   COMMUNITY_CHALLENGES,
   DEPTH_OPTIONS,
   DOMAIN_ICONS,
@@ -89,6 +90,7 @@ import {
   uid,
 } from "./stateModel.js";
 import { DOMAINS, GENERAL_DOMAIN, classifySubject, domainForProject, getDomain } from "./subjects.js";
+import { computeBadges, detectNewBadges, getBadgeDef } from "./badges.js";
 import PeerNavRail from "./components/PeerNavRail.jsx";
 
 // Heavy screens load on demand: the Brain pulls in Three.js (~600KB) and the
@@ -249,6 +251,31 @@ export default function App() {
       },
     });
   }
+
+  // Award newly earned badges (cheap, idempotent detector run on state
+  // changes). Celebrated with a toast; the trophy case lives in Profile.
+  useEffect(() => {
+    if (!hydrated) return;
+    const fresh = detectNewBadges(state);
+    if (!fresh.length) return;
+    updateState((current) => ({ ...current, badges: [...(current.badges || []), ...fresh] }));
+    const def = getBadgeDef(fresh[0].badgeId);
+    showToast(fresh.length === 1
+      ? `Badge earned: ${def?.title || "Achievement"} 🏆`
+      : `${fresh.length} badges earned! Check your trophy case 🏆`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, state]);
+
+  // Rooms participation counts toward badges.
+  const recordRoomSession = useCallback(() => {
+    updateState((current) => ({
+      ...current,
+      profile: {
+        ...current.profile,
+        signals: { ...current.profile.signals, roomSessions: (current.profile.signals?.roomSessions || 0) + 1 },
+      },
+    }));
+  }, []);
 
   // Daily AI usage meter (server-computed; the client only displays it).
   const refreshUsage = useCallback(async () => {
@@ -1903,7 +1930,7 @@ export default function App() {
         </header>
 
         {view === "settings" && <SettingsPanel state={state} updateState={updateState} resetData={confirmResetData} loadSampleData={loadSampleData} cloudSync={cloudSync} signOut={signOut} confirmDeleteAccount={confirmDeleteAccount} />}
-        {view === "profile" && <ProfilePanel profile={state.profile} activeProject={activeProject} activeChat={activeChat} insights={insights} activeMode={activeMode} updateState={updateState} recap={buildLearnerRecap(state)} />}
+        {view === "profile" && <ProfilePanel profile={state.profile} activeProject={activeProject} activeChat={activeChat} insights={insights} activeMode={activeMode} updateState={updateState} recap={buildLearnerRecap(state)} badgeInfo={computeBadges(state)} showToast={showToast} />}
         {view === "brain" && (
           <React.Suspense fallback={<PanelLoading label="Waking up your brain…" />}>
             <LearningBrainPanel state={state} activeProject={activeProject} setView={setView} updateState={updateState} setManagedProjectId={setManagedProjectId} setSelectedDocId={setSelectedDocId} onPractice={generatePractice} onExplain={explainConcept} />
@@ -1926,6 +1953,7 @@ export default function App() {
               onSignIn={() => updateState((current) => ({ ...current, landingComplete: false }))}
               startCommunityChallenge={startCommunityChallenge}
               challenges={COMMUNITY_CHALLENGES}
+              onRoomSession={recordRoomSession}
             />
           </React.Suspense>
         )}
@@ -2603,7 +2631,42 @@ function Composer({
   );
 }
 
-function ProfilePanel({ profile, activeProject, activeChat, insights, activeMode, updateState, recap }) {
+function BadgeMedallion({ def, earned, progress = 0, current = 0, onShare }) {
+  const Icon = DOMAIN_ICONS[def.icon] || BADGE_ICONS[def.icon] || DOMAIN_ICONS.brain;
+  return (
+    <div
+      className={`badge-medallion ${earned ? "earned" : "locked"}`}
+      style={{ "--badge-accent": def.accent }}
+      role="group"
+      aria-label={`${def.title}: ${def.description} ${earned ? "Earned." : `Progress ${current} of ${def.target}.`}`}
+    >
+      <span className="badge-coin"><Icon size={20} aria-hidden="true" /></span>
+      <strong>{def.title}</strong>
+      <small>{def.description}</small>
+      {earned ? (
+        <button type="button" className="badge-share" onClick={() => onShare(def)}>
+          <Share2 size={12} aria-hidden="true" /> Share
+        </button>
+      ) : (
+        <span className="badge-progress" aria-hidden="true">
+          <i style={{ width: `${Math.round(progress * 100)}%` }} />
+        </span>
+      )}
+    </div>
+  );
+}
+
+function ProfilePanel({ profile, activeProject, activeChat, insights, activeMode, updateState, recap, badgeInfo, showToast }) {
+  const [showAllBadges, setShowAllBadges] = useState(false);
+  function shareBadge(def) {
+    const text = `I just earned "${def.title}" on Peer — ${def.description}`;
+    if (navigator.share) {
+      navigator.share({ text }).catch(() => {});
+    } else {
+      navigator.clipboard?.writeText(text);
+      showToast("Achievement copied — paste it anywhere.");
+    }
+  }
   const recipe = buildTeachingRecipe(profile, activeProject, activeMode.id);
   const concepts = activeProject?.mastery?.concepts || [];
   const misconceptions = activeProject?.mastery?.misconceptions || [];
@@ -2651,6 +2714,30 @@ function ProfilePanel({ profile, activeProject, activeChat, insights, activeMode
             <p className="recap-foot">Tracking {recap.totalConcepts} concept{recap.totalConcepts === 1 ? "" : "s"} across your projects · {recap.streak}-day streak. Peer uses this to adapt every answer.</p>
           </div>
         )}
+        <div className="profile-card wide">
+          <h2>Trophy case · {badgeInfo.earned.length} of {badgeInfo.earned.length + badgeInfo.locked.length} earned</h2>
+          {badgeInfo.earned.length === 0 && (
+            <p>Your first badges are close — ask a question, keep a streak, save a note. Every subject has its own track.</p>
+          )}
+          <div className="badge-grid">
+            {badgeInfo.earned.map((def) => (
+              <BadgeMedallion key={def.id} def={def} earned onShare={shareBadge} />
+            ))}
+            {(showAllBadges ? badgeInfo.locked : badgeInfo.locked.slice(0, badgeInfo.earned.length ? 4 : 6)).map((def) => (
+              <BadgeMedallion key={def.id} def={def} earned={false} progress={def.progress} current={def.current} onShare={shareBadge} />
+            ))}
+          </div>
+          {badgeInfo.locked.length > 6 && (
+            <button type="button" className="badge-toggle" onClick={() => setShowAllBadges((value) => !value)}>
+              {showAllBadges ? "Show fewer" : `Show all ${badgeInfo.locked.length} remaining badges`}
+            </button>
+          )}
+          {badgeInfo.next && (
+            <p className="badge-next">
+              Next up: <strong>{badgeInfo.next.title}</strong> — {badgeInfo.next.current}/{badgeInfo.next.target}
+            </p>
+          )}
+        </div>
         <div className="profile-card">
           <h2>Current read</h2>
           <strong>{insights.headline}</strong>

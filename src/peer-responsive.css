@@ -869,3 +869,89 @@
   .live-room-grid { grid-template-columns: 1fr; }
   .room-feed { max-height: 38vh; }
 }
+
+/* ============================================================================
+   M10 — TROPHY CASE: badge medallions with per-badge accents.
+   Earned = glowing gradient coin; locked = dimmed with a progress bar.
+   ============================================================================ */
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px;
+  margin-top: 6px;
+}
+.badge-medallion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 7px;
+  padding: 16px 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid color-mix(in srgb, var(--badge-accent) 30%, transparent);
+}
+.badge-medallion strong { font-family: 'Space Grotesk', sans-serif; font-size: 13px; }
+.badge-medallion small { font-size: 11px; line-height: 1.45; color: var(--muted, #8b8b9b); }
+.badge-coin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  color: #0b0b16;
+  background: linear-gradient(140deg, var(--badge-accent), color-mix(in srgb, var(--badge-accent) 45%, #22d3ee));
+  box-shadow: 0 0 24px -6px var(--badge-accent), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.badge-medallion.locked { opacity: 0.75; }
+.badge-medallion.locked .badge-coin {
+  background: rgba(255, 255, 255, 0.06);
+  color: color-mix(in srgb, var(--badge-accent) 75%, #ffffff);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--badge-accent) 40%, transparent);
+}
+.badge-progress {
+  width: 100%;
+  height: 6px;
+  margin-top: 2px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.07);
+}
+.badge-progress i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--badge-accent), #22d3ee);
+}
+.badge-share {
+  margin-top: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  background: color-mix(in srgb, var(--badge-accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--badge-accent) 40%, transparent);
+  color: var(--text, #f4f4f7);
+}
+.badge-toggle {
+  margin-top: 12px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--muted, #8b8b9b);
+}
+.badge-next { margin: 12px 0 0; font-size: 13px; color: var(--muted, #8b8b9b); }
+.badge-next strong { color: var(--text, #f4f4f7); }
+.theme-light .badge-medallion { background: #ffffff; }
+.theme-light .badge-medallion strong { color: #1d2233; }
+.theme-light .badge-coin { color: #ffffff; }
+.theme-light .badge-share { color: #1d2233; }
+.theme-light .badge-progress { background: rgba(29, 34, 51, 0.08); }
