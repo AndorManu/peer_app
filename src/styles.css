@@ -78,11 +78,12 @@ body { background: var(--sh-bg, var(--sh-bg)); }
 }
 .bg-blob { display: none !important; }
 
+/* Backdrops removed from this list: they are position:fixed overlays (the
+   base rule centers their dialog with grid place-items) and forcing
+   position:relative here knocked every modal into document flow — the
+   "dialog parked at the side" bug. Only in-flow containers belong here. */
 .sidebar,
-.main,
-.modal-backdrop,
-.command-backdrop,
-.onboarding-backdrop { position: relative; z-index: 1; }
+.main { position: relative; z-index: 1; }
 
 /* ── Main ── */
 .main { background: transparent !important; }
