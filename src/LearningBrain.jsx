@@ -168,7 +168,7 @@ export function LearningBrainPanel({ state, activeProject, setView, updateState,
         <div>
           <span className="brain-kicker"><GitBranch size={14} /> Learning graph</span>
           <h1>Your Brain</h1>
-          <p>A living map of everything you're learning · {effectiveMode === "map" ? "drag to orbit, pinch or scroll to zoom, tap a node" : "browse the outline, every node is a button"}</p>
+          <p>A living map of everything you're learning · {effectiveMode === "map" ? "drag to orbit · right-drag or two fingers to pan · scroll/pinch zooms where you point · Reset re-frames it all" : "browse the outline, every node is a button"}</p>
         </div>
         <div className="brain-summary">
           <span><strong>{graph.summary.projects}</strong> subjects</span>
@@ -641,6 +641,44 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal, 
     const activePointers = new Map(); // pointerId -> {x, y} for pinch
     let pinchStartDistance = 0;
     let pinchStartRadius = 26;
+    // free navigation: pan basis vectors + the point under the cursor/pinch
+    const panRight = new THREE.Vector3();
+    const panUp = new THREE.Vector3();
+    const zoomPlane = new THREE.Plane();
+    const zoomPoint = new THREE.Vector3();
+    const RADIUS_MIN = 7;
+    const RADIUS_MAX = 90;
+
+    // translate the orbit target along the camera's screen axes — this is
+    // what "drag the whole view around" means in an orbit rig
+    function panBy(dx, dy) {
+      autoFit = false;
+      const scale = cam.radius * 0.0016; // distance-proportional so it feels constant
+      panRight.setFromMatrixColumn(camera.matrix, 0);
+      panUp.setFromMatrixColumn(camera.matrix, 1);
+      goal.target.addScaledVector(panRight, -dx * scale);
+      goal.target.addScaledVector(panUp, dy * scale);
+    }
+
+    // zoom toward the point under the cursor/pinch-midpoint (map-app feel):
+    // the target slides toward that point by the same proportion the radius
+    // shrinks, so what you're pointing at stays put while everything else
+    // rushes past it.
+    function zoomAt(clientX, clientY, factor) {
+      autoFit = false;
+      const rect = renderer.domElement.getBoundingClientRect();
+      ndc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+      ndc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(ndc, camera);
+      camera.getWorldDirection(tmpDir);
+      zoomPlane.setFromNormalAndCoplanarPoint(tmpDir, goal.target);
+      const newRadius = Math.max(RADIUS_MIN, Math.min(RADIUS_MAX, goal.radius * factor));
+      if (raycaster.ray.intersectPlane(zoomPlane, zoomPoint)) {
+        const t = 1 - newRadius / goal.radius;
+        if (t > 0) goal.target.lerp(zoomPoint, t); // zooming in: pull toward the cursor
+      }
+      goal.radius = newRadius;
+    }
     let frame = 0;
     let animationId = 0;
 
@@ -991,22 +1029,36 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal, 
       const [a, b] = [...activePointers.values()];
       return Math.hypot(a.x - b.x, a.y - b.y) || 1;
     }
+    function pinchMidpoint() {
+      const [a, b] = [...activePointers.values()];
+      return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    }
+    let pinchLastMid = { x: 0, y: 0 };
 
     function onPointerDown(event) {
       activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
       if (activePointers.size === 2) {
-        // second finger: switch from orbit/drag to pinch-zoom
+        // second finger: pinch-zoom + two-finger pan together, map-style
         pointerState.mode = "pinch";
         pointerState.down = true;
         state.pinned = -1;
         pinchStartDistance = pinchDistance();
         pinchStartRadius = goal.radius;
+        pinchLastMid = pinchMidpoint();
         return;
       }
       pointerState.down = true;
       pointerState.x = event.clientX;
       pointerState.y = event.clientY;
       state.dragMoved = false;
+      // right- or middle-drag (or shift+drag) = free pan; left on a node =
+      // move the node; left on space = orbit (unchanged)
+      if (event.button === 2 || event.button === 1 || event.shiftKey) {
+        pointerState.mode = "pan";
+        renderer.domElement.style.cursor = "grabbing";
+        renderer.domElement.setPointerCapture?.(event.pointerId);
+        return;
+      }
       const mesh = pickMesh(event);
       if (mesh) {
         pointerState.mode = "node";
@@ -1025,8 +1077,14 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal, 
       }
       if (pointerState.mode === "pinch" && activePointers.size >= 2) {
         autoFit = false;
+        // pinch zooms toward the fingers' midpoint...
+        const mid = pinchMidpoint();
         const scale = pinchStartDistance / pinchDistance();
-        goal.radius = Math.max(11, Math.min(64, pinchStartRadius * scale));
+        const targetRadius = Math.max(RADIUS_MIN, Math.min(RADIUS_MAX, pinchStartRadius * scale));
+        zoomAt(mid.x, mid.y, targetRadius / goal.radius);
+        // ...and the midpoint's movement pans the view (two-finger drag)
+        panBy(mid.x - pinchLastMid.x, mid.y - pinchLastMid.y);
+        pinchLastMid = mid;
         return;
       }
       if (!pointerState.down) {
@@ -1053,6 +1111,8 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal, 
           state.pos[state.pinned].copy(dragPoint);
           state.vel[state.pinned].set(0, 0, 0);
         }
+      } else if (pointerState.mode === "pan") {
+        panBy(dx, dy);
       } else {
         goal.theta -= dx * 0.006;
         goal.phi = Math.max(0.25, Math.min(Math.PI - 0.25, goal.phi - dy * 0.006));
@@ -1077,12 +1137,16 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal, 
       state.pinned = -1;
       pointerState.down = false;
       pointerState.mode = "idle";
+      renderer.domElement.style.cursor = "grab";
     }
+
+    // right-drag pans, so the context menu must not steal the gesture
+    function onContextMenu(event) { event.preventDefault(); }
 
     function onWheel(event) {
       event.preventDefault();
-      autoFit = false;
-      goal.radius = Math.max(11, Math.min(64, goal.radius + event.deltaY * 0.02));
+      // multiplicative zoom toward the CURSOR, not the center — map-app feel
+      zoomAt(event.clientX, event.clientY, Math.exp(event.deltaY * 0.0012));
     }
 
     function resize() {
@@ -1101,13 +1165,30 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal, 
         updateLinkColors();
       },
       resetCamera() {
-        autoFit = true;
+        // fit-to-view: frame EVERYTHING from the real node positions, not
+        // just snap back to the hub — the "I'm lost, show me the whole map"
+        // control.
+        if (state.pos.length) {
+          const center = new THREE.Vector3();
+          for (const p of state.pos) center.add(p);
+          center.divideScalar(state.pos.length);
+          let maxD = 2;
+          for (const p of state.pos) maxD = Math.max(maxD, p.distanceTo(center));
+          goal.target.copy(center);
+          goal.radius = Math.max(15, Math.min(RADIUS_MAX, maxD * 2.2 + 6));
+          autoFit = false;
+        } else {
+          goal.target.set(0, 0, 0);
+          autoFit = true;
+        }
         goal.theta = 0.7;
         goal.phi = 1.12;
-        goal.target.set(0, 0, 0);
       },
     };
     engineRef.current = engine;
+    // camera state readout for tests/diagnostics (WebGL pixels aren't
+    // inspectable, so this is how we PROVE pan/zoom/fit actually move)
+    mount.__brainCamera = () => ({ radius: goal.radius, theta: goal.theta, phi: goal.phi, target: goal.target.toArray() });
 
     resize();
     const resizeObserver = new ResizeObserver(resize);
@@ -1118,6 +1199,7 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal, 
     renderer.domElement.addEventListener("pointerleave", onPointerUp);
     renderer.domElement.addEventListener("pointercancel", onPointerUp);
     renderer.domElement.addEventListener("wheel", onWheel, { passive: false });
+    renderer.domElement.addEventListener("contextmenu", onContextMenu);
     tick();
 
     return () => {
@@ -1129,6 +1211,7 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal, 
       renderer.domElement.removeEventListener("pointerleave", onPointerUp);
       renderer.domElement.removeEventListener("pointercancel", onPointerUp);
       renderer.domElement.removeEventListener("wheel", onWheel);
+      renderer.domElement.removeEventListener("contextmenu", onContextMenu);
       disposeGraph();
       lineGeometry.dispose();
       lineMaterial.dispose();
