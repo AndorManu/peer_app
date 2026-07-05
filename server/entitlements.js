@@ -82,7 +82,7 @@ export async function getPlan(userId) {
     && data.plan === "pro"
     && ["active", "trialing"].includes(data.status)
     && (!data.current_period_end || Date.parse(data.current_period_end) > Date.now());
-  return active ? PLANS.pro : PLANS.free;
+  return active ? { ...PLANS.pro, renewsAt: data.current_period_end || null } : PLANS.free;
 }
 
 export async function getUsageToday(userId, tzOffsetMinutes) {
@@ -108,6 +108,7 @@ export async function checkEntitlement(userId, tzOffsetMinutes) {
     remaining: Math.max(0, plan.dailyTokens - usedToday),
     exhausted: usedToday >= plan.dailyTokens,
     model: plan.model(usedToday),
+    renewsAt: plan.renewsAt || null,
   };
 }
 

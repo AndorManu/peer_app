@@ -39,6 +39,7 @@ export async function handleUsageRequest(req, res) {
     usedToday: entitlement.usedToday,
     allowance: entitlement.allowance,
     remaining: entitlement.remaining,
+    renewsAt: entitlement.renewsAt || null,
   });
 }
 
