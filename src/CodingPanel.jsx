@@ -14,6 +14,7 @@ import { Play, RotateCcw, Sparkles, Bug, Lightbulb, ClipboardCheck, Send, Loader
 import hljs from "highlight.js/lib/core";
 import { Markdown } from "./markdown.jsx";
 import { streamChat } from "./peerChat.js";
+import StyledSelect from "./components/StyledSelect.jsx";
 import { COLORS, GRADIENTS, EASE } from "./peerTheme.js";
 
 const LANGUAGES = [
@@ -365,13 +366,13 @@ ${code || "(empty)"}
           <div style={{ fontSize: 13, color: COLORS.text45, marginTop: 2 }}>Write, run any language, and learn with a tutor that sees your code and your brain.</div>
         </div>
         {projects.length > 0 && (
-          <select value={projectId} onChange={(e) => setProjectId(e.target.value)} style={selStyle} title="Which subject this connects to in your brain" aria-label="Subject to connect in your brain">
+          <StyledSelect value={projectId} onChange={(e) => setProjectId(e.target.value)} style={selStyle} title="Which subject this connects to in your brain" aria-label="Subject to connect in your brain">
             {projects.map((p) => <option key={p.id} value={p.id} style={{ background: "#14141b" }}>{p.name}</option>)}
-          </select>
+          </StyledSelect>
         )}
-        <select value={language} onChange={(e) => changeLanguage(e.target.value)} style={selStyle} aria-label="Programming language">
+        <StyledSelect value={language} onChange={(e) => changeLanguage(e.target.value)} style={selStyle} aria-label="Programming language">
           {LANGUAGES.map((l) => <option key={l.id} value={l.id} style={{ background: "#14141b" }}>{l.label}</option>)}
-        </select>
+        </StyledSelect>
       </div>
 
       <div className="code-lab-layout" style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1.3fr) minmax(320px,0.85fr)", gap: 16, padding: "0 30px 24px" }}>
