@@ -5,6 +5,7 @@ import { createServer as createViteServer } from "vite";
 import { handleChatRequest } from "./handleChat.js";
 import { handleImageRequest } from "./handleImage.js";
 import { handleRunRequest } from "./handleRun.js";
+import { handleDeleteAccountRequest } from "./handleAccount.js";
 
 loadDotEnv();
 
@@ -42,6 +43,12 @@ const server = createHttpServer(async (req, res) => {
 
     if (req.url?.startsWith("/api/run")) {
       await handleRunRequest(req, res);
+      return;
+    }
+
+    if (req.url?.startsWith("/api/delete-account")) {
+      loadDotEnv({ override: true });
+      await handleDeleteAccountRequest(req, res);
       return;
     }
 

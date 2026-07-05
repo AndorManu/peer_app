@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFocusTrap, useMediaQuery } from "./a11y.js";
 import { useCloudSync } from "./useCloudSync.js";
+import { LandingAuthFlow, accountFromUser } from "./auth.jsx";
+import { getSupabase } from "./supabase.js";
 import {
   BookOpen,
   Bot,
@@ -82,7 +84,6 @@ import {
   defaultState,
   initialState,
   makeChat,
-  normalizeAccount,
   normalizeState,
   uid,
 } from "./stateModel.js";
@@ -177,7 +178,73 @@ export default function App() {
   const bottomRef = useRef(null);
   const fileRef = useRef(null);
 
-  // Background cloud sync (dormant until a session exists; real sign-in is M4)
+  // Real auth: mirror the Supabase session into app state. Signing in flips
+  // past the landing; signing out returns there (local data stays put).
+  useEffect(() => {
+    if (!hydrated) return undefined;
+    let unsubscribe = null;
+    let disposed = false;
+    (async () => {
+      const client = await getSupabase();
+      if (!client || disposed) return;
+      const { data } = await client.auth.getSession();
+      if (data?.session && !disposed) {
+        const account = accountFromUser(data.session.user);
+        updateState((current) => ({ ...current, account, landingComplete: true }));
+      }
+      const { data: sub } = client.auth.onAuthStateChange((event, session) => {
+        if (event === "SIGNED_IN" && session) {
+          const account = accountFromUser(session.user);
+          updateState((current) => ({ ...current, account, landingComplete: true }));
+        }
+        if (event === "SIGNED_OUT") {
+          updateState((current) => ({ ...current, account: null, landingComplete: false }));
+        }
+      });
+      unsubscribe = () => sub?.subscription?.unsubscribe();
+    })();
+    return () => {
+      disposed = true;
+      unsubscribe?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated]);
+
+  async function signOut() {
+    const client = await getSupabase();
+    await client?.auth.signOut();
+    showToast("Signed out. Your data stays on this device.");
+  }
+
+  function confirmDeleteAccount() {
+    requestConfirm({
+      title: "Delete your account?",
+      body: "Your account and ALL cloud data (subjects, chats, notes, decks, usage) will be permanently erased. Data on this device is kept locally. This cannot be undone.",
+      confirmLabel: "Delete my account",
+      action: async () => {
+        try {
+          const client = await getSupabase();
+          const { data } = (await client?.auth.getSession()) || {};
+          const token = data?.session?.access_token;
+          if (!token) throw new Error("No active session.");
+          const response = await fetch("/api/delete-account", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!response.ok) {
+            const body = await response.json().catch(() => ({}));
+            throw new Error(body.error || "Deletion failed.");
+          }
+          await client.auth.signOut();
+          showToast("Account deleted. Local data kept on this device.");
+        } catch (err) {
+          showToast(friendlyError(err, "Could not delete the account."));
+        }
+      },
+    });
+  }
+
+  // Background cloud sync (dormant until a session exists)
   const stateRef = useRef(state);
   stateRef.current = state;
   const getStateForSync = useCallback(() => stateRef.current, []);
@@ -1436,18 +1503,6 @@ export default function App() {
     });
   }
 
-  function completeAccount(account) {
-    updateState((current) => ({
-      ...current,
-      landingComplete: true,
-      account: normalizeAccount({
-        ...account,
-        verified: true,
-        lastLoginAt: Date.now(),
-      }),
-    }));
-  }
-
   function continueAsGuest() {
     updateState((current) => ({
       ...current,
@@ -1567,7 +1622,7 @@ export default function App() {
           "--text-size": `${state.textSize}px`,
         }}
       >
-        <LandingAuthFlow complete={completeAccount} continueAsGuest={continueAsGuest} />
+        <LandingAuthFlow continueAsGuest={continueAsGuest} PeerLogo={PeerLogo} />
       </div>
     );
   }
@@ -1682,7 +1737,7 @@ export default function App() {
           <div className="status-pill"><span /> Local app</div>
         </header>
 
-        {view === "settings" && <SettingsPanel state={state} updateState={updateState} resetData={confirmResetData} loadSampleData={loadSampleData} cloudSync={cloudSync} />}
+        {view === "settings" && <SettingsPanel state={state} updateState={updateState} resetData={confirmResetData} loadSampleData={loadSampleData} cloudSync={cloudSync} signOut={signOut} confirmDeleteAccount={confirmDeleteAccount} />}
         {view === "profile" && <ProfilePanel profile={state.profile} activeProject={activeProject} activeChat={activeChat} insights={insights} activeMode={activeMode} updateState={updateState} recap={buildLearnerRecap(state)} />}
         {view === "brain" && (
           <React.Suspense fallback={<PanelLoading label="Waking up your brain…" />}>
@@ -1810,152 +1865,6 @@ export default function App() {
   );
 }
 
-function LandingAuthFlow({ complete, continueAsGuest }) {
-  const [step, setStep] = useState("intro");
-  const [provider, setProvider] = useState(AUTH_PROVIDERS[0]);
-  const [form, setForm] = useState({ name: "", email: "" });
-  const [verificationCode, setVerificationCode] = useState("");
-  const [enteredCode, setEnteredCode] = useState("");
-  const [error, setError] = useState("");
-
-  const selectedProvider = AUTH_PROVIDERS.find((item) => item.id === provider.id) || AUTH_PROVIDERS[0];
-
-  function updateForm(field, value) {
-    setForm((current) => ({ ...current, [field]: value }));
-    setError("");
-  }
-
-  function chooseProvider(nextProvider) {
-    setProvider(nextProvider);
-    setStep("account");
-    setError("");
-  }
-
-  function sendVerification(event) {
-    event.preventDefault();
-    const name = form.name.trim();
-    const email = form.email.trim();
-    if (name.length < 2) {
-      setError("Add your name so Peer can personalize the workspace.");
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError("Add a valid email address for verification.");
-      return;
-    }
-    setVerificationCode(String(Math.floor(100000 + Math.random() * 900000)));
-    setEnteredCode("");
-    setStep("verify");
-  }
-
-  function verifyAccount(event) {
-    event.preventDefault();
-    if (enteredCode.trim() !== verificationCode) {
-      setError("That code does not match. Check the demo code and try again.");
-      return;
-    }
-    complete({
-      id: uid(),
-      name: form.name.trim(),
-      email: form.email.trim(),
-      provider: selectedProvider.id,
-      createdAt: Date.now(),
-    });
-  }
-
-  return (
-    <section className="landing-shell">
-      <div className="landing-hero">
-        <div className="landing-brand">
-          <PeerLogo size={30} />
-          <span>peer</span>
-        </div>
-        <div className="landing-copy">
-          <span className="landing-kicker">Adaptive peer-to-peer learning</span>
-          <h1>Learn like you have a patient study partner beside you.</h1>
-          <p>
-            Peer watches how you ask questions, what confuses you, what clicks, and which examples help.
-            Then it adapts explanations, quizzes, documents, notes, and teach-back practice around your actual learning pattern.
-          </p>
-        </div>
-        <div className="landing-actions">
-          <button className="primary-button" onClick={() => setStep("account")}>Create account</button>
-          <button onClick={continueAsGuest}>Try local guest mode</button>
-        </div>
-        <div className="landing-points">
-          <span><Sparkles size={15} /> Learns from feedback</span>
-          <span><FileText size={15} /> Saves study materials</span>
-          <span><ShieldCheckIcon /> Verified local profile</span>
-        </div>
-      </div>
-
-      <div className="auth-panel">
-        {step === "intro" && (
-          <>
-            <h2>How Peer works</h2>
-            <div className="peer-steps">
-              <span><strong>1</strong><b>You ask naturally</b><small>No learning-style quiz needed.</small></span>
-              <span><strong>2</strong><b>Peer adapts</b><small>Shorter, deeper, visual, quiz, or teach-back depending on signals.</small></span>
-              <span><strong>3</strong><b>Your memory grows</b><small>Projects track concepts, misconceptions, notes, and files.</small></span>
-            </div>
-            <button className="primary-button wide" onClick={() => setStep("account")}>Continue to account</button>
-          </>
-        )}
-
-        {step === "account" && (
-          <>
-            <h2>Create your learning account</h2>
-            <p className="auth-note">
-              This local prototype stores only minimal account metadata in this browser. Real Google/Microsoft/GitHub login and encrypted cloud storage should be added with a backend before production.
-            </p>
-            <div className="provider-grid">
-              {AUTH_PROVIDERS.map((item) => (
-                <button key={item.id} className={selectedProvider.id === item.id ? "active" : ""} onClick={() => chooseProvider(item)}>
-                  <span>{item.badge}</span>
-                  <b>{item.label}</b>
-                  <small>{item.hint}</small>
-                </button>
-              ))}
-            </div>
-            <form className="auth-form" onSubmit={sendVerification}>
-              <label>
-                Name
-                <input value={form.name} onChange={(event) => updateForm("name", event.target.value)} placeholder="Your name" />
-              </label>
-              <label>
-                Email
-                <input value={form.email} onChange={(event) => updateForm("email", event.target.value)} placeholder="you@example.com" />
-              </label>
-              {error && <div className="auth-error">{error}</div>}
-              <button className="primary-button wide" type="submit">Send verification code</button>
-            </form>
-          </>
-        )}
-
-        {step === "verify" && (
-          <>
-            <h2>Verify your email</h2>
-            <p className="auth-note">Enter the 6-digit code for {form.email}. In this local build, the demo code is shown below instead of sent by email.</p>
-            <div className="demo-code"><span>Demo verification code</span><strong>{verificationCode}</strong></div>
-            <form className="auth-form" onSubmit={verifyAccount}>
-              <label>
-                Verification code
-                <input value={enteredCode} onChange={(event) => { setEnteredCode(event.target.value); setError(""); }} placeholder="123456" inputMode="numeric" maxLength={6} />
-              </label>
-              {error && <div className="auth-error">{error}</div>}
-              <button className="primary-button wide" type="submit">Verify and enter Peer</button>
-              <button type="button" className="auth-secondary" onClick={() => setStep("account")}>Back to account details</button>
-            </form>
-          </>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function ShieldCheckIcon() {
-  return <CheckCircle2 size={15} />;
-}
 
 // Small icon+label chip for a subject domain (color-blind safe: icon + text,
 // never color alone).
@@ -2956,7 +2865,7 @@ function SocialPanel({ state, activeProject, createStudyRoom, toggleShareNote, t
   );
 }
 
-function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSync }) {
+function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSync, signOut, confirmDeleteAccount }) {
   const [tab, setTab] = useState("appearance");
   const provider = AUTH_PROVIDERS.find((item) => item.id === state.account?.provider);
 
@@ -3055,12 +2964,26 @@ function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSyn
                   <div className="account-avatar">{state.account?.name ? state.account.name.slice(0, 1).toUpperCase() : "P"}</div>
                   <div>
                     <strong>{state.account?.name || "Local learner"}</strong>
-                    <span>{state.account?.email || "Guest mode"} {state.account?.verified ? "- verified" : "- local guest"}</span>
-                    <small>{provider?.label || "Email"} - stored locally for this prototype</small>
+                    <span>{state.account?.verified ? state.account.email : "Guest mode — data lives on this device"}</span>
+                    <small>{state.account?.verified ? `Signed in with ${provider?.label || "email"}` : "Sign in to back up and sync across devices"}</small>
                   </div>
-                  <button onClick={() => updateState((c) => ({ ...c, landingComplete: false }))}>Review intro</button>
+                  {state.account?.verified ? (
+                    <button onClick={signOut}>Sign out</button>
+                  ) : (
+                    <button className="primary-button" style={{ margin: 0 }} onClick={() => updateState((c) => ({ ...c, landingComplete: false }))}>Sign in</button>
+                  )}
                 </div>
               </div>
+
+              {state.account?.verified && (
+                <div className="settings-group">
+                  <h2>Danger zone</h2>
+                  <p className="settings-danger-desc">Permanently delete your account and every piece of cloud data. Local data on this device is kept.</p>
+                  <button className="danger-btn" onClick={confirmDeleteAccount}>
+                    <Trash2 size={15} /> Delete account
+                  </button>
+                </div>
+              )}
 
               <div className="settings-group">
                 <h2>Cloud sync</h2>
