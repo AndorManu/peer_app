@@ -551,21 +551,23 @@
   border: 2.5px solid #e0a039;
   box-shadow: 0 0 8px -1px rgba(224, 160, 57, 0.8);
 }
-.brain-dot.domain { border-color: #f0b354; box-shadow: 0 0 8px -1px rgba(167, 139, 250, 0.8); }
+.brain-dot.domain { border-color: #f0b354; box-shadow: 0 0 8px -1px rgba(240, 179, 84, 0.8); }
+/* matches brainGraph.js BRAIN_PALETTE: sky concept, rose weak, sand file,
+   slate code, pine note, clay chat, plum quiz */
 .brain-dot.concept {
-  background: #f0b354 !important;
-  box-shadow: 0 0 8px -1px rgba(240, 179, 84, 0.8);
+  background: #6fa8c9 !important;
+  box-shadow: 0 0 8px -1px rgba(111, 168, 201, 0.8);
 }
 .brain-dot.weak {
-  background: #c9a875 !important;
+  background: #c96a5a !important;
   border-radius: 2px;
   transform: rotate(45deg) scale(0.92);
-  box-shadow: 0 0 8px -1px rgba(201, 168, 117, 0.8);
+  box-shadow: 0 0 8px -1px rgba(201, 106, 90, 0.8);
 }
-.brain-dot.file { background: #8a95a3 !important; border-radius: 3px; }
-.brain-dot.code { background: #8fb573 !important; border-radius: 3px; }
-.brain-dot.note { background: #b98a63 !important; border-radius: 3px; }
-.brain-dot.chat { background: #3f8f74 !important; border-radius: 3px; }
+.brain-dot.file { background: #c9a875 !important; border-radius: 3px; }
+.brain-dot.code { background: #8a95a3 !important; border-radius: 3px; }
+.brain-dot.note { background: #3f8f74 !important; border-radius: 3px; }
+.brain-dot.chat { background: #b98a63 !important; border-radius: 3px; }
 .brain-dot.quiz { background: #b57ba6 !important; border-radius: 3px; }
 
 /* Map / Outline toggle — sits first in the filter row */
