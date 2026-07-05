@@ -9,6 +9,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Copy, DoorOpen, Loader2, LogIn, Play, Plus, RefreshCw, Send, Users, X } from "lucide-react";
 import { getSupabase } from "./supabase.js";
+import StyledSelect from "./components/StyledSelect.jsx";
 import { DOMAINS, GENERAL_DOMAIN, classifySubject, getDomain } from "./subjects.js";
 import { DOMAIN_ICONS } from "./constants.js";
 
@@ -399,9 +400,9 @@ function LiveRoom({ room, account, decks, showToast, leave, onRoomSession }) {
                 <div className="room-quiz">
                   <label>
                     Deck
-                    <select value={deckId} onChange={(event) => setDeckId(event.target.value)} aria-label="Quiz deck">
+                    <StyledSelect value={deckId} onChange={(event) => setDeckId(event.target.value)} aria-label="Quiz deck">
                       {myDecks.map((deck) => <option key={deck.id} value={deck.id}>{deck.chatName} ({deck.cards.length})</option>)}
-                    </select>
+                    </StyledSelect>
                   </label>
                   <button className="primary-button" onClick={() => broadcastQuizCard(0)} disabled={!deckId || !connected}>
                     <Play size={14} /> Start co-op quiz

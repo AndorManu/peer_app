@@ -104,6 +104,7 @@ import { hapticTap } from "./native.js";
 import { LegalDialog, downloadDataExport } from "./legal.jsx";
 import { computeStudyPulse, buildReminder, REMINDER_SNOOZE_KEY } from "./studyPulse.js";
 import PeerNavRail from "./components/PeerNavRail.jsx";
+import StyledSelect from "./components/StyledSelect.jsx";
 
 // Heavy screens load on demand: the Brain pulls in Three.js (~600KB) and the
 // Code lab pulls highlight.js — neither belongs in the initial bundle.
@@ -3134,25 +3135,25 @@ function ProfilePanel({ profile, activeProject, activeChat, insights, activeMode
             </label>
             <label>
               Explanation depth
-              <select
+              <StyledSelect
                 value={profile.explanationDepth}
                 onChange={(event) => updateState((current) => ({ ...current, profile: setExplanationDepth(current.profile, event.target.value) }))}
               >
                 {DEPTH_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
-              </select>
+              </StyledSelect>
             </label>
             <label>
               Level
-              <select
+              <StyledSelect
                 value={profile.level}
                 onChange={(event) => updateState((current) => ({ ...current, profile: { ...current.profile, level: event.target.value } }))}
               >
                 {LEVEL_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
-              </select>
+              </StyledSelect>
             </label>
             <label>
               Starting style
-              <select
+              <StyledSelect
                 value={profile.learningPreference}
                 onChange={(event) => updateState((current) => ({
                   ...current,
@@ -3164,7 +3165,7 @@ function ProfilePanel({ profile, activeProject, activeChat, insights, activeMode
                 }))}
               >
                 {LEARNING_STYLE_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
-              </select>
+              </StyledSelect>
             </label>
           </div>
         </div>
@@ -3232,10 +3233,10 @@ function NotesPanel({ notes, projects, deleteNote, toggleShareNote, onPractice, 
           <Search size={14} aria-hidden="true" />
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search notes, tags, concepts..." aria-label="Search notes" />
         </label>
-        <select value={projectFilter} onChange={(event) => setProjectFilter(event.target.value)} aria-label="Filter notes by project">
+        <StyledSelect value={projectFilter} onChange={(event) => setProjectFilter(event.target.value)} aria-label="Filter notes by project">
           <option value="all">All projects</option>
           {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
-        </select>
+        </StyledSelect>
       </div>
       {notes.length === 0 ? (
         <div className="empty-state">
@@ -3507,7 +3508,7 @@ function ProjectModal({ project, selectedDoc, selectedDocId, setSelectedDocId, e
           </div>
           <label className="domain-picker">
             Domain
-            <select
+            <StyledSelect
               value={domainForProject(project).id}
               onChange={(event) => setProjectDomain(project.id, event.target.value)}
               aria-label="Subject domain"
@@ -3515,7 +3516,7 @@ function ProjectModal({ project, selectedDoc, selectedDocId, setSelectedDocId, e
               {[...DOMAINS, GENERAL_DOMAIN].map((domain) => (
                 <option key={domain.id} value={domain.id}>{domain.label}</option>
               ))}
-            </select>
+            </StyledSelect>
           </label>
           <button className="icon-button" onClick={close} aria-label="Close"><X size={18} /></button>
         </header>
@@ -3627,9 +3628,9 @@ function OnboardingModal({ profileDraft, setProfileDraft, complete, skip }) {
         </label>
         <label>
           Current level
-          <select value={profileDraft.level} onChange={(event) => setProfileDraft((current) => ({ ...current, level: event.target.value }))}>
+          <StyledSelect value={profileDraft.level} onChange={(event) => setProfileDraft((current) => ({ ...current, level: event.target.value }))}>
             {LEVEL_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label} - {option.hint}</option>)}
-          </select>
+          </StyledSelect>
         </label>
         <label>
           Language
@@ -3640,9 +3641,9 @@ function OnboardingModal({ profileDraft, setProfileDraft, complete, skip }) {
         </label>
         <label>
           How should Peer start?
-          <select value={profileDraft.learningPreference} onChange={(event) => setProfileDraft((current) => ({ ...current, learningPreference: event.target.value }))}>
+          <StyledSelect value={profileDraft.learningPreference} onChange={(event) => setProfileDraft((current) => ({ ...current, learningPreference: event.target.value }))}>
             {LEARNING_STYLE_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
-          </select>
+          </StyledSelect>
         </label>
         <div className="onboarding-actions">
           <button onClick={skip}>Skip</button>

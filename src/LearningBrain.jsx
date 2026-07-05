@@ -11,6 +11,7 @@
 // If WebGL is unavailable the outline takes over automatically.
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
+import StyledSelect from "./components/StyledSelect.jsx";
 import { Brain, GitBranch, List, Minus, Orbit, RotateCcw, Search, TrendingDown, TrendingUp } from "lucide-react";
 import {
   brainLinkRest,
@@ -143,14 +144,14 @@ export function LearningBrainPanel({ state, activeProject, setView, updateState,
         <div className="brain-toolbar-fields">
           <label>
             Scope
-            <select value={scope} onChange={(event) => setScope(event.target.value)}>
+            <StyledSelect value={scope} onChange={(event) => setScope(event.target.value)}>
               <option value="global">All subjects</option>
               <option value="project">Single subject</option>
-            </select>
+            </StyledSelect>
           </label>
           <label>
             Subject
-            <select
+            <StyledSelect
               value={projectId}
               disabled={scope === "global"}
               onChange={(event) => {
@@ -159,7 +160,7 @@ export function LearningBrainPanel({ state, activeProject, setView, updateState,
               }}
             >
               {state.projects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-            </select>
+            </StyledSelect>
           </label>
           <label className="brain-search">
             Search brain
