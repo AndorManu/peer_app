@@ -447,3 +447,22 @@ input[type="range"] { accent-color: var(--sh-accent); }
   border-radius: 10px; color: rgba(var(--sh-text-rgb), 0.85); padding: 8px 14px; cursor: pointer;
 }
 .theme-light .plan-card ul { color: rgba(42, 35, 24, 0.85); }
+
+/* ---------- room discovery ---------- */
+.room-visibility { margin-top: 10px; flex-wrap: wrap; }
+.room-visibility button { font-size: 12.5px; }
+.discover-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.discover-head h2 { margin: 0; }
+.discover-tools { display: flex; align-items: center; gap: 8px; }
+.discover-tools > button {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 9px; cursor: pointer;
+  background: rgba(var(--sh-text-rgb), 0.05); border: 1px solid rgba(var(--sh-text-rgb), 0.12);
+  color: rgba(var(--sh-text-rgb), 0.7);
+}
+.discover-group { margin-top: 14px; }
+.discover-group h3 {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 12px; letter-spacing: .5px; text-transform: uppercase;
+  color: var(--sh-text-muted); margin: 0 0 8px;
+}

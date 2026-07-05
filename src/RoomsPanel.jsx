@@ -21,8 +21,11 @@ export default function RoomsPanel({ account, decks, projects, showToast, onSign
   const [activeRoom, setActiveRoom] = useState(null);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
+  const [newVisibility, setNewVisibility] = useState("private");
   const [joinCode, setJoinCode] = useState("");
   const [busy, setBusy] = useState("");
+  const [publicRooms, setPublicRooms] = useState(null); // null = loading
+  const [discoverDomain, setDiscoverDomain] = useState("all");
 
   const refreshRooms = useCallback(async () => {
     const client = await getSupabase();
@@ -31,9 +34,17 @@ export default function RoomsPanel({ account, decks, projects, showToast, onSign
     setRooms(data || []);
   }, []);
 
+  // Discovery: only the safe listing the RPC exposes (no invite codes/owners).
+  const refreshDiscovery = useCallback(async () => {
+    const client = await getSupabase();
+    if (!client) return;
+    const { data, error } = await client.rpc("list_public_rooms");
+    setPublicRooms(error ? [] : (data || []));
+  }, []);
+
   useEffect(() => {
-    if (signedIn) refreshRooms();
-  }, [signedIn, refreshRooms]);
+    if (signedIn) { refreshRooms(); refreshDiscovery(); }
+  }, [signedIn, refreshRooms, refreshDiscovery]);
 
   async function createRoom(event) {
     event.preventDefault();
@@ -48,16 +59,38 @@ export default function RoomsPanel({ account, decks, projects, showToast, onSign
         name,
         topic: name,
         domain_id: domainId,
+        visibility: newVisibility,
       }).select().single();
       if (error) throw new Error(error.message);
       await client.from("room_members").upsert({ room_id: data.id, user_id: account.id, role: "owner" });
       setNewName("");
       setCreating(false);
       await refreshRooms();
+      if (newVisibility === "public") refreshDiscovery();
       setActiveRoom(data);
-      showToast(`Room "${name}" is live — share the invite code!`);
+      showToast(newVisibility === "public"
+        ? `Room "${name}" is live and discoverable by anyone studying ${getDomain(domainId).label}.`
+        : `Room "${name}" is live — share the invite code!`);
     } catch (err) {
       showToast(err.message || "Could not create the room.");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function joinPublicRoom(room) {
+    setBusy(`discover-${room.id}`);
+    try {
+      const client = await getSupabase();
+      const { data, error } = await client.rpc("join_public_room", { room: room.id });
+      if (error) throw new Error(error.message);
+      const joined = Array.isArray(data) ? data[0] : data;
+      if (!joined) throw new Error("That room is not open to join.");
+      await refreshRooms();
+      setActiveRoom(joined);
+      showToast(`Joined "${joined.name}"`);
+    } catch (err) {
+      showToast(err.message || "Could not join the room.");
     } finally {
       setBusy("");
     }
@@ -159,8 +192,83 @@ export default function RoomsPanel({ account, decks, projects, showToast, onSign
               </button>
               <button type="button" onClick={() => setCreating(false)}>Cancel</button>
             </form>
+            <div className="segmented room-visibility" role="radiogroup" aria-label="Who can find this room">
+              <button
+                type="button"
+                className={newVisibility === "private" ? "active" : ""}
+                aria-pressed={newVisibility === "private"}
+                onClick={() => setNewVisibility("private")}
+              >Private — invite code only</button>
+              <button
+                type="button"
+                className={newVisibility === "public" ? "active" : ""}
+                aria-pressed={newVisibility === "public"}
+                onClick={() => setNewVisibility("public")}
+              >Public — anyone can discover it</button>
+            </div>
           </div>
         )}
+
+        <div className="profile-card wide">
+          <div className="discover-head">
+            <h2>Discover public rooms</h2>
+            <div className="discover-tools">
+              <StyledSelect value={discoverDomain} onChange={(event) => setDiscoverDomain(event.target.value)} aria-label="Filter by subject">
+                <option value="all">All subjects</option>
+                {DOMAINS.map((domain) => <option key={domain.id} value={domain.id}>{domain.label}</option>)}
+              </StyledSelect>
+              <button type="button" onClick={refreshDiscovery} aria-label="Refresh public rooms"><RefreshCw size={14} /></button>
+            </div>
+          </div>
+          {publicRooms === null ? (
+            <p><Loader2 size={14} className="spin" /> Finding rooms…</p>
+          ) : (() => {
+            const mineIds = new Set((rooms || []).map((room) => room.id));
+            const visible = publicRooms
+              .filter((room) => !mineIds.has(room.id))
+              .filter((room) => discoverDomain === "all" || room.domain_id === discoverDomain);
+            if (!visible.length) {
+              return (
+                <div className="empty-state compact">
+                  <Users size={24} />
+                  <strong>No public rooms {discoverDomain === "all" ? "yet" : `for ${getDomain(discoverDomain).label} yet`}</strong>
+                  <span>Create one and set it to Public — anyone studying that subject can find and join it.</span>
+                </div>
+              );
+            }
+            const byDomain = visible.reduce((acc, room) => { (acc[room.domain_id] ||= []).push(room); return acc; }, {});
+            return Object.entries(byDomain).map(([domainId, list]) => {
+              const domain = getDomain(domainId);
+              const Icon = DOMAIN_ICONS[domain.icon] || DOMAIN_ICONS.brain;
+              return (
+                <div key={domainId} className="discover-group">
+                  <h3><span style={{ color: domain.accent }}><Icon size={15} aria-hidden="true" /></span> {domain.label}</h3>
+                  <div className="room-list">
+                    {list.map((room) => {
+                      const activeRecently = Date.now() - Date.parse(room.updated_at) < 24 * 3_600_000;
+                      return (
+                        <article className="room-card" key={room.id}>
+                          <span style={{ color: domain.accent }}><Users size={17} aria-hidden="true" /></span>
+                          <div>
+                            <strong>{room.name}</strong>
+                            <small>
+                              {room.topic && room.topic !== room.name ? `${room.topic} · ` : ""}
+                              {room.member_count} {Number(room.member_count) === 1 ? "member" : "members"}
+                              {activeRecently ? " · active today" : ""}
+                            </small>
+                          </div>
+                          <button onClick={() => joinPublicRoom(room)} disabled={busy === `discover-${room.id}`}>
+                            {busy === `discover-${room.id}` ? <Loader2 size={13} className="spin" /> : <DoorOpen size={13} />} Join
+                          </button>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            });
+          })()}
+        </div>
 
         <div className="profile-card wide">
           <h2>Your rooms</h2>
