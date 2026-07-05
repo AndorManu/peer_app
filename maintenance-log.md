@@ -1,5 +1,48 @@
 # Maintenance log
 
+## 2026-07-05 — M13: Launch polish (legal, dashboard, reminders, SEO)
+
+**What changed**
+- **GDPR export** ([legal.jsx](src/legal.jsx)): Settings → Data → "Export
+  your data" downloads the complete state (the offline-first source of
+  truth; no tokens live in state) as a versioned JSON envelope.
+- **Privacy policy + terms** in-app (landing footer + Settings → Account),
+  plain-language and accurate to the real flows: local-first IndexedDB,
+  Supabase rows under RLS, Anthropic/Voyage/fal processing, no ads or
+  trackers, export + one-click account deletion. Stale copy fixed along the
+  way (the "Coming soon" list of already-shipped features, the "sign-in
+  arrives in the next update" sync blurb).
+- **Progress dashboard** ([studyPulse.js](src/studyPulse.js), pure + 6 unit
+  tests): Profile "Today" card — streak, cards due, improving/slipping,
+  7-day activity bars from message/review/note timestamps — with one-click
+  "Review N due cards now" that lands in flashcards with review mode already
+  running (autoStartReview intent prop).
+- **Study reminders**: one banner per app open on the chat screen — due
+  cards first, streak-about-to-break second, dismiss = quiet for the day
+  (localStorage). Push notifications = owner step (FCM/APNs, NATIVE.md).
+- **SEO/OG**: title/description rewritten to the actual promise; Open Graph
+  + Twitter cards + canonical (peer.study placeholder; og.png = owner
+  export); robots index,follow.
+- **Onboarding**: promise-anchored copy ("Meet Peer — your study partner").
+- **BUG FIX (pre-existing, caught by verification)**: `normalizeState`
+  rebuilt flashcards as `{id, question, answer}` only, stripping the SM-2
+  fields — every reload silently reset all spaced-repetition progress.
+  Fields now survive; regression test locks it in.
+
+**What I tested**
+- Export: blob intercepted in the live app, parsed — valid envelope, all 16
+  state keys, correct account, real counts.
+- Legal dialogs: open from Settings, focus trapped, Escape closes + restores
+  focus, axe 0 violations, both themes.
+- Dashboard/review: sample decks → "5 cards due"; Review now → review mode
+  auto-starts; grading advances 1/5 → 2/5; **after the fix** reload keeps the
+  graded card scheduled (5 → 4 due, previously reset to 5).
+- Reminder: shows on fresh open with correct count, CTA lands in review,
+  dismiss stores the day key and stays quiet after reload.
+- Meta tags verified rendered in the live document.
+- `npm test` 71/71 (6 new studyPulse + regression tests); build clean; axe
+  0 violations on the new surfaces.
+
 ## 2026-07-05 — M12: Accessibility deep pass (WCAG 2.2 AA)
 
 **What changed**

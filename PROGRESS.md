@@ -1,20 +1,19 @@
 # PROGRESS — Peer build status (unattended overnight run)
 
-> **RESUME EXACTLY HERE:** M0–M12 done + verified. Security pass `aa6fe8f`;
-> Study Hall makeover `3007746`..`22b9444`; M11 native `b152de7` (NATIVE.md
-> = build commands + owner steps); M12 a11y `cae3dae`+`32eea2e`: axe-core
-> 0 violations on every screen (dark+light, 1280px+320px), Lighthouse a11y
-> 100/100, keyboard/reflow/reduced-motion verified — device-only items
-> (VoiceOver/TalkBack, mic, pinch) documented for owner in maintenance-log.
-> **NEXT TASK: M13 — launch polish.** Concretely: (1) first-run onboarding
-> that lands the "adaptive study partner" promise, (2) progress dashboard
-> (streaks, mastery deltas, review-now queue from spaced-rep data),
-> (3) study reminders (in-app; push needs owner FCM/APNs per NATIVE.md),
-> (4) marketing landing page + SEO meta/OG tags, (5) legal: privacy policy,
-> terms, GDPR export + delete (delete-account endpoint already live, add
-> data export). Keep quotas/paywall untouched; Stripe still stubbed.
-> After M13: makeover polish backlog (populated-deck review, live-room w/
-> partner, paywall screenshot) + owner key flips (Stripe, Facebook).
+> **RESUME EXACTLY HERE: ALL 14 MILESTONES (M0–M13) DONE + VERIFIED.**
+> Security `aa6fe8f`; makeover `3007746`..`22b9444`; M11 native `b152de7`;
+> M12 a11y `cae3dae`+`32eea2e` (axe 0 everywhere, Lighthouse 100); M13
+> launch polish `a05d528`+`fa21d5a`+final (GDPR export, privacy/terms,
+> dashboard, reminders, SEO/OG — plus a real bug fixed: spaced-rep progress
+> was resetting on reload). Tests 71/71, build clean.
+> **NEXT: no milestones left — remaining work is (a) the polish backlog in
+> §2 (live-room screenshot w/ partner, paywall dialog screenshot), (b)
+> owner-dependent steps: Stripe + Facebook keys (§4 zero-code flips),
+> buy the peer.study domain (canonical/OG tags assume it — swap in
+> index.html if different), export og.png (1200×630) + branded app icons
+> (NATIVE.md), FCM/APNs push, store accounts/signing, device a11y pass
+> (maintenance-log M12), production host CSP (drop 'unsafe-inline'/'eval',
+> see §3), PEER_API_BASE for a hosted API.** Pick any, or await the owner.
 > Read this file top to bottom; every claim states how it was verified.
 
 ## 1. Milestones
@@ -34,7 +33,7 @@
 | M10 badges | ✅ done | `e06d29b` | 30 badges, trophy case, sync; live badge earn verified |
 | M11 native (Capacitor+Tauri) | ✅ scaffolded + wired | `b152de7` | android/ + ios/ generated & synced (appId app.peer.study); src-tauri/ scaffolded (strict CSP, 1280×860); src/native.js: status bar, deep links (OAuth redirects re-enter SPA), Android back, hapticTap on badge earns — all feature-detected, web verified unaffected (0 console errors). Platform BUILDS need toolchains this machine lacks (no Rust/Java/Android SDK) — exact commands in NATIVE.md; icons/splash + push notifications documented as owner steps. |
 | M12 a11y deep pass | ✅ done | `cae3dae`+`32eea2e` | axe-core 4.12.1 injected live: **0 violations on every screen** (landing/chat/brain/code/notes/cards/rooms/settings×3/profile + modal/confirm/palette), dark AND light, 1280px AND 320px. Lighthouse a11y **100/100** (landing). Keyboard: focus in/Escape/restore on dialogs, skip links, no positive tabindex. Reflow 320px + 19px text: no overflow. Reduced-motion blankets intact. Owner (device-only): VoiceOver/TalkBack run-through, mic audio, real pinch-zoom — steps in maintenance-log M12 entry. |
-| **M13 launch polish** | ⬜ **next in line** | | onboarding, progress dashboard, study reminders, landing/marketing page, SEO, legal (privacy/terms/GDPR export+deletion) |
+| M13 launch polish | ✅ done | `a05d528`+`fa21d5a`+(this commit) | GDPR export (verified valid JSON, all 16 state keys) + in-app privacy/terms (axe 0); progress dashboard "Today" card (streak/due/mastery/7-day bars) + review-now → auto-starts review (verified 1/5→2/5→persists); daily-snoozed reminder banner (verified across reloads); **fixed pre-existing bug: normalizeState stripped SM-2 fields → all review progress reset on reload** (regression test added); SEO/OG/Twitter meta + canonical; onboarding copy. Tests 71/71. Owner: og.png export, peer.study domain (canonical placeholder), FCM/APNs push. |
 
 Verification scripts (all runnable anytime, all passing as of last run):
 `tools/verify-supabase.mjs` (RLS), `tools/verify-roundtrip.mjs` (sync),
@@ -84,8 +83,10 @@ Checklist (screen = restyled + screenshot + feature-parity click-through):
 - [x] 10. Landing/auth — the showcase screen: serif headline, amber CTA
   (screenshot ✓). Onboarding modal inherits foundation.
 - [x] 11. Dialogs/toasts — inherit foundation (radius 20 panels, warm shadows).
-Polish backlog for next session (visual nits, not blockers): populated-deck
-review mode, live-room screen with a partner, paywall dialog screenshot.
+Polish backlog for next session (visual nits, not blockers): live-room screen
+with a partner, paywall dialog screenshot. (Populated-deck review mode:
+verified with screenshot during M13 — warm amber card, grade buttons, 1/5
+progress meter, all correct under the Study Hall skin.)
 
 ## 3. Security checklist (what was tested, how, result)
 
@@ -151,4 +152,17 @@ review mode, live-room screen with a partner, paywall dialog screenshot.
   Paywall/meter/quota all fully live regardless. Zero-code flip when keys land.
 
 ## 5. Decisions made autonomously tonight
-- (log entries appended here as they happen)
+- **Canonical domain**: index.html canonical/OG URLs assume `https://peer.study`
+  (matches appId app.peer.study). Not purchased yet — swap if the owner picks
+  a different domain. og:image points at /og.png which needs an owner export.
+- **Legal contact**: privacy/terms list andor.danse@gmail.com as contact
+  (src/legal.jsx LEGAL_CONTACT) — consider a support@ alias before launch.
+- **Lighthouse scope**: only the landing is URL-addressable in a fresh
+  headless profile; signed-in screens were audited with axe-core per screen
+  (same engine Lighthouse uses) — recorded as the M12 evidence.
+- **Test account**: peer-m7-browser@example.com now contains the two sample
+  demo subjects (loaded during M13 verification of the dashboard/reminders).
+  Kept per the owner's earlier instruction not to delete this account.
+- **Reminder design**: one banner per app open, localStorage day-snooze, due
+  cards outrank streak nudges — no notification permission requested (push
+  is an owner step, FCM/APNs, NATIVE.md).
