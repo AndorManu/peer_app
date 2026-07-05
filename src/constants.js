@@ -103,7 +103,7 @@ export const STUDY_MODES = [
   { id: "auto", label: "Auto", icon: Brain, prompt: "Adapt naturally to the learner." },
   { id: "explain", label: "Explain", icon: Lightbulb, prompt: "Explain clearly with a compact example." },
   { id: "quiz", label: "Quiz", icon: Target, prompt: "Ask one question at a time and wait for the learner." },
-  { id: "duck", label: "Rubber duck", icon: MessageSquare, prompt: "Let the learner explain first, then gently inspect gaps." },
+  { id: "duck", label: "Teach back", icon: MessageSquare, prompt: "Let the learner explain first, then gently inspect gaps." },
   { id: "challenge", label: "Challenge", icon: Trophy, prompt: "Turn the topic into a small level or mini challenge." },
   { id: "visual", label: "Visual", icon: Layers, prompt: "Use mental models, analogies, and simple diagrams in text." },
   { id: "exam", label: "Exam prep", icon: GraduationCap, prompt: "Focus on recall, traps, and exam-style checks." },
