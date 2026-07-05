@@ -399,7 +399,7 @@ ${code || "(empty)"}
                 {exit ? <>exit {exit.code} · {exit.ms}ms{exit.where === "sandbox" ? " · sandbox" : exit.version ? ` · ${lang.label} ${exit.version}` : ""}</> : lang.local ? "in-browser sandbox" : "server runner"}
               </span>
             </div>
-            <div className="term-body">
+            <div className="term-body" tabIndex={0} role="log" aria-label="Terminal output">
               <div className="term-cmd">$ run {lang.ext}{lang.local ? "" : "  →  server"}</div>
               {running ? (
                 <div className="term-line muted">running…<span className="term-caret" /></div>
