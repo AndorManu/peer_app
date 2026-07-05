@@ -278,3 +278,7 @@ code, pre, kbd, samp, .hljs, .term-body, .vscode-code, .room-code {
   .study-reminder { margin: 8px 10px 0; flex-wrap: wrap; }
   .pulse-bars { margin-left: 0; }
 }
+
+/* ---------- calmer message chips: "More" expander ---------- */
+.message-actions .action-more { opacity: 0.75; }
+.message-actions .action-more[aria-expanded="true"] { opacity: 1; }
