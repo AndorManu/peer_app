@@ -6,6 +6,12 @@ import { handleChatRequest } from "./handleChat.js";
 import { handleImageRequest } from "./handleImage.js";
 import { handleRunRequest } from "./handleRun.js";
 import { handleDeleteAccountRequest } from "./handleAccount.js";
+import {
+  handleCheckoutRequest,
+  handlePortalRequest,
+  handleStripeWebhookRequest,
+  handleUsageRequest,
+} from "./handleBilling.js";
 
 loadDotEnv();
 
@@ -49,6 +55,30 @@ const server = createHttpServer(async (req, res) => {
     if (req.url?.startsWith("/api/delete-account")) {
       loadDotEnv({ override: true });
       await handleDeleteAccountRequest(req, res);
+      return;
+    }
+
+    if (req.url?.startsWith("/api/usage")) {
+      loadDotEnv({ override: true });
+      await handleUsageRequest(req, res);
+      return;
+    }
+
+    if (req.url?.startsWith("/api/checkout")) {
+      loadDotEnv({ override: true });
+      await handleCheckoutRequest(req, res);
+      return;
+    }
+
+    if (req.url?.startsWith("/api/portal")) {
+      loadDotEnv({ override: true });
+      await handlePortalRequest(req, res);
+      return;
+    }
+
+    if (req.url?.startsWith("/api/stripe-webhook")) {
+      loadDotEnv({ override: true });
+      await handleStripeWebhookRequest(req, res);
       return;
     }
 

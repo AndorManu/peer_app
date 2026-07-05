@@ -1,3 +1,5 @@
+import { checkEntitlement, recordUsage, resolveUser } from "./entitlements.js";
+
 const MAX_BODY_SIZE = 2_000_000;
 
 export async function handleChatRequest(req, res) {
@@ -16,6 +18,31 @@ export async function handleChatRequest(req, res) {
     return;
   }
 
+  // ---- entitlement gate (when Supabase is configured, AI requires auth +
+  // remaining daily quota; a bare clone without Supabase keys skips the gate) ----
+  let entitlement = null;
+  let userId = null;
+  const gated = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+  if (gated) {
+    const user = await resolveUser(req.headers.authorization);
+    if (!user) {
+      sendJson(res, 401, { error: "Sign in to use the AI tutor.", code: "auth_required" });
+      return;
+    }
+    userId = user.userId;
+    entitlement = await checkEntitlement(userId, req.headers["x-peer-tz-offset"]);
+    if (entitlement.exhausted) {
+      sendJson(res, 402, {
+        error: "You've used today's free AI tokens. Upgrade to Pro for a much bigger daily allowance, or come back after midnight.",
+        code: "quota_exhausted",
+        plan: entitlement.plan,
+        usedToday: entitlement.usedToday,
+        allowance: entitlement.allowance,
+      });
+      return;
+    }
+  }
+
   res.statusCode = 200;
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -23,7 +50,10 @@ export async function handleChatRequest(req, res) {
 
   try {
     if (process.env.ANTHROPIC_API_KEY) {
-      await streamAnthropic(system, messages, res, imageDataUrls);
+      const usage = await streamAnthropic(system, messages, res, imageDataUrls, entitlement?.model);
+      if (userId && usage) {
+        await recordUsage({ userId, kind: "chat", model: usage.model, tokensIn: usage.tokensIn, tokensOut: usage.tokensOut });
+      }
     } else {
       await streamOpenAI(system, messages, res);
     }
@@ -33,7 +63,7 @@ export async function handleChatRequest(req, res) {
   }
 }
 
-async function streamAnthropic(system, messages, res, imageDataUrls = []) {
+async function streamAnthropic(system, messages, res, imageDataUrls = [], modelOverride = null) {
   const anthropicMessages = messages.map((m, i) => {
     const isLastUser = m.role === "user" && i === messages.length - 1 && imageDataUrls.length > 0;
     if (isLastUser) {
@@ -52,6 +82,7 @@ async function streamAnthropic(system, messages, res, imageDataUrls = []) {
     return { role: m.role === "assistant" ? "assistant" : "user", content: String(m.content || "") };
   });
 
+  const model = modelOverride || process.env.ANTHROPIC_MODEL || "claude-haiku-4-5-20251001";
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -60,10 +91,12 @@ async function streamAnthropic(system, messages, res, imageDataUrls = []) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: process.env.ANTHROPIC_MODEL || "claude-haiku-4-5-20251001",
+      model,
       max_tokens: 1200,
       stream: true,
-      system,
+      // Prompt caching on the big tutor system prompt: ~90% cheaper input on
+      // repeat turns within the cache window.
+      system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
       messages: anthropicMessages,
     }),
   });
@@ -76,6 +109,8 @@ async function streamAnthropic(system, messages, res, imageDataUrls = []) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  let tokensIn = 0;
+  let tokensOut = 0;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -91,8 +126,17 @@ async function streamAnthropic(system, messages, res, imageDataUrls = []) {
       if (!raw) continue;
       try {
         const event = JSON.parse(raw);
+        if (event.type === "message_start") {
+          const usage = event.message?.usage || {};
+          tokensIn = (usage.input_tokens || 0)
+            + (usage.cache_creation_input_tokens || 0)
+            + (usage.cache_read_input_tokens || 0);
+        }
         if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
           sendEvent(res, { chunk: event.delta.text });
+        }
+        if (event.type === "message_delta" && event.usage?.output_tokens) {
+          tokensOut = event.usage.output_tokens;
         }
       } catch {}
     }
@@ -100,6 +144,7 @@ async function streamAnthropic(system, messages, res, imageDataUrls = []) {
 
   sendEvent(res, { done: true });
   res.end();
+  return { model, tokensIn, tokensOut };
 }
 
 async function streamOpenAI(system, messages, res) {
