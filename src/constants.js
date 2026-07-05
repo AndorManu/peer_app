@@ -61,7 +61,19 @@ export const DOMAIN_ICONS = {
   brain: Brain,
 };
 
-export const PROJECT_COLORS = ["#6d5dfc", "#12a594", "#ef6f6c", "#e2a93b", "#2f9ed8", "#d65a9f"];
+// "Study Hall" warm editorial ramp (amber · pine · rose · sky · sand · plum)
+export const PROJECT_COLORS = ["#e0a039", "#3f8f74", "#c96a5a", "#6fa8c9", "#c9a875", "#b57ba6"];
+
+// stored projects created before the redesign migrate to the closest new hue
+export const LEGACY_COLOR_MAP = {
+  "#6d5dfc": "#e0a039", "#12a594": "#3f8f74", "#ef6f6c": "#c96a5a",
+  "#e2a93b": "#c9a875", "#2f9ed8": "#6fa8c9", "#d65a9f": "#b57ba6",
+  "#8b5cf6": "#e0a039", "#22d3ee": "#6fa8c9", "#34d399": "#3f8f74",
+  "#fb7185": "#c96a5a", "#f59e0b": "#c9a875", "#818cf8": "#8a95a3",
+  "#e879f9": "#b57ba6", "#2dd4bf": "#4a9d8e", "#fb923c": "#b98a63",
+  "#84cc16": "#8fb573", "#a78bfa": "#f0b354", "#fbbf24": "#d18e5f",
+  "#6d5ef0": "#9c8b74",
+};
 
 export const FONT_OPTIONS = [
   { id: "inter", label: "Work Sans", family: "'Work Sans', 'Inter', system-ui, sans-serif" },
