@@ -16,8 +16,8 @@
 // The mapping + merge core is pure and unit-tested; runSyncCycle does I/O.
 // ============================================================================
 
-export const SYNC_TABLES = ["projects", "documents", "chats", "messages", "notes", "decks", "cards"];
-const PULL_ORDER = ["projects", "chats", "decks", "documents", "messages", "notes", "cards", "profiles"];
+export const SYNC_TABLES = ["projects", "documents", "chats", "messages", "notes", "decks", "cards", "badges"];
+const PULL_ORDER = ["projects", "chats", "decks", "documents", "messages", "notes", "cards", "badges", "profiles"];
 const CURSOR_OVERLAP_MS = 2000;
 
 // ---------- stable hashing (djb2 over stable-stringified rows) ----------
@@ -53,6 +53,7 @@ export function stateToRows(state, userId) {
     notes: [],
     decks: [],
     cards: [],
+    badges: [],
     profiles: [],
   };
 
@@ -154,6 +155,16 @@ export function stateToRows(state, userId) {
         deleted: false,
         created_at: toIso(card.createdAt || deck.createdAt),
       });
+    });
+  }
+
+  for (const badge of state.badges || []) {
+    rows.badges.push({
+      user_id: userId,
+      id: badge.id,
+      badge_id: badge.badgeId,
+      domain_id: badge.domainId || null,
+      earned_at: toIso(badge.earnedAt),
     });
   }
 
@@ -407,6 +418,19 @@ export function applyPull(state, pulledByTable, dirtyKeys = new Set()) {
           }
           return { ...deck, cards };
         });
+      }
+
+      if (table === "badges") {
+        const target = clone();
+        const existing = (target.badges || []).find((item) => item.id === row.id);
+        if (!existing) {
+          target.badges = [...(target.badges || []), {
+            id: row.id,
+            badgeId: row.badge_id,
+            domainId: row.domain_id || null,
+            earnedAt: toMs(row.earned_at),
+          }];
+        }
       }
 
       if (table === "profiles") {

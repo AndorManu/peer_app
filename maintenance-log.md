@@ -1,5 +1,34 @@
 # Maintenance log
 
+## 2026-07-05 — M10: Badges & gamification
+
+**What changed**
+- **Badge engine** ([src/badges.js](src/badges.js), pure + unit-tested): a
+  30-badge catalog spanning every subject — curiosity (1/25/100 questions),
+  streaks (3/7/30 days), knowledge (notes, tracked concepts, level-ups),
+  practice (decks, 50 spaced-rep reviews, teach-back ×3), social (live room
+  sessions), visuals (generated diagrams), breadth (3/6 domains) — **plus one
+  mastery track per taxonomy domain** ("Mathematics Adept" … "Life & Practical
+  Skills Adept"), so no subject is left without its own track.
+- **Earning**: an idempotent detector runs on state changes; new badges land in
+  `state.badges` with a celebration toast. Room participation now counts (a
+  session signal from RoomsPanel).
+- **Trophy case** in Profile: gradient medallion coins with per-badge accents
+  (earned glow; locked are dimmed with live progress bars), "next up" pointer,
+  show-all toggle, and a **Share** button (native share sheet or clipboard).
+  Colorblind-safe: icon + title + text on every medallion.
+- **Cross-device**: badges joined the sync engine (migration 0005 added
+  `updated_at` to the badges table) — trophies follow the account.
+
+**What I tested**
+- 6 new unit tests: catalog integrity, every domain has a track, empty-state
+  earns nothing, threshold crossing + progress math, domain-scoped mastery
+  counting, no duplicate awards. 65/65 total.
+- Live in the browser: asked the first question → "Badge earned: First
+  Question 🏆" toast fired instantly; Profile showed "Trophy case · 1 of 30
+  earned" with the glowing medallion, dimmed locked badges with progress bars,
+  and "Next up: Warm Streak — 1/3". Build clean.
+
 ## 2026-07-05 — M9: Real peer-to-peer rooms
 
 **What changed**
