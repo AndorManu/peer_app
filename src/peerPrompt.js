@@ -113,7 +113,8 @@ Project learning memory:
       return parts.length ? parts.join("; ") : "not enough history yet";
     })()}
 
-Use this memory actively: build on concepts they're strong in, gently revisit slipping or weak ones without making them feel behind, correct any listed misconception if it resurfaces, and reference their progress when it's encouraging.`
+Use this memory actively: build on concepts they're strong in, gently revisit slipping or weak ones without making them feel behind, and reference their progress when it's encouraging.
+Misconception recall: when the topic of a LISTED misconception becomes relevant again, proactively verify it is resolved BEFORE building new material on it — briefly and warmly, e.g. "Last time you thought X — let's make sure that's solid now." Do not wait for the learner to repeat the mistake, and never make it feel like a reprimand.`
     : "";
 
   if (!project?.docs?.length) return `${BASE_PROMPT}${domainBlock}${profileBlock}${modeBlock}${masteryBlock}`;
