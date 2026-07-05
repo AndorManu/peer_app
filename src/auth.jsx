@@ -167,7 +167,7 @@ export function LandingAuthFlow({ continueAsGuest, PeerLogo }) {
   const emailBusy = busy === "signin" || busy === "signup" || busy === "magic";
 
   return (
-    <section className="landing-shell">
+    <main className="landing-shell">
       <div className="landing-hero">
         <div className="landing-brand">
           <PeerLogo size={30} />
@@ -289,6 +289,6 @@ export function LandingAuthFlow({ continueAsGuest, PeerLogo }) {
           </>
         )}
       </div>
-    </section>
+    </main>
   );
 }

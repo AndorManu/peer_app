@@ -136,7 +136,7 @@ body { background: #15120d; }
   font-weight: 700 !important;
   letter-spacing: normal !important;
   text-transform: none !important;
-  color: rgba(224, 160, 57, 0.38) !important;
+  color: rgba(224, 160, 57, 0.78) !important;
   font-family: 'Inter', system-ui, sans-serif !important;
 }
 
@@ -240,6 +240,7 @@ body { background: #15120d; }
   -webkit-backdrop-filter: blur(12px) !important;
 }
 .topbar-title {
+  margin: 0 !important;
   font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 12.5px !important;
   font-weight: 600 !important;
@@ -545,7 +546,7 @@ textarea:focus {
   border-top: 1px solid rgba(0, 120, 200, 0.1) !important;
 }
 .theme-light .brand strong { color: var(--accent) !important; }
-.theme-light .side-heading span { color: rgba(0, 120, 200, 0.5) !important; }
+.theme-light .side-heading span { color: #7a5a1e !important; }
 
 /* ════════════════════════════════════════════════════════════════════
    VISUAL REPAIR PASS — nav, flashcards, gutters, deep terminal cards
@@ -2843,7 +2844,7 @@ textarea:focus {
   border-radius: 13px !important;
   background: rgba(224, 160, 57, 0.035) !important;
   padding: 10px !important;
-  color: rgba(224, 224, 238, 0.45) !important;
+  color: rgba(224, 224, 238, 0.64) !important;
   font-size: 11px !important;
 }
 
