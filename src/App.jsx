@@ -69,6 +69,7 @@ import {
   makeMastery,
   markAdaptationNoticeShown,
   recordStudyActivity,
+  setDnaOverride,
   setExplanationDepth,
   updateMasteryFromFeedback,
   updateMasteryFromMessage,
@@ -213,6 +214,15 @@ export default function App() {
     setReminder(buildReminder(computeStudyPulse(state), { snoozedDay: snoozed }));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once per open, not per keystroke
   }, [hydrated, state.landingComplete]);
+
+  // Learning DNA corrections: the user's explicit word beats every inference.
+  function handleDnaFeedback(key, verdict) {
+    const already = (state.profile.dnaOverrides || {})[key] === verdict;
+    updateState((current) => ({ ...current, profile: setDnaOverride(current.profile, key, verdict) }));
+    showToast(already
+      ? "Back to Peer's own read."
+      : verdict === "confirmed" ? "Locked in — Peer will keep doing that." : "Understood — Peer won't assume that anymore.");
+  }
 
   function startReviewNow() {
     setReminder(null);
@@ -2002,7 +2012,7 @@ export default function App() {
         </header>
 
         {view === "settings" && <SettingsPanel state={state} updateState={updateState} resetData={confirmResetData} loadSampleData={loadSampleData} cloudSync={cloudSync} signOut={signOut} confirmDeleteAccount={confirmDeleteAccount} />}
-        {view === "profile" && <ProfilePanel profile={state.profile} activeProject={activeProject} activeChat={activeChat} insights={insights} activeMode={activeMode} updateState={updateState} recap={buildLearnerRecap(state)} badgeInfo={computeBadges(state)} showToast={showToast} pulse={studyPulse} onReviewNow={startReviewNow} personaInsights={buildPersonaInsights(state)} />}
+        {view === "profile" && <ProfilePanel profile={state.profile} activeProject={activeProject} activeChat={activeChat} insights={insights} activeMode={activeMode} updateState={updateState} recap={buildLearnerRecap(state)} badgeInfo={computeBadges(state)} showToast={showToast} pulse={studyPulse} onReviewNow={startReviewNow} personaInsights={buildPersonaInsights(state)} onDnaFeedback={handleDnaFeedback} />}
         {view === "brain" && (
           <React.Suspense fallback={<PanelLoading label="Waking up your brain…" />}>
             <LearningBrainPanel state={state} activeProject={activeProject} setView={setView} updateState={updateState} setManagedProjectId={setManagedProjectId} setSelectedDocId={setSelectedDocId} onPractice={generatePractice} onExplain={explainConcept} />
@@ -2798,7 +2808,7 @@ function BadgeMedallion({ def, earned, progress = 0, current = 0, onShare }) {
   );
 }
 
-function ProfilePanel({ profile, activeProject, activeChat, insights, activeMode, updateState, recap, badgeInfo, showToast, pulse, onReviewNow, personaInsights }) {
+function ProfilePanel({ profile, activeProject, activeChat, insights, activeMode, updateState, recap, badgeInfo, showToast, pulse, onReviewNow, personaInsights, onDnaFeedback }) {
   const [showAllBadges, setShowAllBadges] = useState(false);
   function shareBadge(def) {
     const text = `I just earned "${def.title}" on Peer — ${def.description}`;
@@ -2871,10 +2881,34 @@ function ProfilePanel({ profile, activeProject, activeChat, insights, activeMode
         )}
         {personaInsights && personaInsights.length > 0 && (
           <div className="profile-card wide persona-card">
-            <h2>How you learn</h2>
+            <h2>Learning DNA</h2>
+            <p className="persona-sub">What Peer has learned about how you learn. If something's wrong, say so — your word beats Peer's guess.</p>
             <ul className="persona-list">
-              {personaInsights.map((line) => (
-                <li key={line.slice(0, 30)}><Sparkles size={14} aria-hidden="true" /> {line}</li>
+              {personaInsights.map((insight) => (
+                <li key={insight.text.slice(0, 30)} className={insight.status === "rejected" ? "dna-rejected" : ""}>
+                  <Sparkles size={14} aria-hidden="true" />
+                  <span className="persona-text">{insight.text}</span>
+                  {insight.key && (
+                    <span className="dna-controls">
+                      <button
+                        type="button"
+                        className={insight.status === "confirmed" ? "active" : ""}
+                        aria-label={`Confirm: ${insight.text}`}
+                        aria-pressed={insight.status === "confirmed"}
+                        title="Spot on"
+                        onClick={() => onDnaFeedback(insight.key, "confirmed")}
+                      ><CheckCircle2 size={14} /></button>
+                      <button
+                        type="button"
+                        className={insight.status === "rejected" ? "active" : ""}
+                        aria-label={`Reject: ${insight.text}`}
+                        aria-pressed={insight.status === "rejected"}
+                        title="Not me"
+                        onClick={() => onDnaFeedback(insight.key, "rejected")}
+                      ><X size={14} /></button>
+                    </span>
+                  )}
+                </li>
               ))}
             </ul>
           </div>

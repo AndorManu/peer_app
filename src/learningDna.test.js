@@ -116,6 +116,35 @@ test("explicit DNA corrections outrank inference: reject suppresses, confirm app
   assert.match(buildTeachingRecipe(confirmed, null, "auto").join(" "), /HARD LENGTH CAP/);
 });
 
+// ---- Layer 3: the visible, editable Learning DNA ----
+
+test("insights carry their override key and current status", async () => {
+  const { buildPersonaInsights, setDnaOverride } = await import("./learningModel.js");
+  let p = makeProfile();
+  p = inferProfileFromMessage(p, "it's like a boss fight");
+  p = inferProfileFromMessage(p, "like leveling up your xp");
+  const before = buildPersonaInsights({ profile: p, projects: [] });
+  const analogyLine = before.find((i) => i.key === "analogy");
+  assert.match(analogyLine.text, /gaming/);
+  assert.equal(analogyLine.status, null);
+
+  const rejected = setDnaOverride(p, "analogy", "rejected");
+  const after = buildPersonaInsights({ profile: rejected, projects: [] });
+  assert.equal(after.find((i) => i.key === "analogy").status, "rejected");
+  // and the directive disappears from the recipe
+  assert.doesNotMatch(buildTeachingRecipe(rejected, null, "auto").join(" "), /LEAD with an analogy/);
+});
+
+test("setDnaOverride toggles: same verdict twice returns to pure inference", async () => {
+  const { setDnaOverride } = await import("./learningModel.js");
+  let p = setDnaOverride(makeProfile(), "concise", "confirmed");
+  assert.equal(p.dnaOverrides.concise, "confirmed");
+  p = setDnaOverride(p, "concise", "rejected");
+  assert.equal(p.dnaOverrides.concise, "rejected");
+  p = setDnaOverride(p, "concise", "rejected");
+  assert.equal(p.dnaOverrides.concise, undefined);
+});
+
 test("DNA fields survive normalization (persistence + sync round-trips)", () => {
   const profile = normalizeProfile({
     ...makeProfile(),
