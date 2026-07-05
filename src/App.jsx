@@ -49,7 +49,7 @@ import {
 } from "lucide-react";
 import { Markdown } from "./markdown.jsx";
 import { extractStudyMaterial } from "./materials.js";
-import { buildSystemPrompt } from "./peerPrompt.js";
+import { buildSystemPrompt, shouldUseRetrieval } from "./peerPrompt.js";
 import { loadState, saveState, setSaveErrorHandler } from "./storage.js";
 import {
   addReflection,
@@ -566,6 +566,70 @@ export default function App() {
     await addMaterials(files, managedProject.id);
   }
 
+  // Fire-and-forget document ingestion for semantic retrieval. Failure is
+  // fine — the tutor still answers, just without cited excerpts.
+  async function embedDocInBackground(doc, projectId) {
+    if (!doc?.text?.trim() || doc.kind === "image") return;
+    try {
+      await fetch("/api/embed-doc", {
+        method: "POST",
+        headers: await aiRequestHeaders(),
+        body: JSON.stringify({ docId: doc.id, projectId, name: doc.name, kind: doc.kind, text: doc.text }),
+      });
+    } catch { /* retrieval is a progressive enhancement */ }
+  }
+
+  async function removeDocChunks(docId) {
+    try {
+      await fetch("/api/embed-doc", {
+        method: "POST",
+        headers: await aiRequestHeaders(),
+        body: JSON.stringify({ docId, remove: true }),
+      });
+    } catch { /* orphaned chunks are harmless; retried on re-embed */ }
+  }
+
+  // OCR: turn an uploaded image into searchable, embeddable text.
+  async function ocrDoc(projectId, docId) {
+    const project = state.projects.find((item) => item.id === projectId);
+    const doc = project?.docs.find((item) => item.id === docId);
+    if (!doc?.previewUrl) return;
+    showToast("Reading text from image…");
+    try {
+      const response = await fetch("/api/ocr", {
+        method: "POST",
+        headers: await aiRequestHeaders(),
+        body: JSON.stringify({ dataUrl: doc.previewUrl }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 402) {
+          setAiGate({ code: data.code || "auth_required", details: data });
+        }
+        throw new Error(data.error || "OCR failed.");
+      }
+      if (!data.text) {
+        showToast("No readable text found in this image.");
+        return;
+      }
+      updateState((current) => ({
+        ...current,
+        projects: current.projects.map((item) => (item.id === projectId
+          ? {
+              ...item,
+              docs: item.docs.map((entry) => (entry.id === docId
+                ? { ...entry, text: data.text, chars: data.text.length, note: "Text extracted with OCR — searchable and quotable." }
+                : entry)),
+            }
+          : item)),
+      }));
+      embedDocInBackground({ ...doc, text: data.text, kind: "text" }, projectId);
+      showToast("Text extracted — this image is now searchable.");
+    } catch (err) {
+      showToast(friendlyError(err, "OCR failed"));
+    }
+  }
+
   async function addMaterials(files, projectId) {
     const project = state.projects.find((item) => item.id === projectId);
     if (!files.length || !project) return;
@@ -599,6 +663,7 @@ export default function App() {
         )),
       }));
       setSelectedDocId(docs[0]?.id || null);
+      docs.forEach((doc) => embedDocInBackground(doc, projectId));
       showToast(`${docs.length} material${docs.length === 1 ? "" : "s"} added`);
     } catch (err) {
       setError(err.message || "Failed to read this material.");
@@ -675,6 +740,7 @@ export default function App() {
         chats: current.chats.map((chat) => chat.id === activeChat.id ? { ...chat, projectId } : chat),
       }));
       setPendingFiles((current) => [...current, ...docs.map((doc) => ({ id: doc.id, name: doc.name, kind: doc.kind, chars: doc.chars, previewUrl: doc.kind === "image" ? doc.previewUrl : null }))]);
+      docs.forEach((doc) => embedDocInBackground(doc, projectId));
       showToast(`${docs.length} file${docs.length === 1 ? "" : "s"} attached`);
     } catch (err) {
       setError(err.message || "Failed to attach file.");
@@ -700,6 +766,7 @@ export default function App() {
         project.id === projectId ? { ...project, docs: project.docs.filter((doc) => doc.id !== docId) } : project
       )),
     }));
+    removeDocChunks(docId);
     setSelectedDocId(null);
     showToast("Document removed");
   }
@@ -760,6 +827,8 @@ export default function App() {
         system: buildSystemPrompt(project, profileOverride, modeId, recipe),
         messages,
         imageDataUrls: imageAttachments.map((f) => ({ dataUrl: f.previewUrl, name: f.name })),
+        // big libraries: server retrieves + cites only the relevant excerpts
+        retrieval: project && shouldUseRetrieval(project) ? { projectId: project.id } : undefined,
       }),
     });
 
@@ -1938,6 +2007,7 @@ export default function App() {
           deleteProject={confirmDeleteProject}
           runDocAction={runDocAction}
           setProjectDomain={setProjectDomain}
+          ocrDoc={ocrDoc}
         />
       )}
 
@@ -3176,7 +3246,7 @@ function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSyn
   );
 }
 
-function ProjectModal({ project, selectedDoc, selectedDocId, setSelectedDocId, extracting, error, close, pickFile, addMaterials, removeDoc, deleteProject, runDocAction, setProjectDomain }) {
+function ProjectModal({ project, selectedDoc, selectedDocId, setSelectedDocId, extracting, error, close, pickFile, addMaterials, removeDoc, deleteProject, runDocAction, setProjectDomain, ocrDoc }) {
   const [dragging, setDragging] = useState(false);
   const [selectedExcerpt, setSelectedExcerpt] = useState("");
   const trapRef = useFocusTrap(true, { onEscape: close });
@@ -3282,6 +3352,7 @@ function ProjectModal({ project, selectedDoc, selectedDocId, setSelectedDocId, e
                   <button onClick={() => run("diagram")}><GitBranch size={14} /> Diagram</button>
                   <button onClick={() => run("exam")}><GraduationCap size={14} /> Exam</button>
                   {selectedDoc.kind === "image" && <button onClick={() => run("vision")}><Layers size={14} /> Explain image</button>}
+                  {selectedDoc.kind === "image" && <button onClick={() => ocrDoc(project.id, selectedDoc.id)}><FileText size={14} /> Extract text (OCR)</button>}
                   {codeFile && <button onClick={() => run("codeTutor")}><Code2 size={14} /> Code tutor</button>}
                 </div>
                 <div className="doc-highlight-box">

@@ -12,6 +12,7 @@ import {
   handleStripeWebhookRequest,
   handleUsageRequest,
 } from "./handleBilling.js";
+import { handleEmbedDocRequest, handleOcrRequest } from "./handleRag.js";
 
 loadDotEnv();
 
@@ -55,6 +56,18 @@ const server = createHttpServer(async (req, res) => {
     if (req.url?.startsWith("/api/delete-account")) {
       loadDotEnv({ override: true });
       await handleDeleteAccountRequest(req, res);
+      return;
+    }
+
+    if (req.url?.startsWith("/api/embed-doc")) {
+      loadDotEnv({ override: true });
+      await handleEmbedDocRequest(req, res);
+      return;
+    }
+
+    if (req.url?.startsWith("/api/ocr")) {
+      loadDotEnv({ override: true });
+      await handleOcrRequest(req, res);
       return;
     }
 

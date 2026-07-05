@@ -117,6 +117,14 @@ Use this memory actively: build on concepts they're strong in, gently revisit sl
 
   if (!project?.docs?.length) return `${BASE_PROMPT}${domainBlock}${profileBlock}${modeBlock}${masteryBlock}`;
 
+  // Big libraries use semantic retrieval: the server appends only the
+  // relevant, cited excerpts instead of the client inlining everything.
+  if (shouldUseRetrieval(project)) {
+    return `${BASE_PROMPT}${domainBlock}${profileBlock}${modeBlock}${masteryBlock}
+
+The learner is studying "${project.name}" and has uploaded a study library. Relevant excerpts from their own materials are appended to this prompt automatically. Ground answers in those excerpts, cite the document name in brackets (e.g. [notes.pdf]) when you use one, and say plainly when the material doesn't contain enough evidence instead of inventing content.`;
+  }
+
   const documents = project.docs
     .map((doc) => `### Document: ${doc.name}\n${doc.text}`)
     .join("\n\n");
@@ -126,4 +134,16 @@ Use this memory actively: build on concepts they're strong in, gently revisit sl
 The learner is studying "${project.name}". They uploaded these study materials. Use them as context, cite document names when useful, and do not invent details that contradict the material.
 
 ${documents}`;
+}
+
+// Above this size, inlining every document into the prompt gets expensive and
+// noisy — switch to server-side semantic retrieval over embedded chunks.
+export const RAG_THRESHOLD_CHARS = 8000;
+
+export function shouldUseRetrieval(project) {
+  const total = (project?.docs || []).reduce(
+    (sum, doc) => sum + (doc.chars || String(doc.text || "").length || 0),
+    0,
+  );
+  return total > RAG_THRESHOLD_CHARS;
 }

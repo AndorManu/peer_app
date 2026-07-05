@@ -1,4 +1,5 @@
 import { checkEntitlement, recordUsage, resolveUser } from "./entitlements.js";
+import { retrieveContext } from "./handleRag.js";
 
 const MAX_BODY_SIZE = 2_000_000;
 
@@ -43,6 +44,20 @@ export async function handleChatRequest(req, res) {
     }
   }
 
+  // RAG: for big libraries the client sends a retrieval marker instead of
+  // inlining every document; the server injects only the relevant, cited
+  // excerpts (semantic search over the user's own chunks).
+  let ragSystem = system;
+  if (userId && payload.retrieval?.projectId) {
+    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    const context = await retrieveContext({
+      userId,
+      projectId: String(payload.retrieval.projectId),
+      query: String(lastUser?.content || "").slice(0, 2000),
+    });
+    if (context) ragSystem = `${system}${context}`;
+  }
+
   res.statusCode = 200;
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -50,7 +65,7 @@ export async function handleChatRequest(req, res) {
 
   try {
     if (process.env.ANTHROPIC_API_KEY) {
-      const usage = await streamAnthropic(system, messages, res, imageDataUrls, entitlement?.model);
+      const usage = await streamAnthropic(ragSystem, messages, res, imageDataUrls, entitlement?.model);
       if (userId && usage) {
         await recordUsage({ userId, kind: "chat", model: usage.model, tokensIn: usage.tokensIn, tokensOut: usage.tokensOut });
       }
