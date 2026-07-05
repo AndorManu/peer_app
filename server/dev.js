@@ -16,6 +16,18 @@ let vite;
 
 const server = createHttpServer(async (req, res) => {
   try {
+    // Public client config — ONLY values that are safe in a browser
+    // (the anon key is designed to be public; RLS does the protecting).
+    if (req.url?.startsWith("/api/config")) {
+      loadDotEnv({ override: true });
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({
+        supabaseUrl: process.env.SUPABASE_URL || "",
+        supabaseAnonKey: process.env.SUPABASE_ANON_KEY || "",
+      }));
+      return;
+    }
+
     if (req.url?.startsWith("/api/chat")) {
       loadDotEnv({ override: true });
       await handleChatRequest(req, res);

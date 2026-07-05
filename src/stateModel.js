@@ -34,6 +34,9 @@ export const defaultState = () => {
     chats: [chat],
     activeId: chat.id,
     flashcards: [],
+    // deletion log for cloud sync: deletes push as soft-deleted rows so other
+    // devices learn about them; entries clear after a successful push
+    tombstones: [],
   };
 };
 
@@ -121,6 +124,11 @@ export function normalizeState(stored) {
     projects,
     chats: safeChats,
     activeId,
+    tombstones: Array.isArray(stored.tombstones)
+      ? stored.tombstones
+          .filter((tomb) => tomb && typeof tomb.table === "string" && tomb.id)
+          .slice(0, 500)
+      : [],
     flashcards: Array.isArray(stored.flashcards)
       ? stored.flashcards.map((deck) => ({
           id: deck?.id || uid(),

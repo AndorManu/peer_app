@@ -1,5 +1,52 @@
 # Maintenance log
 
+## 2026-07-05 — M3: Backend foundation (Supabase)
+
+**What changed**
+- **Full cloud schema, applied live** ([supabase/migrations/0001_init.sql](supabase/migrations/0001_init.sql)):
+  profiles, projects, documents, chats, messages, notes, decks, cards (SRS state in
+  jsonb), rooms + room_members (for M9), document_chunks with pgvector (for M8),
+  badges (M10), usage_events + subscriptions (M5). Local-first `(user_id, id)` keys,
+  soft-delete tombstones, server-set `updated_at` triggers. Applied with
+  `node tools/db-migrate.mjs` (idempotent, tracks applied files).
+- **RLS on every table** — per-user isolation (`user_id = auth.uid()`); usage_events
+  and subscriptions are client-read-only (server/webhooks write via service role);
+  rooms use a security-definer membership check (no recursive policies).
+- **Offline-first sync engine** ([src/sync.js](src/sync.js)): local IndexedDB stays
+  the source of truth. Push = hash-diff against the last-sync snapshot (no fragile
+  per-mutation bookkeeping); deletes = tombstone log pushed as soft-deletes; pull =
+  `updated_at` cursor with an overlap window; locally-dirty rows win over pulled
+  rows (deterministic LWW, re-pushed next cycle). First sync pulls before pushing so
+  a fresh device can never clobber the cloud (a real bug the live round-trip test
+  caught). Background loop ([src/useCloudSync.js](src/useCloudSync.js)) runs every
+  30s + on focus/reconnect, dormant without a session.
+- **Client wiring**: `/api/config` serves only browser-safe values (URL + anon key);
+  supabase-js lazy-loads; delete flows record tombstones; Settings → Account shows a
+  live cloud-sync status card.
+- **Production AI proxy scaffold** ([supabase/functions/chat/index.ts](supabase/functions/chat/index.ts)):
+  same SSE protocol as dev, plus JWT auth, Anthropic prompt caching on the system
+  prompt, and server-side usage metering into usage_events (the M5 quota hook).
+  Deploy instructions in [supabase/README.md](supabase/README.md).
+
+**What I tested (all against the LIVE Supabase project)**
+- `tools/verify-supabase.mjs` — **12/12 PASS**: cross-user reads/updates/deletes/
+  spoofed inserts all rejected by RLS; clients cannot write their own usage
+  metering or grant themselves Pro; service role bypasses for server paths;
+  test users cleaned up.
+- `tools/verify-roundtrip.mjs` — **12/12 PASS** running the app's real sync engine
+  as two devices on one account: full-state bootstrap (subjects, docs, chats,
+  messages, notes, decks, SRS state, profile), cross-device edit propagation,
+  tombstoned deletions, offline-edit reconcile.
+- App smoke: boots clean, sync card shows signed-out state, zero console errors.
+- `npm test` 59/59 (8 new sync-engine tests); build clean (supabase-js is a lazy chunk).
+
+**Notes / next**
+- In-app sign-in is M4 (Google/Facebook/email + guest→account migration) — sync
+  activates automatically once a session exists.
+- Edge-function deploy + CORS-origin lockdown is an owner step (see supabase/README).
+- Image previews (data URLs) are not synced yet — they move to Supabase Storage in
+  a later milestone.
+
 ## 2026-07-05 — M2: Brain perfection
 
 **What changed**

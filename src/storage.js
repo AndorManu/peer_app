@@ -121,6 +121,25 @@ export function saveState(state) {
   }, SAVE_DEBOUNCE_MS);
 }
 
+// ---- cloud-sync metadata (cursor + pushed-row hashes) ----
+const SYNC_META_ID = "sync-meta";
+
+export async function loadSyncMeta() {
+  try {
+    return (await idbGet(SYNC_META_ID)) || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveSyncMeta(meta) {
+  try {
+    await idbSet(SYNC_META_ID, meta);
+  } catch {
+    // metadata loss just means a fuller (still-idempotent) sync next time
+  }
+}
+
 // Wipes persisted state from both backends. Used by the boot error recovery.
 export async function clearState() {
   if (saveTimer) {
@@ -138,6 +157,7 @@ export async function clearState() {
     await new Promise((resolve) => {
       const tx = db.transaction(STORE, "readwrite");
       tx.objectStore(STORE).delete(STATE_ID);
+      tx.objectStore(STORE).delete(SYNC_META_ID);
       tx.oncomplete = resolve;
       tx.onerror = resolve;
     });

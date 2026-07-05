@@ -10,12 +10,14 @@
     "test": "node --test \"src/**/*.test.js\""
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.110.0",
     "@vitejs/plugin-react": "^5.0.0",
     "highlight.js": "^11.11.1",
     "katex": "^0.17.0",
     "lucide-react": "^0.468.0",
     "open-dyslexic": "^1.0.3",
     "pdfjs-dist": "^4.10.38",
+    "pg": "^8.22.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "three": "^0.184.0",

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFocusTrap, useMediaQuery } from "./a11y.js";
+import { useCloudSync } from "./useCloudSync.js";
 import {
   BookOpen,
   Bot,
@@ -176,6 +177,17 @@ export default function App() {
   const bottomRef = useRef(null);
   const fileRef = useRef(null);
 
+  // Background cloud sync (dormant until a session exists; real sign-in is M4)
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const getStateForSync = useCallback(() => stateRef.current, []);
+  const applyStateForSync = useCallback((updater) => setState(updater), []);
+  const cloudSync = useCloudSync({
+    getState: getStateForSync,
+    applyState: applyStateForSync,
+    enabled: hydrated && state.landingComplete,
+  });
+
   const activeChat = state.chats.find((chat) => chat.id === state.activeId) || state.chats[0];
   const activeProject = state.projects.find((project) => project.id === activeChat?.projectId) || null;
   const managedProject = state.projects.find((project) => project.id === managedProjectId) || null;
@@ -288,15 +300,30 @@ export default function App() {
     if (window.innerWidth < 820) setSidebarOpen(false);
   }
 
+  // Deletion log for cloud sync: hard-delete locally, remember what died so
+  // the sync layer can tombstone it remotely.
+  function withTombstones(current, entries) {
+    return [
+      ...entries.map((entry) => ({ ...entry, at: Date.now() })),
+      ...(current.tombstones || []),
+    ].slice(0, 500);
+  }
+
   function deleteChat(id) {
     updateState((current) => {
+      const dying = current.chats.find((chat) => chat.id === id);
+      const tombstones = withTombstones(current, [
+        { table: "chats", id },
+        ...(dying?.messages || []).map((message) => ({ table: "messages", id: message.id, parentId: id })),
+      ]);
       const remaining = current.chats.filter((chat) => chat.id !== id);
       if (!remaining.length) {
         const chat = makeChat();
-        return { ...current, chats: [chat], activeId: chat.id };
+        return { ...current, tombstones, chats: [chat], activeId: chat.id };
       }
       return {
         ...current,
+        tombstones,
         chats: remaining,
         activeId: current.activeId === id ? remaining[remaining.length - 1].id : current.activeId,
       };
@@ -356,11 +383,18 @@ export default function App() {
   }
 
   function deleteProject(id) {
-    updateState((current) => ({
-      ...current,
-      projects: current.projects.filter((project) => project.id !== id),
-      chats: current.chats.map((chat) => chat.projectId === id ? { ...chat, projectId: null } : chat),
-    }));
+    updateState((current) => {
+      const dying = current.projects.find((project) => project.id === id);
+      return {
+        ...current,
+        tombstones: withTombstones(current, [
+          { table: "projects", id },
+          ...(dying?.docs || []).map((doc) => ({ table: "documents", id: doc.id, parentId: id })),
+        ]),
+        projects: current.projects.filter((project) => project.id !== id),
+        chats: current.chats.map((chat) => chat.projectId === id ? { ...chat, projectId: null } : chat),
+      };
+    });
     setManagedProjectId(null);
     showToast("Project deleted");
   }
@@ -557,6 +591,7 @@ export default function App() {
   function removeDoc(projectId, docId) {
     updateState((current) => ({
       ...current,
+      tombstones: withTombstones(current, [{ table: "documents", id: docId, parentId: projectId }]),
       projects: current.projects.map((project) => (
         project.id === projectId ? { ...project, docs: project.docs.filter((doc) => doc.id !== docId) } : project
       )),
@@ -958,7 +993,11 @@ export default function App() {
   }
 
   function deleteNote(noteId) {
-    updateState((current) => ({ ...current, notes: current.notes.filter((note) => note.id !== noteId) }));
+    updateState((current) => ({
+      ...current,
+      tombstones: withTombstones(current, [{ table: "notes", id: noteId }]),
+      notes: current.notes.filter((note) => note.id !== noteId),
+    }));
   }
 
   function toggleVoiceMode() {
@@ -1137,7 +1176,17 @@ export default function App() {
   }
 
   function deleteFlashcardDeck(id) {
-    updateState((current) => ({ ...current, flashcards: current.flashcards.filter((deck) => deck.id !== id) }));
+    updateState((current) => {
+      const dying = current.flashcards.find((deck) => deck.id === id);
+      return {
+        ...current,
+        tombstones: withTombstones(current, [
+          { table: "decks", id },
+          ...(dying?.cards || []).map((card) => ({ table: "cards", id: card.id, parentId: id })),
+        ]),
+        flashcards: current.flashcards.filter((deck) => deck.id !== id),
+      };
+    });
     showToast("Flashcard deck deleted");
   }
 
@@ -1633,7 +1682,7 @@ export default function App() {
           <div className="status-pill"><span /> Local app</div>
         </header>
 
-        {view === "settings" && <SettingsPanel state={state} updateState={updateState} resetData={confirmResetData} loadSampleData={loadSampleData} />}
+        {view === "settings" && <SettingsPanel state={state} updateState={updateState} resetData={confirmResetData} loadSampleData={loadSampleData} cloudSync={cloudSync} />}
         {view === "profile" && <ProfilePanel profile={state.profile} activeProject={activeProject} activeChat={activeChat} insights={insights} activeMode={activeMode} updateState={updateState} recap={buildLearnerRecap(state)} />}
         {view === "brain" && (
           <React.Suspense fallback={<PanelLoading label="Waking up your brain…" />}>
@@ -2907,9 +2956,20 @@ function SocialPanel({ state, activeProject, createStudyRoom, toggleShareNote, t
   );
 }
 
-function SettingsPanel({ state, updateState, resetData, loadSampleData }) {
+function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSync }) {
   const [tab, setTab] = useState("appearance");
   const provider = AUTH_PROVIDERS.find((item) => item.id === state.account?.provider);
+
+  const syncDescriptions = {
+    starting: "Checking cloud connection…",
+    "signed-out": "Your data lives safely on this device. Cloud accounts (Google, email) arrive in the next update — sign-in will back everything up and sync it across devices automatically.",
+    idle: cloudSync?.lastSyncAt
+      ? `Everything is backed up and in sync. Last sync ${new Date(cloudSync.lastSyncAt).toLocaleTimeString()}.`
+      : "Connected — waiting for the first sync.",
+    syncing: "Syncing your latest changes…",
+    offline: "You're offline. Changes are saved locally and will sync when you're back.",
+    error: `Sync hit a snag${cloudSync?.lastError ? `: ${cloudSync.lastError}` : ""}. It retries automatically.`,
+  };
 
   const tabs = [
     { id: "appearance", icon: Sun, label: "Appearance" },
@@ -3003,12 +3063,23 @@ function SettingsPanel({ state, updateState, resetData, loadSampleData }) {
               </div>
 
               <div className="settings-group">
+                <h2>Cloud sync</h2>
+                <div className={`sync-status sync-${cloudSync?.status || "starting"}`} role="status">
+                  <span className="sync-status-dot" aria-hidden="true" />
+                  <p>{syncDescriptions[cloudSync?.status] || syncDescriptions.starting}</p>
+                  {cloudSync?.status === "idle" && (
+                    <button type="button" onClick={() => cloudSync.syncNow()}>Sync now</button>
+                  )}
+                </div>
+              </div>
+
+              <div className="settings-group">
                 <h2>Coming soon</h2>
                 <div className="roadmap-grid">
-                  <span><UserRound size={15} /> Supabase, Firebase, or Auth0 social login</span>
-                  <span><Library size={15} /> Encrypted cloud sync for chats, files, notes, and rooms</span>
+                  <span><UserRound size={15} /> Google, Facebook, and email sign-in</span>
                   <span><ClipboardCheck size={15} /> Usage limits, AI cost tracking, and audit logs</span>
-                  <span><Languages size={15} /> OCR, multilingual parsing, and vector document search</span>
+                  <span><Languages size={15} /> OCR, multilingual parsing, and document search</span>
+                  <span><Library size={15} /> Live study rooms with real partners</span>
                 </div>
               </div>
             </>
