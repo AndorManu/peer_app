@@ -64,7 +64,7 @@ export const DOMAIN_ICONS = {
 export const PROJECT_COLORS = ["#6d5dfc", "#12a594", "#ef6f6c", "#e2a93b", "#2f9ed8", "#d65a9f"];
 
 export const FONT_OPTIONS = [
-  { id: "inter", label: "Inter", family: "'Inter', system-ui, sans-serif" },
+  { id: "inter", label: "Work Sans", family: "'Work Sans', 'Inter', system-ui, sans-serif" },
   { id: "system", label: "System", family: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" },
   { id: "opendyslexic", label: "OpenDyslexic", tag: "Dyslexia font", family: "'OpenDyslexicRegular', 'Comic Sans MS', Verdana, sans-serif" },
   { id: "atkinson", label: "Atkinson Hyperlegible", tag: "High legibility", family: "'Atkinson Hyperlegible', 'Inter', system-ui, sans-serif" },

@@ -503,7 +503,7 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal, 
     }
 
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x07070c, 0.014);
+    scene.fog = new THREE.FogExp2(0x15120d, 0.014);
     const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 600);
     renderer.setClearColor(0x000000, 0);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -521,7 +521,7 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal, 
     };
 
     // Soft focal haze behind the graph.
-    const hazeMaterial = new THREE.SpriteMaterial({ map: glowTexture, color: 0x1b1640, transparent: true, opacity: 0.34, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
+    const hazeMaterial = new THREE.SpriteMaterial({ map: glowTexture, color: 0x2a2114, transparent: true, opacity: 0.34, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
     const haze = new THREE.Sprite(hazeMaterial);
     haze.scale.setScalar(52);
     haze.position.set(0, 0, -8);

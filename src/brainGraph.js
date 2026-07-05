@@ -13,17 +13,19 @@ import { domainForProject } from "./subjects.js";
 
 // Design palette (Peer.dc.html): project=violet, concept=cyan, weak=amber,
 // with complementary hues for the extra node types the real feature keeps.
+// "Study Hall" node palette (mockup: amber hubs, sky concepts, rose weak
+// spots, sand files, pine notes, clay chats — warm editorial, no neon).
 export const BRAIN_PALETTE = {
-  brain: { core: 0xc9c2fb, glow: 0x8b5cf6 },
-  domain: { core: 0xc9c2fb, glow: 0x8b5cf6 }, // per-node accent overrides this
-  project: { core: 0xb9a8ff, glow: 0x8b5cf6 },
-  concept: { core: 0x7fe9ff, glow: 0x22d3ee },
-  weak: { core: 0xffd08a, glow: 0xf59e0b },
-  file: { core: 0xa5b4fc, glow: 0x818cf8 },
-  note: { core: 0xffcd86, glow: 0xfb923c },
-  chat: { core: 0x8ef0c9, glow: 0x34d399 },
-  quiz: { core: 0xf3b6f7, glow: 0xe879f9 },
-  code: { core: 0xeaffb0, glow: 0x84cc16 },
+  brain: { core: 0xf0d9a8, glow: 0xe0a039 },
+  domain: { core: 0xf0d9a8, glow: 0xe0a039 }, // per-node accent overrides this
+  project: { core: 0xf0c987, glow: 0xe0a039 },
+  concept: { core: 0xb3d4ea, glow: 0x6fa8c9 },
+  weak: { core: 0xe8ab9e, glow: 0xc96a5a },
+  file: { core: 0xe3d2b3, glow: 0xc9a875 },
+  note: { core: 0x9ccfb8, glow: 0x3f8f74 },
+  chat: { core: 0xdbbc9e, glow: 0xb98a63 },
+  quiz: { core: 0xd9b3cc, glow: 0xb57ba6 },
+  code: { core: 0xc2ccd6, glow: 0x8a95a3 },
 };
 
 function lightenInt(hex, amount) {

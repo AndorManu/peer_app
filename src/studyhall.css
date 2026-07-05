@@ -1,0 +1,192 @@
+/* ============================================================================
+   PEER — "STUDY HALL" design system overlay (loaded LAST, wins the cascade).
+   Warm scholarly editorial: warm ink surfaces, parchment text, ONE amber
+   accent, Fraunces serif display + Work Sans UI + JetBrains Mono code, warm
+   shadows (the only glow lives in the Brain), calm settle motion.
+   The underlying palette was re-mapped at the source (styles/skin/responsive
+   + peerTheme/subjects/brainGraph); this file owns typography, radius,
+   shadow, and motion — plus targeted fixes where old styling reads off-brand.
+   ============================================================================ */
+
+:root {
+  --sh-bg: #15120d;
+  --sh-bg-2: #1c1811;
+  --sh-bg-3: #221d15;
+  --sh-bg-4: #2a241a;
+  --sh-border: rgba(244, 232, 213, 0.08);
+  --sh-border-strong: rgba(244, 232, 213, 0.16);
+  --sh-text: #f4e8d5;
+  --sh-text-muted: rgba(244, 232, 213, 0.62);
+  --sh-text-faint: rgba(244, 232, 213, 0.38);
+  --sh-accent: #e0a039;
+  --sh-accent-hi: #f0b354;
+  --sh-accent-ink: #1c1509;
+  --sh-accent-soft: rgba(224, 160, 57, 0.14);
+  --sh-ease: cubic-bezier(0.19, 1, 0.22, 1);
+  --sh-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 14px 34px -16px rgba(0, 0, 0, 0.55);
+  --sh-shadow-pop: 0 20px 60px -20px rgba(0, 0, 0, 0.65);
+}
+
+/* ---------- base surfaces + type ---------- */
+html, body { background: #0c0a07; }
+body { font-family: "Work Sans", Geist, system-ui, sans-serif; }
+
+/* The learner's accessibility font choice always wins (App sets --app-font);
+   the serif display face applies only when the default UI font is active
+   (App sets --font-display accordingly). */
+.peer-skin h1,
+.peer-skin h2,
+.peer-skin .brand strong,
+.peer-skin .page-heading h1,
+.peer-skin .brain-heading h1,
+.peer-skin .welcome h1,
+.landing-copy h1,
+.auth-panel h2,
+.confirm-dialog h2,
+.onboarding-modal h1 {
+  font-family: var(--font-display, "Fraunces", Georgia, serif) !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.01em !important;
+}
+.peer-skin .fc-content p,
+.peer-skin .room-quiz-q,
+.peer-skin .note-card strong,
+.peer-skin .brain-detail h2,
+.badge-medallion strong {
+  font-family: var(--font-display, "Fraunces", Georgia, serif) !important;
+}
+
+/* Every place the old skin forced Space Grotesk / Geist now uses the system */
+.peer-skin [style*="Space Grotesk"],
+.peer-skin .topbar-title,
+.peer-skin .notebook-group h2,
+.peer-skin .profile-card h2,
+.peer-skin .brain-node-label {
+  font-family: "Work Sans", sans-serif !important;
+}
+.peer-skin .profile-card h2 {
+  font-size: 12px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  font-weight: 600 !important;
+  color: var(--sh-text-faint) !important;
+}
+
+/* code stays mono everywhere */
+code, pre, kbd, samp, .hljs, .term-body, .vscode-code, .room-code {
+  font-family: "JetBrains Mono", ui-monospace, Consolas, monospace !important;
+}
+
+/* ---------- calm settle motion: no bounce, no overshoot ---------- */
+.peer-skin .primary-button:hover,
+.peer-skin .starter-card:hover,
+.peer-skin .note-card:hover,
+.peer-skin .room-card:hover,
+.peer-skin .buddy-card:hover,
+.peer-skin .challenge-card:hover {
+  transform: translateY(-2px) !important;
+}
+.peer-skin .message-actions button:hover { transform: translateY(-1px) !important; }
+.peer-skin button:active { transform: scale(0.98); }
+
+/* ---------- kill neon: warm soft shadows only (Brain keeps its glow) ---------- */
+.peer-skin .primary-button,
+.peer-skin .send-button,
+.peer-skin .fc-flip-btn,
+.peer-skin .fc-review-btn,
+.peer-skin .brain-open-btn {
+  background: var(--sh-accent) !important;
+  color: var(--sh-accent-ink) !important;
+  box-shadow: 0 6px 18px -6px rgba(224, 160, 57, 0.5) !important;
+}
+.peer-skin .primary-button:hover,
+.peer-skin .send-button:hover:not(:disabled) {
+  background: var(--sh-accent-hi) !important;
+  filter: none !important;
+}
+.peer-skin .primary-button svg,
+.peer-skin .send-button svg { stroke: var(--sh-accent-ink) !important; }
+.peer-skin .brain-open-secondary {
+  background: var(--sh-bg-4) !important;
+  color: var(--sh-text) !important;
+  box-shadow: none !important;
+}
+.peer-skin .profile-card,
+.peer-skin .note-card,
+.peer-skin .room-card,
+.peer-skin .buddy-card,
+.peer-skin .challenge-card,
+.peer-skin .teachback-card,
+.peer-skin .account-summary,
+.peer-skin .deck-row,
+.badge-medallion,
+.confirm-dialog {
+  box-shadow: var(--sh-shadow-card) !important;
+}
+/* the old avatar pulse glow reads neon — calm it */
+.peer-skin .message.assistant .avatar {
+  animation: none !important;
+  background: #3f8f74 !important;
+  padding: 0 !important;
+}
+.peer-skin .message.assistant .avatar svg,
+.peer-skin .message.assistant .avatar > * {
+  background: transparent !important;
+  color: #0d1a16 !important;
+}
+.peer-rail-logo-mark {
+  background: var(--sh-accent);
+  box-shadow: 0 6px 18px -6px rgba(224, 160, 57, 0.5);
+  animation: none;
+}
+.peer-rail-avatar { background: #3f8f74; color: #0d1a16; box-shadow: none; }
+.peer-rail-pill {
+  background: var(--sh-accent-soft);
+  box-shadow: inset 0 0 0 1px rgba(224, 160, 57, 0.35);
+}
+.peer-rail-item.active { color: var(--sh-accent) !important; }
+.peer-rail-item.active .peer-rail-label { color: var(--sh-accent-hi); }
+@media (max-width: 820px) {
+  .peer-rail-item.active .peer-rail-icon,
+  .peer-rail-settings.active .peer-rail-icon {
+    background: var(--sh-accent-soft);
+    color: var(--sh-accent);
+    box-shadow: none;
+  }
+}
+
+/* ---------- radius harmonization (chips 6 · buttons 10 · cards 14 · panels 20) ---------- */
+.peer-skin .profile-card,
+.peer-skin .note-card,
+.peer-skin .room-card,
+.peer-skin .buddy-card,
+.peer-skin .challenge-card,
+.peer-skin .deck-row,
+.badge-medallion { border-radius: 14px !important; }
+.peer-skin .composer,
+.confirm-dialog,
+.peer-skin .modal,
+.onboarding-modal,
+.command-palette { border-radius: 20px !important; }
+.peer-skin .primary-button,
+.peer-skin .send-button,
+.confirm-actions button { border-radius: 10px !important; }
+
+/* ---------- selection + focus in amber ---------- */
+::selection { background: var(--sh-accent-soft) !important; color: var(--sh-text) !important; }
+.peer-skin :focus-visible { outline-color: var(--sh-accent) !important; }
+
+/* ---------- user bubble: amber-tinted parchment, not violet glass ---------- */
+.peer-skin .message.user .bubble {
+  background: var(--sh-accent-soft) !important;
+  border: 1px solid rgba(224, 160, 57, 0.28) !important;
+}
+.peer-skin .message.assistant .bubble {
+  border-left: 2px solid rgba(224, 160, 57, 0.5) !important;
+  box-shadow: none !important;
+}
+
+/* light theme becomes warm paper instead of cool white */
+.theme-light { --bg: #faf6ee; --panel: #fffdf8; --panel-2: #f3ecdd; --panel-3: #ece3d0; --text: #2a2318; --muted: #746a58; --border: #e5dcc9; }
+.peer-skin.theme-light.app { background: #faf6ee !important; color: #2a2318 !important; }
+.peer-skin.theme-light .main { background: #faf6ee !important; }

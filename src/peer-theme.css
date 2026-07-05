@@ -6,10 +6,10 @@
 
 /* keyframes — exact values from the design */
 @keyframes pbreathe { 0%,100% { transform: scale(1); opacity: .55 } 50% { transform: scale(1.14); opacity: .78 } }
-@keyframes ppulse { 0%,100% { box-shadow: 0 0 16px -2px rgba(139,92,246,.55), 0 0 0 0 rgba(139,92,246,0) } 50% { box-shadow: 0 0 26px 1px rgba(139,92,246,.85), 0 0 0 4px rgba(139,92,246,.10) } }
-@keyframes pfast { 0%,100% { box-shadow: 0 0 16px -2px rgba(139,92,246,.6), 0 0 0 0 rgba(34,211,238,0) } 50% { box-shadow: 0 0 30px 2px rgba(34,211,238,.9), 0 0 0 5px rgba(34,211,238,.14) } }
-@keyframes plive { 0% { box-shadow: 0 0 0 0 rgba(52,211,153,.5) } 70% { box-shadow: 0 0 0 7px rgba(52,211,153,0) } 100% { box-shadow: 0 0 0 0 rgba(52,211,153,0) } }
-@keyframes pborder { 0%,100% { box-shadow: 0 0 0 1px rgba(52,211,153,.18), 0 18px 50px -28px rgba(52,211,153,.4) } 50% { box-shadow: 0 0 0 1px rgba(52,211,153,.5), 0 18px 60px -22px rgba(52,211,153,.6) } }
+@keyframes ppulse { 0%,100% { box-shadow: 0 0 16px -2px rgba(224,160,57,.55), 0 0 0 0 rgba(224,160,57,0) } 50% { box-shadow: 0 0 26px 1px rgba(224,160,57,.85), 0 0 0 4px rgba(224,160,57,.10) } }
+@keyframes pfast { 0%,100% { box-shadow: 0 0 16px -2px rgba(224,160,57,.6), 0 0 0 0 rgba(240,179,84,0) } 50% { box-shadow: 0 0 30px 2px rgba(240,179,84,.9), 0 0 0 5px rgba(240,179,84,.14) } }
+@keyframes plive { 0% { box-shadow: 0 0 0 0 rgba(63,143,116,.5) } 70% { box-shadow: 0 0 0 7px rgba(63,143,116,0) } 100% { box-shadow: 0 0 0 0 rgba(63,143,116,0) } }
+@keyframes pborder { 0%,100% { box-shadow: 0 0 0 1px rgba(63,143,116,.18), 0 18px 50px -28px rgba(63,143,116,.4) } 50% { box-shadow: 0 0 0 1px rgba(63,143,116,.5), 0 18px 60px -22px rgba(63,143,116,.6) } }
 @keyframes pdot { 0%,80%,100% { opacity: .2; transform: translateY(0) } 40% { opacity: 1; transform: translateY(-4px) } }
 @keyframes pshimmer { 0% { background-position: -180% 0 } 100% { background-position: 180% 0 } }
 @keyframes pfloat { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-7px) } }
@@ -20,7 +20,7 @@
 @keyframes pslide { 0% { opacity: 0; transform: translateX(14px) } 100% { opacity: 1; transform: translateX(0) } }
 
 /* base — the dark canvas + body font */
-html, body { background: #07070e; }
+html, body { background: #15120d; }
 body {
   font-family: Geist, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -30,8 +30,8 @@ body {
 /* gradient scrollbar from the design */
 .peer-skin ::-webkit-scrollbar { width: 8px; height: 8px; }
 .peer-skin ::-webkit-scrollbar-track { background: transparent; }
-.peer-skin ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.05); border-radius: 99px; transition: background .25s; }
-.peer-skin *:hover::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(139,92,246,.6), rgba(34,211,238,.6)); }
+.peer-skin ::-webkit-scrollbar-thumb { background: rgba(244,232,213,0.05); border-radius: 99px; transition: background .25s; }
+.peer-skin *:hover::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(224,160,57,.6), rgba(240,179,84,.6)); }
 
 /* respect reduced motion — pause the ambient/decorative loops */
 @media (prefers-reduced-motion: reduce) {

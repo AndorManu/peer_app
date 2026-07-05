@@ -72,9 +72,9 @@ test("single-project scope has no domain layer and roots at the project", () => 
 test("domain nodes tint to their taxonomy accent", () => {
   const graph = buildLearningBrainGraph(makeState(), null, ALL_FILTERS);
   const science = graph.nodes.find((node) => node.id === "domain:science");
-  assert.equal(science.accent, "#22d3ee");
+  assert.equal(science.accent, "#6fa8c9"); // Study Hall sky
   const palette = brainPalette(science);
-  assert.equal(palette.glow, 0x22d3ee);
+  assert.equal(palette.glow, 0x6fa8c9);
 });
 
 test("shape cues never rely on color alone", () => {
