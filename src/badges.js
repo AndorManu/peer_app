@@ -33,34 +33,34 @@ const generatedVisuals = (state) =>
 
 export const BADGE_DEFS = [
   // ---- getting started ----
-  { id: "first-question", title: "First Question", description: "Ask Peer anything — the journey starts with one question.", icon: "spark", accent: "#22d3ee", target: 1, measure: (s) => countMessages(s, "user") },
-  { id: "curious-25", title: "Curious Mind", description: "Ask 25 questions across any subjects.", icon: "spark", accent: "#22d3ee", target: 25, measure: (s) => countMessages(s, "user") },
-  { id: "deep-diver-100", title: "Deep Diver", description: "100 questions asked — you're really digging in.", icon: "spark", accent: "#8b5cf6", target: 100, measure: (s) => countMessages(s, "user") },
+  { id: "first-question", title: "First Question", description: "Ask Peer anything — the journey starts with one question.", icon: "spark", accent: "#f0b354", target: 1, measure: (s) => countMessages(s, "user") },
+  { id: "curious-25", title: "Curious Mind", description: "Ask 25 questions across any subjects.", icon: "spark", accent: "#f0b354", target: 25, measure: (s) => countMessages(s, "user") },
+  { id: "deep-diver-100", title: "Deep Diver", description: "100 questions asked — you're really digging in.", icon: "spark", accent: "#e0a039", target: 100, measure: (s) => countMessages(s, "user") },
 
   // ---- consistency ----
-  { id: "streak-3", title: "Warm Streak", description: "Study 3 days in a row.", icon: "flame", accent: "#f59e0b", target: 3, measure: (s) => s.profile?.streak?.count || 0 },
-  { id: "streak-7", title: "One Full Week", description: "A 7-day study streak.", icon: "flame", accent: "#fb923c", target: 7, measure: (s) => s.profile?.streak?.count || 0 },
-  { id: "streak-30", title: "Unstoppable Month", description: "30 days in rhythm. Extraordinary.", icon: "flame", accent: "#fb7185", target: 30, measure: (s) => s.profile?.streak?.count || 0 },
+  { id: "streak-3", title: "Warm Streak", description: "Study 3 days in a row.", icon: "flame", accent: "#c9a875", target: 3, measure: (s) => s.profile?.streak?.count || 0 },
+  { id: "streak-7", title: "One Full Week", description: "A 7-day study streak.", icon: "flame", accent: "#b98a63", target: 7, measure: (s) => s.profile?.streak?.count || 0 },
+  { id: "streak-30", title: "Unstoppable Month", description: "30 days in rhythm. Extraordinary.", icon: "flame", accent: "#c96a5a", target: 30, measure: (s) => s.profile?.streak?.count || 0 },
 
   // ---- knowledge building ----
-  { id: "notes-5", title: "Note Keeper", description: "Save 5 explanations to your notebook.", icon: "notes", accent: "#f59e0b", target: 5, measure: (s) => (s.notes || []).length },
-  { id: "concepts-10", title: "Concept Collector", description: "Track 10 concepts in your learning brain.", icon: "brain", accent: "#8b5cf6", target: 10, measure: (s) => allConcepts(s).length },
-  { id: "concepts-50", title: "Growing Brain", description: "50 tracked concepts — your map is thriving.", icon: "brain", accent: "#8b5cf6", target: 50, measure: (s) => allConcepts(s).length },
-  { id: "leveled-up", title: "Leveled Up", description: "Bring any concept above 72% mastery.", icon: "trending", accent: "#34d399", target: 1, measure: (s) => allConcepts(s).filter((c) => (c.confidence || 0) >= 0.72).length },
+  { id: "notes-5", title: "Note Keeper", description: "Save 5 explanations to your notebook.", icon: "notes", accent: "#c9a875", target: 5, measure: (s) => (s.notes || []).length },
+  { id: "concepts-10", title: "Concept Collector", description: "Track 10 concepts in your learning brain.", icon: "brain", accent: "#e0a039", target: 10, measure: (s) => allConcepts(s).length },
+  { id: "concepts-50", title: "Growing Brain", description: "50 tracked concepts — your map is thriving.", icon: "brain", accent: "#e0a039", target: 50, measure: (s) => allConcepts(s).length },
+  { id: "leveled-up", title: "Leveled Up", description: "Bring any concept above 72% mastery.", icon: "trending", accent: "#3f8f74", target: 1, measure: (s) => allConcepts(s).filter((c) => (c.confidence || 0) >= 0.72).length },
 
   // ---- practice ----
-  { id: "decks-3", title: "Deck Builder", description: "Create 3 flashcard decks.", icon: "cards", accent: "#e879f9", target: 3, measure: (s) => (s.flashcards || []).length },
-  { id: "reviews-50", title: "Recall Athlete", description: "Complete 50 spaced-repetition reviews.", icon: "cards", accent: "#e879f9", target: 50, measure: reviewsDone },
-  { id: "teach-back-3", title: "Teacher's Instinct", description: "Teach a topic back 3 times — the strongest way to learn.", icon: "megaphone", accent: "#34d399", target: 3, measure: (s) => s.profile?.signals?.teachBack || 0 },
+  { id: "decks-3", title: "Deck Builder", description: "Create 3 flashcard decks.", icon: "cards", accent: "#b57ba6", target: 3, measure: (s) => (s.flashcards || []).length },
+  { id: "reviews-50", title: "Recall Athlete", description: "Complete 50 spaced-repetition reviews.", icon: "cards", accent: "#b57ba6", target: 50, measure: reviewsDone },
+  { id: "teach-back-3", title: "Teacher's Instinct", description: "Teach a topic back 3 times — the strongest way to learn.", icon: "megaphone", accent: "#3f8f74", target: 3, measure: (s) => s.profile?.signals?.teachBack || 0 },
 
   // ---- social + multimodal ----
-  { id: "room-first", title: "Study Together", description: "Join or host a live peer room.", icon: "users", accent: "#34d399", target: 1, measure: (s) => s.profile?.signals?.roomSessions || 0 },
-  { id: "room-5", title: "Room Regular", description: "5 live room sessions with real partners.", icon: "users", accent: "#2dd4bf", target: 5, measure: (s) => s.profile?.signals?.roomSessions || 0 },
-  { id: "visual-3", title: "Visual Thinker", description: "Generate 3 diagrams to see ideas, not just read them.", icon: "image", accent: "#22d3ee", target: 3, measure: generatedVisuals },
+  { id: "room-first", title: "Study Together", description: "Join or host a live peer room.", icon: "users", accent: "#3f8f74", target: 1, measure: (s) => s.profile?.signals?.roomSessions || 0 },
+  { id: "room-5", title: "Room Regular", description: "5 live room sessions with real partners.", icon: "users", accent: "#4a9d8e", target: 5, measure: (s) => s.profile?.signals?.roomSessions || 0 },
+  { id: "visual-3", title: "Visual Thinker", description: "Generate 3 diagrams to see ideas, not just read them.", icon: "image", accent: "#f0b354", target: 3, measure: generatedVisuals },
 
   // ---- breadth ----
-  { id: "explorer-3", title: "Cross-Subject Explorer", description: "Study subjects across 3 different domains.", icon: "compass", accent: "#fbbf24", target: 3, measure: distinctDomains },
-  { id: "renaissance-6", title: "Renaissance Learner", description: "Six domains of knowledge and counting.", icon: "compass", accent: "#fbbf24", target: 6, measure: distinctDomains },
+  { id: "explorer-3", title: "Cross-Subject Explorer", description: "Study subjects across 3 different domains.", icon: "compass", accent: "#d4b283", target: 3, measure: distinctDomains },
+  { id: "renaissance-6", title: "Renaissance Learner", description: "Six domains of knowledge and counting.", icon: "compass", accent: "#d4b283", target: 6, measure: distinctDomains },
 
   // ---- one mastery track per domain: no subject left behind ----
   ...DOMAINS.map((domain) => ({
