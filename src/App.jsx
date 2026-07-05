@@ -326,6 +326,11 @@ export default function App() {
   const selectedDoc = managedProject?.docs.find((doc) => doc.id === selectedDocId) || managedProject?.docs[0] || null;
   const unfiledChats = state.chats.filter((chat) => !chat.projectId);
   const font = FONT_OPTIONS.find((option) => option.id === state.fontId) || FONT_OPTIONS[0];
+  // Fraunces display serif applies only with the standard fonts — a learner's
+  // accessibility font (OpenDyslexic, Atkinson, Lexend…) wins everywhere.
+  const fontDisplay = ["inter", "system", "serif"].includes(font.id)
+    ? "'Fraunces', Georgia, serif"
+    : font.family;
   const activeMode = STUDY_MODES.find((mode) => mode.id === state.activeMode) || STUDY_MODES[0];
   const insights = getProfileInsights(state.profile);
 
@@ -1795,7 +1800,7 @@ export default function App() {
     return (
       <div
         className={appClass}
-        style={{ "--app-font": font.family, "--text-size": `${state.textSize}px` }}
+        style={{ "--app-font": font.family, "--font-display": fontDisplay, "--text-size": `${state.textSize}px` }}
       >
         <div className="boot-splash">
           <PeerLogo size={40} />
@@ -1810,7 +1815,7 @@ export default function App() {
       <div
         className={appClass}
         style={{
-          "--app-font": font.family,
+          "--app-font": font.family, "--font-display": fontDisplay,
           "--text-size": `${state.textSize}px`,
         }}
       >
@@ -1823,7 +1828,7 @@ export default function App() {
     <div
       className={`${appClass} peer-skin view-${view}`}
       style={{
-        "--app-font": font.family,
+        "--app-font": font.family, "--font-display": fontDisplay,
         "--text-size": `${state.textSize}px`,
       }}
     >
