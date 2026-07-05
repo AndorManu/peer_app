@@ -100,8 +100,8 @@ test("persona insights are specific to the accumulated signals, with names", () 
       { id: "b", name: "Calculus", mastery: { ...makeMastery(), concepts: ["x", "y"].map((k) => ({ id: k, key: k, label: k, confidence: 0.2, status: "weak" })) } },
     ],
   };
-  const lines = buildPersonaInsights(state).join(" | ");
-  assert.match(lines, /worked examples before theory/);
+  const lines = buildPersonaInsights(state).map((i) => i.text).join(" | ");
+  assert.match(lines, /concrete example before the abstract rule/);
   assert.match(lines, /Organic Chemistry/);
   assert.match(lines, /Calculus/);
 });
@@ -109,5 +109,6 @@ test("persona insights are specific to the accumulated signals, with names", () 
 test("a fresh profile admits it doesn't know you yet", () => {
   const lines = buildPersonaInsights({ profile: makeProfile(), projects: [] });
   assert.equal(lines.length, 1);
-  assert.match(lines[0], /Still learning how you learn/);
+  assert.match(lines[0].text, /Still learning how you learn/);
+  assert.equal(lines[0].key, null, "the fallback line is not editable");
 });

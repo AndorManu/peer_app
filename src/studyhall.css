@@ -303,3 +303,21 @@ code, pre, kbd, samp, .hljs, .term-body, .vscode-code, .room-code {
 }
 .persona-list li > svg { color: var(--sh-accent-hi, #f0b354); flex: 0 0 auto; transform: translateY(2px); }
 .theme-light .persona-list li { color: rgba(42, 35, 24, 0.88); }
+
+/* ---------- Learning DNA: editable insight rows ---------- */
+.persona-sub { font-size: 12.5px; color: rgba(244, 232, 213, 0.62); margin: 2px 0 4px; }
+.persona-list li { align-items: center; }
+.persona-text { flex: 1 1 auto; }
+.dna-controls { display: inline-flex; gap: 4px; flex: 0 0 auto; }
+.dna-controls button {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 8px; cursor: pointer;
+  background: rgba(244, 232, 213, 0.05); border: 1px solid rgba(244, 232, 213, 0.12);
+  color: rgba(244, 232, 213, 0.55); padding: 0;
+}
+.dna-controls button:hover { color: rgba(244, 232, 213, 0.9); background: rgba(244, 232, 213, 0.09); }
+.dna-controls button.active { background: rgba(224, 160, 57, 0.18); border-color: rgba(224, 160, 57, 0.45); color: var(--sh-accent-hi, #f0b354); }
+.persona-list li.dna-rejected .persona-text { opacity: 0.45; text-decoration: line-through; text-decoration-color: rgba(244, 232, 213, 0.4); }
+.theme-light .persona-sub { color: rgba(42, 35, 24, 0.62); }
+.theme-light .dna-controls button { background: rgba(42, 35, 24, 0.04); border-color: rgba(42, 35, 24, 0.15); color: rgba(42, 35, 24, 0.55); }
+.theme-light .dna-controls button.active { color: #8a5a14; background: rgba(224, 160, 57, 0.2); }
