@@ -450,7 +450,7 @@ ${code || "(empty)"}
           )}
           <form onSubmit={submitQuestion} style={{ display: "flex", gap: 8, padding: "10px 12px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
             <input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ask Peer to change your code…" aria-label="Ask Peer about your code" style={{ flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, color: "#fff", padding: "9px 12px", fontSize: 13, outline: "none", fontFamily: "Geist, sans-serif" }} />
-            <button type="submit" disabled={aiBusy || !question.trim()} style={{ ...btn(true), padding: "0 12px" }}><Send size={15} /></button>
+            <button type="submit" aria-label="Send question to Peer" disabled={aiBusy || !question.trim()} style={{ ...btn(true), padding: "0 12px" }}><Send size={15} /></button>
           </form>
         </div>
       </div>

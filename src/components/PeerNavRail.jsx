@@ -89,6 +89,7 @@ export default function PeerNavRail({ view, setView, account, onAvatar }) {
           type="button"
           className={`peer-rail-item peer-rail-settings${view === "settings" ? " active" : ""}`}
           aria-current={view === "settings" ? "page" : undefined}
+          aria-label="Settings"
           onClick={() => setView("settings")}
         >
           <span className="peer-rail-icon"><Settings size={20} strokeWidth={1.7} aria-hidden="true" /></span>
