@@ -150,7 +150,18 @@ export function normalizeState(stored) {
           chatName: String(deck?.chatName || "Chat"),
           createdAt: deck?.createdAt || Date.now(),
           cards: Array.isArray(deck?.cards)
-            ? deck.cards.map((card) => ({ id: card?.id || uid(), question: String(card?.question || ""), answer: String(card?.answer || "") }))
+            ? deck.cards.map((card) => ({
+                id: card?.id || uid(),
+                question: String(card?.question || ""),
+                answer: String(card?.answer || ""),
+                // spaced-repetition schedule — dropping these silently resets
+                // review progress on every reload
+                ...(card?.ease != null ? { ease: card.ease } : {}),
+                ...(card?.reps != null ? { reps: card.reps } : {}),
+                ...(card?.interval != null ? { interval: card.interval } : {}),
+                ...(card?.dueAt != null ? { dueAt: card.dueAt } : {}),
+                ...(card?.lastReviewedAt != null ? { lastReviewedAt: card.lastReviewedAt } : {}),
+              }))
             : [],
         }))
       : [],
