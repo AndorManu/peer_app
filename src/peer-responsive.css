@@ -163,8 +163,8 @@
   }
 }
 
-/* ---------- brain: flow layout on small screens (desktop stays full-bleed) ---------- */
-@media (max-width: 900px) {
+/* ---------- brain: flow layout below 1024px (desktop stays full-bleed) ---------- */
+@media (max-width: 1023px) {
   .peer-skin .learning-brain-panel {
     position: relative !important;
     inset: auto !important;
@@ -528,3 +528,213 @@
 
 /* focus ring adapts */
 .peer-skin.theme-light :focus-visible { outline-color: #6d28d9 !important; }
+
+/* ============================================================================
+   M2 — BRAIN PERFECTION: shape-coded nodes, view toggle, outline view,
+   trajectory detail, vignette, lazy-panel loading.
+   ============================================================================ */
+
+/* Shape-coded legend/label dots — type is never conveyed by color alone.
+   ring = hub (brain/domain/subject), circle = concept, diamond = weak spot,
+   square = source (file/code/note/chat/quiz). */
+.brain-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+}
+.brain-dot.brain,
+.brain-dot.domain,
+.brain-dot.project {
+  background: transparent !important;
+  border: 2.5px solid #8b5cf6;
+  box-shadow: 0 0 8px -1px rgba(139, 92, 246, 0.8);
+}
+.brain-dot.domain { border-color: #a78bfa; box-shadow: 0 0 8px -1px rgba(167, 139, 250, 0.8); }
+.brain-dot.concept {
+  background: #22d3ee !important;
+  box-shadow: 0 0 8px -1px rgba(34, 211, 238, 0.8);
+}
+.brain-dot.weak {
+  background: #f59e0b !important;
+  border-radius: 2px;
+  transform: rotate(45deg) scale(0.92);
+  box-shadow: 0 0 8px -1px rgba(245, 158, 11, 0.8);
+}
+.brain-dot.file { background: #818cf8 !important; border-radius: 3px; }
+.brain-dot.code { background: #84cc16 !important; border-radius: 3px; }
+.brain-dot.note { background: #fb923c !important; border-radius: 3px; }
+.brain-dot.chat { background: #34d399 !important; border-radius: 3px; }
+.brain-dot.quiz { background: #e879f9 !important; border-radius: 3px; }
+
+/* Map / Outline toggle — sits first in the filter row */
+.brain-view-toggle {
+  display: inline-flex;
+  gap: 0;
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-right: 4px;
+}
+.peer-skin .brain-filter-row .brain-view-toggle button {
+  border: none !important;
+  border-radius: 0 !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  min-height: 34px;
+  padding: 0 14px !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600 !important;
+}
+.peer-skin .brain-filter-row .brain-view-toggle button.active {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.85), rgba(34, 211, 238, 0.75)) !important;
+  color: #0b0b16 !important;
+}
+.peer-skin .brain-filter-row .brain-view-toggle button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Outline view — the accessible equivalent of the 3D map */
+.peer-skin .brain-map-card.outline-mode {
+  overflow-y: auto !important;
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.05), transparent 220px), #0a0a14 !important;
+}
+.brain-outline {
+  padding: 22px 20px 30px;
+}
+.brain-outline-notice {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+.brain-outline ul {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 20px;
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
+}
+.brain-outline > ul { border-left: none; padding-left: 6px; }
+.brain-outline li { margin: 2px 0; }
+.outline-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.outline-row:hover { background: rgba(255, 255, 255, 0.05); }
+.outline-row.active {
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.04));
+  color: #fff;
+}
+.outline-row .outline-label {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.outline-row.outline-root .outline-label,
+.outline-row.domain .outline-label { font-weight: 700; font-family: 'Space Grotesk', sans-serif; }
+.outline-row .outline-meta {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.42);
+}
+.theme-light .outline-row { color: #262b40; }
+.theme-light .outline-row:hover { background: rgba(29, 34, 51, 0.05); }
+.theme-light .outline-row.active { color: #1d2233; }
+.theme-light .outline-row .outline-meta { color: rgba(29, 34, 51, 0.5); }
+.theme-light .brain-outline ul { border-left-color: rgba(29, 34, 51, 0.1); }
+
+/* Trajectory chip + sparkline in the detail panel */
+.brain-trajectory {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 4px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.brain-trajectory.traj-improving { color: #34d399; background: rgba(52, 211, 153, 0.1); border: 1px solid rgba(52, 211, 153, 0.28); }
+.brain-trajectory.traj-slipping { color: #fbbf24; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); }
+.brain-trajectory.traj-steady { color: rgba(255, 255, 255, 0.6); background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.1); }
+.brain-sparkline { margin-left: auto; opacity: 0.9; }
+
+/* Subtle vignette over the 3D map for depth (labels/legend stay above) */
+.peer-skin .brain-map-card:not(.outline-mode)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(115% 100% at 50% 42%, transparent 58%, rgba(3, 3, 10, 0.5) 100%);
+}
+.peer-skin .brain-3d-labels { z-index: 3; }
+.peer-skin .brain-3d-help { z-index: 3; }
+.brain-node-label .brain-dot { width: 8px; height: 8px; margin-right: 5px; }
+.brain-node-label .brain-dot.brain,
+.brain-node-label .brain-dot.domain,
+.brain-node-label .brain-dot.project { border-width: 2px; }
+
+/* Lazy-panel loading state (brain / code lab suspense) */
+.panel-loading {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 320px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 14px;
+}
+.theme-light .panel-loading { color: rgba(29, 34, 51, 0.6); }
+.panel-loading-orb {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 34% 30%, rgba(139, 92, 246, 0.9), rgba(34, 211, 238, 0.55) 70%, transparent);
+  box-shadow: 0 0 34px -4px rgba(139, 92, 246, 0.8);
+  animation: pbreathe 2.4s ease-in-out infinite;
+}
+
+/* Desktop full-bleed brain overlays the heading/toolbar on the map — in
+   outline mode push the list below them and keep a readable measure. */
+@media (min-width: 1024px) {
+  .peer-skin .brain-map-card.outline-mode .brain-outline {
+    padding-top: 132px;
+    max-width: 760px;
+  }
+}
+
+/* Narrow screens: outline rows wrap to two lines so labels stay readable. */
+@media (max-width: 560px) {
+  .outline-row { flex-wrap: wrap; row-gap: 0; }
+  .outline-row .outline-label { flex: 1 1 auto; }
+  .outline-row .outline-meta {
+    margin-left: 20px;
+    width: 100%;
+    flex: 1 1 100%;
+  }
+}
