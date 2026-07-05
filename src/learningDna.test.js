@@ -4,14 +4,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildTeachingRecipe,
   inferProfileFromMessage,
   isSessionOpening,
   makeMastery,
   makeProfile,
   normalizeMastery,
   normalizeProfile,
+  topAnalogyDomain,
   updateMasteryFromMessage,
 } from "./learningModel.js";
+import { buildSystemPrompt } from "./peerPrompt.js";
 
 test("analogies the learner volunteers are attributed to their domain", () => {
   let p = makeProfile();
@@ -53,6 +56,64 @@ test("isSessionOpening: fresh day or zero messages today", () => {
   const localKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   active.streak.lastStudyDate = localKey;
   assert.equal(isSessionOpening(active), false);
+});
+
+// ---- Layer 2: each signal provably changes the instructions ----
+
+test("naturally short messages earn a concision directive without any click", () => {
+  let p = makeProfile();
+  for (const msg of ["what is LTP", "and LTD?", "why", "ok next", "so both?"]) p = inferProfileFromMessage(p, msg);
+  assert.ok(p.traits.averageMessageLength < 10 && p.signals.implicit >= 5);
+  const recipe = buildTeachingRecipe(p, null, "auto").join(" ");
+  assert.match(recipe, /short messages and prefers tight answers/);
+  // a long-form writer gets no such directive
+  let verbose = makeProfile();
+  for (let i = 0; i < 5; i += 1) verbose = inferProfileFromMessage(verbose, "could you walk me through the mechanism of long term potentiation in the hippocampus including the role of NMDA receptors and calcium influx during coincident activity");
+  assert.doesNotMatch(buildTeachingRecipe(verbose, null, "auto").join(" "), /prefers tight answers/);
+});
+
+test("two volunteered analogies from one domain -> tutor leads with that domain", () => {
+  let p = makeProfile();
+  p = inferProfileFromMessage(p, "so it's like leveling up in a video game?");
+  p = inferProfileFromMessage(p, "kind of like a boss fight you have to prepare for");
+  assert.deepEqual(topAnalogyDomain(p), { domain: "gaming", count: 2 });
+  const recipe = buildTeachingRecipe(p, null, "auto").join(" ");
+  assert.match(recipe, /LEAD with an analogy from gaming/);
+  // one mention is not a pattern yet
+  let once = inferProfileFromMessage(makeProfile(), "it's like a recipe?");
+  assert.doesNotMatch(buildTeachingRecipe(once, null, "auto").join(" "), /LEAD with an analogy/);
+});
+
+test("warm-up vs dive-in session style changes the opening instruction, per subject", () => {
+  const warmup = { ...makeMastery(), signals: { ...makeMastery().signals, warmup: 2, diveIn: 0 } };
+  const diveIn = { ...makeMastery(), signals: { ...makeMastery().signals, warmup: 0, diveIn: 3 } };
+  const p = makeProfile();
+  assert.match(buildTeachingRecipe(p, { id: "a", mastery: warmup }, "auto").join(" "), /two-line recap of where you left off/);
+  assert.match(buildTeachingRecipe(p, { id: "b", mastery: diveIn }, "auto").join(" "), /dives straight in — skip recaps/);
+  assert.doesNotMatch(buildTeachingRecipe(p, { id: "c", mastery: makeMastery() }, "auto").join(" "), /recap/);
+});
+
+test("stored misconceptions trigger a PROACTIVE recall instruction in the prompt", () => {
+  const project = {
+    id: "p1", name: "Chemistry",
+    mastery: { ...makeMastery(), misconceptions: [{ id: "m1", concept: "ionic bonds", belief: "electrons are shared", correction: "electrons are transferred", createdAt: 1 }] },
+    docs: [],
+  };
+  const prompt = buildSystemPrompt(project, makeProfile(), "auto", []);
+  assert.match(prompt, /proactively verify it is resolved BEFORE building new material/);
+  assert.match(prompt, /Last time you thought/);
+  assert.match(prompt, /electrons are shared -> electrons are transferred/);
+});
+
+test("explicit DNA corrections outrank inference: reject suppresses, confirm applies early", () => {
+  // strong inferred example-first signal, but the user said "not me"
+  let p = makeProfile();
+  for (let i = 0; i < 3; i += 1) p = { ...p, signals: { ...p.signals, goodExample: (p.signals.goodExample || 0) + 1 } };
+  p = { ...p, dnaOverrides: { exampleFirst: "rejected" } };
+  assert.doesNotMatch(buildTeachingRecipe(p, null, "auto").join(" "), /OPEN with a concrete worked example/);
+  // zero concision signal, but the user confirmed they want it short
+  const confirmed = { ...makeProfile(), dnaOverrides: { concise: "confirmed" } };
+  assert.match(buildTeachingRecipe(confirmed, null, "auto").join(" "), /HARD LENGTH CAP/);
 });
 
 test("DNA fields survive normalization (persistence + sync round-trips)", () => {
