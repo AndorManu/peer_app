@@ -32,7 +32,7 @@
 | M8 RAG | ✅ done | `39da873`+`86e5c2c` | Voyage embeddings; planted-fact cite test 9/9 live |
 | M9 rooms | ✅ done | `0b98df7` | realtime 2-client verify 9/9 (presence/chat/quiz/RLS) |
 | M10 badges | ✅ done | `e06d29b` | 30 badges, trophy case, sync; live badge earn verified |
-| M11 native (Capacitor+Tauri) | ✅ scaffolded + wired | (this commit) | android/ + ios/ generated & synced (appId app.peer.study); src-tauri/ scaffolded (strict CSP, 1280×860); src/native.js: status bar, deep links (OAuth redirects re-enter SPA), Android back, hapticTap on badge earns — all feature-detected, web verified unaffected (0 console errors). Platform BUILDS need toolchains this machine lacks (no Rust/Java/Android SDK) — exact commands in NATIVE.md; icons/splash + push notifications documented as owner steps. |
+| M11 native (Capacitor+Tauri) | ✅ scaffolded + wired | `b152de7` | android/ + ios/ generated & synced (appId app.peer.study); src-tauri/ scaffolded (strict CSP, 1280×860); src/native.js: status bar, deep links (OAuth redirects re-enter SPA), Android back, hapticTap on badge earns — all feature-detected, web verified unaffected (0 console errors). Platform BUILDS need toolchains this machine lacks (no Rust/Java/Android SDK) — exact commands in NATIVE.md; icons/splash + push notifications documented as owner steps. |
 | **M12 a11y deep pass** | ⬜ **next in line** | | axe/Lighthouse ≥95 per screen + keyboard passes doable headless; mic audio + pinch-zoom + real screen readers need a physical device (owner) |
 | M13 launch polish | ⬜ pending | | onboarding, dashboard, landing page, legal |
 
