@@ -410,3 +410,40 @@ input[type="range"] { accent-color: var(--sh-accent); }
 .brain-fullscreen .peer-rail { display: none !important; }
 .brain-fullscreen .peer-skin.app { padding-bottom: 0 !important; }
 .brain-fullscreen .study-reminder { display: none !important; }
+
+/* ---------- Plan tab (Settings -> Plan): always-browsable pricing ---------- */
+.plan-current {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+  padding: 14px 16px; border-radius: 14px;
+  background: var(--sh-accent-soft); border: 1px solid rgba(var(--sh-accent-rgb), 0.25);
+}
+.plan-name { font-size: 22px; font-family: var(--font-display, "Fraunces", Georgia, serif); }
+.plan-renews { display: block; font-size: 12.5px; color: var(--sh-text-muted); margin-top: 2px; }
+.plan-usage { margin-top: 14px; }
+.plan-usage-labels { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--sh-text-muted); margin-bottom: 6px; }
+.plan-meter { height: 8px; border-radius: 999px; background: rgba(var(--sh-text-rgb), 0.08); overflow: hidden; }
+.plan-meter > div { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--sh-accent), var(--sh-accent-hi)); transition: width .4s var(--sh-ease); }
+.plan-usage-note { font-size: 11.5px; color: var(--sh-text-faint); margin: 6px 0 0; }
+/* density adapts by available width, not a single breakpoint (per-device bar) */
+.plan-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 14px; max-width: 760px; }
+.plan-card {
+  position: relative; padding: 18px 18px 16px; border-radius: 16px;
+  background: rgba(var(--sh-text-rgb), 0.03); border: 1px solid rgba(var(--sh-text-rgb), 0.1);
+}
+.plan-card.pro { border-color: rgba(var(--sh-accent-rgb), 0.45); background: rgba(var(--sh-accent-rgb), 0.06); }
+.plan-card h3 { margin: 0 0 2px; font-size: 16px; }
+.plan-price { font-size: 24px; font-weight: 700; margin: 0 0 10px; }
+.plan-price span { font-size: 13px; font-weight: 500; color: var(--sh-text-muted); }
+.plan-price em { display: block; font-size: 12px; font-style: normal; color: var(--sh-text-muted); font-weight: 500; }
+.plan-card ul { margin: 0 0 12px; padding-left: 18px; font-size: 13.5px; line-height: 1.7; color: rgba(var(--sh-text-rgb), 0.85); }
+.plan-badge {
+  display: inline-block; font-size: 11px; letter-spacing: .4px; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 999px;
+  background: rgba(var(--sh-accent-rgb), 0.16); color: var(--sh-accent-hi); border: 1px solid rgba(var(--sh-accent-rgb), 0.4);
+}
+.plan-upgrade-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.plan-upgrade-row button:not(.primary-button) {
+  background: rgba(var(--sh-text-rgb), 0.05); border: 1px solid rgba(var(--sh-text-rgb), 0.14);
+  border-radius: 10px; color: rgba(var(--sh-text-rgb), 0.85); padding: 8px 14px; cursor: pointer;
+}
+.theme-light .plan-card ul { color: rgba(42, 35, 24, 0.85); }
