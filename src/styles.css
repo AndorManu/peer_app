@@ -4128,6 +4128,42 @@ code, pre, kbd, samp, .hljs, .code-block, .code-block code, .markdown code, .mar
   .starter-grid { grid-template-columns: 1fr !important; }
 }
 
+/* ── Cloud sync status (Settings → Account) ── */
+.sync-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(109, 94, 240, 0.16);
+  background: rgba(109, 94, 240, 0.05);
+}
+.sync-status p { margin: 0; flex: 1; font-size: 13.5px; line-height: 1.55; color: var(--muted); }
+.sync-status button {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  background: rgba(109, 94, 240, 0.12);
+  border: 1px solid rgba(109, 94, 240, 0.35);
+  color: var(--text);
+}
+.sync-status-dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  background: var(--muted);
+}
+.sync-idle .sync-status-dot { background: #34d399; box-shadow: 0 0 10px rgba(52, 211, 153, 0.7); }
+.sync-syncing .sync-status-dot { background: #22d3ee; box-shadow: 0 0 10px rgba(34, 211, 238, 0.7); animation: ppulse 1.4s ease-in-out infinite; }
+.sync-error .sync-status-dot { background: #f2685f; box-shadow: 0 0 10px rgba(242, 104, 95, 0.6); }
+.sync-offline .sync-status-dot { background: #f59e0b; }
+
 /* ── Subject domains ── */
 .domain-badge {
   display: inline-flex;
