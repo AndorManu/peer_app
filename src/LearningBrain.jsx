@@ -21,6 +21,7 @@ import {
   buildLearningBrainGraph,
   nodeTrajectory,
   nodeTypeLabel,
+  refreshBrainThemeAccent,
   relativeDate,
   shapeForType,
   shortLabel,
@@ -69,7 +70,10 @@ export function LearningBrainPanel({ state, activeProject, setView, updateState,
     ? state.projects.find((item) => item.id === projectId) || state.projects[0] || null
     : null;
   const graph = useMemo(
-    () => buildLearningBrainGraph(state, focusedProject, filters, { query }),
+    () => {
+      refreshBrainThemeAccent(); // hub colors follow the active data-theme
+      return buildLearningBrainGraph(state, focusedProject, filters, { query });
+    },
     [state, focusedProject, filters, query]
   );
   const selectedNode = graph.nodes.find((node) => node.id === selectedNodeId) || graph.nodes[0] || null;
