@@ -86,9 +86,23 @@ import {
   uid,
 } from "./stateModel.js";
 import { DOMAINS, GENERAL_DOMAIN, classifySubject, domainForProject, getDomain } from "./subjects.js";
-import { LearningBrainPanel } from "./LearningBrain.jsx";
 import PeerNavRail from "./components/PeerNavRail.jsx";
-import CodingPanel from "./CodingPanel.jsx";
+
+// Heavy screens load on demand: the Brain pulls in Three.js (~600KB) and the
+// Code lab pulls highlight.js — neither belongs in the initial bundle.
+const LearningBrainPanel = React.lazy(() =>
+  import("./LearningBrain.jsx").then((module) => ({ default: module.LearningBrainPanel })),
+);
+const CodingPanel = React.lazy(() => import("./CodingPanel.jsx"));
+
+function PanelLoading({ label }) {
+  return (
+    <div className="panel-loading" role="status">
+      <span className="panel-loading-orb" aria-hidden="true" />
+      <span>{label}</span>
+    </div>
+  );
+}
 import { gradeCard, dueQueue, dueCount } from "./spacedRepetition.js";
 
 function PeerLogo({ size = 28 }) {
@@ -673,6 +687,21 @@ export default function App() {
     sendMessage(
       `Create a focused ${n}-question practice set on "${t}". Ask one question at a time, wait for my answer, then give brief feedback before moving on. Shape the questions for ${domain.label}: use ${domain.practice}. Start with question 1 now.${grounding}`,
       { mode: "quiz" },
+    );
+  }
+
+  // "Explain this" from a brain node — a fresh, grounded explanation of the
+  // concept, shaped to the subject's domain.
+  function explainConcept(topic, opts = {}) {
+    const t = String(topic || "").trim();
+    if (!t) return;
+    const project = state.projects.find((item) => item.id === opts.projectId) || activeProject;
+    const domain = domainForProject(project);
+    const grounding = opts.context ? `\n\nPeer's note on why this matters to me: ${String(opts.context).slice(0, 500)}` : "";
+    setView("chat");
+    sendMessage(
+      `Explain "${t}" to me from the ground up${project ? ` in the context of ${project.name}` : ""}. ${domain.teach} End with one small check question.${grounding}`,
+      { mode: "explain" },
     );
   }
 
@@ -1606,8 +1635,16 @@ export default function App() {
 
         {view === "settings" && <SettingsPanel state={state} updateState={updateState} resetData={confirmResetData} loadSampleData={loadSampleData} />}
         {view === "profile" && <ProfilePanel profile={state.profile} activeProject={activeProject} activeChat={activeChat} insights={insights} activeMode={activeMode} updateState={updateState} recap={buildLearnerRecap(state)} />}
-        {view === "brain" && <LearningBrainPanel state={state} activeProject={activeProject} setView={setView} updateState={updateState} setManagedProjectId={setManagedProjectId} setSelectedDocId={setSelectedDocId} onPractice={generatePractice} />}
-        {view === "code" && <CodingPanel profile={state.profile} projects={state.projects} onSaveToBrain={saveCodeToBrain} />}
+        {view === "brain" && (
+          <React.Suspense fallback={<PanelLoading label="Waking up your brain…" />}>
+            <LearningBrainPanel state={state} activeProject={activeProject} setView={setView} updateState={updateState} setManagedProjectId={setManagedProjectId} setSelectedDocId={setSelectedDocId} onPractice={generatePractice} onExplain={explainConcept} />
+          </React.Suspense>
+        )}
+        {view === "code" && (
+          <React.Suspense fallback={<PanelLoading label="Opening the code lab…" />}>
+            <CodingPanel profile={state.profile} projects={state.projects} onSaveToBrain={saveCodeToBrain} />
+          </React.Suspense>
+        )}
         {view === "notes" && <NotesPanel notes={state.notes} projects={state.projects} deleteNote={confirmDeleteNote} toggleShareNote={toggleShareNote} onPractice={generatePractice} />}
         {view === "flashcards" && <FlashcardsPanel flashcards={state.flashcards} projects={state.projects} setView={setView} deleteFlashcardDeck={confirmDeleteDeck} gradeFlashcard={gradeFlashcard} />}
         {view === "community" && (

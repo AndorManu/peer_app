@@ -1,5 +1,56 @@
 # Maintenance log
 
+## 2026-07-05 — M2: Brain perfection
+
+**What changed**
+- **Graph builder extracted + domain clustering** ([src/brainGraph.js](src/brainGraph.js)):
+  the node/link builder moved out of the React file into a pure, unit-tested module.
+  In global scope with ≥2 real domains, domain cluster nodes now sit between the brain
+  root and subjects (root → Natural Sciences → Organic Chemistry → concepts/sources),
+  tinted with their taxonomy accents. Searching keeps matching nodes AND their
+  ancestors (subject + domain) for context.
+- **Code splitting**: the Brain (Three.js, 550KB), pdf.js (365KB), KaTeX (260KB), and
+  the Code lab (23KB) are now lazy chunks with styled loading states — the main bundle
+  dropped **1,387KB → 458KB (−67%)**.
+- **Colorblind-safe shape coding**: node cores are shape-coded sprites — ring = hub
+  (brain/domain/subject), circle = concept, diamond = weak spot, square = source
+  (file/code/note/chat/quiz) — with matching glyphs in the floating labels, the
+  legend, and the outline view. Edges tint subtly toward their cluster's color.
+  A soft vignette adds depth to the map.
+- **Touch**: two-finger pinch-zoom on the 3D map (`touch-action: none`, pointer-map
+  gesture tracking); drag-orbit and tap-select already worked via pointer events.
+- **Rich node detail**: concept nodes carry mastery history; the detail panel shows a
+  trajectory chip (improving/slipping/steady with icon + text, never color alone) and
+  a mastery-over-time sparkline, plus a new **"Explain this to me"** action beside
+  "Practice this" (both jump to chat with domain-shaped prompts).
+- **Accessible equivalent view**: a Map/Outline toggle in the toolbar. Outline is a
+  nested, keyboard-navigable list of the same graph (domains → subjects → concepts →
+  sources); every row is a real button with type + mastery + trajectory in text,
+  selection drives the same detail panel. If WebGL is unavailable the outline takes
+  over automatically with a notice. Choice persists.
+- Misc: brain flow layout now applies below 1024px (the full-bleed overlay layout
+  needed more room), KaTeX strict-mode warnings silenced for model TeX (en-dashes),
+  brain copy says "subjects" instead of "projects".
+
+**What I tested**
+- Desktop (1280px): created subjects across three domains → domain cluster nodes
+  rendered and linked correctly (verified in DOM: science/language/humanities hubs,
+  projects linked through their domain, general project to root). Outline toggle:
+  21 rows, all buttons, selection syncs the detail panel with Practice/Explain/
+  Inspect; "Explain this to me" jumped to chat and streamed a real grounded answer
+  (with LaTeX chemical notation rendered). Suspense fallback shows, then the map.
+- Mobile (375px): outline is readable (rows wrap to two lines), map card renders the
+  3D graph with `touch-action: none` confirmed; no horizontal overflow.
+- Pinch-zoom is implemented via pointer-pair tracking; the preview browser can't
+  emulate multi-touch, so it's code-reviewed + gesture-math unit-logic only — flagged
+  for a real-device check.
+- `npm test` 51/51 (8 new brainGraph tests incl. domain layer, shapes, outline,
+  search ancestors); `npm run build` clean; zero new console warnings after the
+  KaTeX strict fix.
+
+**Deferred**
+- Per-domain badge tracks (M10); full WCAG pass incl. real screen readers (M12).
+
 ## 2026-07-04 — M1: Universal-subject engine
 
 **What changed**
