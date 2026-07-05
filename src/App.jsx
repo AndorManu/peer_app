@@ -1056,7 +1056,10 @@ export default function App() {
         learnedProject && project.id === learnedProject.id ? learnedProject : project
       )),
       chats: current.chats.map((chat) => (
-        chat.id === activeChat.id ? { ...chat, name: autoName, messages: nextMessages } : chat
+        // append to the chat's CURRENT messages — nextMessages is a stale
+        // render-time snapshot and would drop same-tick updates (e.g. the
+        // feedback flag handleFeedback just set before this follow-up send)
+        chat.id === activeChat.id ? { ...chat, name: autoName, messages: [...chat.messages, userMessage] } : chat
       )),
     }));
 
@@ -1077,7 +1080,7 @@ export default function App() {
               ...current,
               chats: current.chats.map((chat) =>
                 chat.id === currentChatId
-                  ? { ...chat, messages: [...nextMessages, { id: placeholderMsgId, role: "assistant", content: partial, streaming: true, createdAt: Date.now() }] }
+                  ? { ...chat, messages: [...chat.messages, { id: placeholderMsgId, role: "assistant", content: partial, streaming: true, createdAt: Date.now() }] }
                   : chat
               ),
             }));
@@ -1118,7 +1121,7 @@ export default function App() {
             ? {
                 ...chat,
                 messages: firstChunk
-                  ? [...nextMessages, { id: uid(), role: "assistant", content: `I could not reach the AI yet: ${message}`, createdAt: Date.now() }]
+                  ? [...chat.messages, { id: uid(), role: "assistant", content: `I could not reach the AI yet: ${message}`, createdAt: Date.now() }]
                   : chat.messages.map((msg) => msg.id === placeholderMsgId ? { ...msg, content: `I could not reach the AI: ${message}` } : msg),
               }
             : chat
@@ -2495,29 +2498,76 @@ function ChatArea({ activeChat, activeProject, activeMode, loading, error, sendM
   );
 }
 
+// Pick the ONE extra chip most likely to help for this specific answer.
+// Everything else stays reachable behind the "More" expander.
+function pickContextualActionId(message, index) {
+  const content = message?.content || "";
+  if (/```/.test(content)) return "stepByStep";
+  if (content.length > 1200) return "tooLong";
+  if (/for example|e\.g\.|example[:\s]/i.test(content)) return "goodExample";
+  if (index <= 1) return "quiz";
+  return "alternate";
+}
+
 function MessageActions({ message, index, handleFeedback, saveNote, regenerateFrom, sendMessage, makeFlashcards, generateImage, requestVisualBlueprint }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const feedbackChip = (id, icon, label) => ({
+    id,
+    el: (
+      <button key={id} className={message.feedback === id ? "active" : ""} onClick={() => handleFeedback(message, id)}>
+        {icon} {label}
+      </button>
+    ),
+  });
+  const actionChip = (id, icon, label, run, className = "") => ({
+    id,
+    el: <button key={id} className={className} onClick={run}>{icon} {label}</button>,
+  });
+
+  // Full catalog — same 19 capabilities as before, nothing removed.
+  const extras = [
+    feedbackChip("alternate", <Wand2 size={14} />, "Explain differently"),
+    feedbackChip("tooVague", <Target size={14} />, "Too vague"),
+    feedbackChip("tooAdvanced", <HelpCircle size={14} />, "Too hard"),
+    feedbackChip("tooLong", <RefreshCw size={14} />, "Too long"),
+    feedbackChip("goodExample", <CheckCircle2 size={14} />, "Good example"),
+    feedbackChip("moreTechnical", <Code2 size={14} />, "More technical"),
+    feedbackChip("moreVisual", <Layers size={14} />, "More visual"),
+    feedbackChip("quiz", <Target size={14} />, "Quiz me"),
+    feedbackChip("teachBack", <MessageSquare size={14} />, "Teach back"),
+    actionChip("stepByStep", <ChevronRight size={14} />, "Step by step", () => sendMessage("Break this down step by step from the very beginning. Number each step and explain each one clearly.", { mode: "explain" })),
+    actionChip("regenerate", <RotateCcw size={14} />, "Regenerate", () => regenerateFrom(index)),
+    actionChip("visualize", <Layers size={14} />, "Visualize", () => generateImage(message)),
+    actionChip("diagram", <GitBranch size={14} />, "Diagram", () => requestVisualBlueprint(message, "diagram")),
+    actionChip("flowchart", <GitBranch size={14} />, "Flowchart", () => requestVisualBlueprint(message, "flowchart")),
+    actionChip("mindmap", <Brain size={14} />, "Memory map", () => requestVisualBlueprint(message, "mindmap")),
+  ];
+
+  // Contextual slot: the heuristic pick — unless the learner already gave
+  // feedback that lives in the extras, in which case surface THAT chip so
+  // its active state stays visible.
+  const promotedId = extras.some((c) => c.id === message.feedback)
+    ? message.feedback
+    : pickContextualActionId(message, index);
+  const promoted = extras.find((c) => c.id === promotedId);
+  const rest = extras.filter((c) => c.id !== promotedId);
+
   return (
     <div className="message-actions" role="group" aria-label="Response feedback and actions">
-      <button className={message.feedback === "understood" ? "active" : ""} onClick={() => handleFeedback(message, "understood")}><CheckCircle2 size={14} /> I get it</button>
-      <button className={message.feedback === "confused" ? "active" : ""} onClick={() => handleFeedback(message, "confused")}><HelpCircle size={14} /> I'm confused</button>
-      <button className={message.feedback === "alternate" ? "active" : ""} onClick={() => handleFeedback(message, "alternate")}><Wand2 size={14} /> Explain differently</button>
-      <button className={message.feedback === "tooVague" ? "active" : ""} onClick={() => handleFeedback(message, "tooVague")}><Target size={14} /> Too vague</button>
-      <button className={message.feedback === "tooAdvanced" ? "active" : ""} onClick={() => handleFeedback(message, "tooAdvanced")}><HelpCircle size={14} /> Too hard</button>
-      <button className={message.feedback === "tooLong" ? "active" : ""} onClick={() => handleFeedback(message, "tooLong")}><RefreshCw size={14} /> Too long</button>
-      <button className={message.feedback === "goodExample" ? "active" : ""} onClick={() => handleFeedback(message, "goodExample")}><CheckCircle2 size={14} /> Good example</button>
-      <button className={message.feedback === "moreTechnical" ? "active" : ""} onClick={() => handleFeedback(message, "moreTechnical")}><Code2 size={14} /> More technical</button>
-      <button className={message.feedback === "moreVisual" ? "active" : ""} onClick={() => handleFeedback(message, "moreVisual")}><Layers size={14} /> More visual</button>
-      <button className={message.feedback === "quiz" ? "active" : ""} onClick={() => handleFeedback(message, "quiz")}><Target size={14} /> Quiz me</button>
-      <button className={message.feedback === "teachBack" ? "active" : ""} onClick={() => handleFeedback(message, "teachBack")}><MessageSquare size={14} /> Teach back</button>
-      <button onClick={() => saveNote(message)}><Save size={14} /> {message.savedNoteId ? "Saved" : "Save"}</button>
-      <button onClick={() => regenerateFrom(index)}><RotateCcw size={14} /> Regenerate</button>
-      <div className="action-divider" />
+      {feedbackChip("understood", <CheckCircle2 size={14} />, "I get it").el}
+      {feedbackChip("confused", <HelpCircle size={14} />, "I'm confused").el}
+      {promoted?.el}
       <button className="action-highlight" onClick={() => makeFlashcards(message)}><BookOpen size={14} /> Make flashcards</button>
-      <button onClick={() => sendMessage("Break this down step by step from the very beginning. Number each step and explain each one clearly.", { mode: "explain" })}><ChevronRight size={14} /> Step by step</button>
-      <button onClick={() => generateImage(message)}><Layers size={14} /> Visualize</button>
-      <button onClick={() => requestVisualBlueprint(message, "diagram")}><GitBranch size={14} /> Diagram</button>
-      <button onClick={() => requestVisualBlueprint(message, "flowchart")}><GitBranch size={14} /> Flowchart</button>
-      <button onClick={() => requestVisualBlueprint(message, "mindmap")}><Brain size={14} /> Memory map</button>
+      <button onClick={() => saveNote(message)}><Save size={14} /> {message.savedNoteId ? "Saved" : "Save"}</button>
+      <button
+        className="action-more"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((v) => !v)}
+      >
+        {expanded ? <X size={14} /> : <SlidersHorizontal size={14} />} {expanded ? "Less" : "More"}
+      </button>
+      {expanded && rest.map((c) => c.el)}
     </div>
   );
 }
