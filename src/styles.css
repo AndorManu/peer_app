@@ -4128,6 +4128,17 @@ code, pre, kbd, samp, .hljs, .code-block, .code-block code, .markdown code, .mar
   .starter-grid { grid-template-columns: 1fr !important; }
 }
 
+/* ── Generated visuals (M7 image generation) ── */
+.message-image {
+  display: block;
+  max-width: 100%;
+  width: min(480px, 100%);
+  margin-top: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(109, 94, 240, 0.22);
+  box-shadow: 0 18px 44px -22px rgba(0, 0, 0, 0.55);
+}
+
 /* ── Voice conversation HUD ── */
 .voice-hud {
   display: flex;
