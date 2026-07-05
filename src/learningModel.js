@@ -74,6 +74,8 @@ export function makeProfile() {
     teachingRecipe: [],
     // which one-line "Peer adapted to you" notices have already been shown
     adaptationNotes: {},
+    // explicit corrections from the Learning DNA panel: key -> confirmed|rejected
+    dnaOverrides: {},
     streak: {
       count: 0,
       lastStudyDate: "",
@@ -347,28 +349,54 @@ function projectStrength(project) {
   return concepts.reduce((sum, c) => sum + (c.confidence || 0), 0) / concepts.length;
 }
 
+// Highest-count analogy domain the learner has volunteered, or null.
+export function topAnalogyDomain(profile) {
+  const domains = Object.entries(normalizeProfile(profile).traits.analogyDomains || {});
+  if (!domains.length) return null;
+  const [domain, count] = domains.sort((a, b) => b[1] - a[1])[0];
+  return { domain, count };
+}
+
 export function buildTeachingRecipe(profile, project, mode) {
   const p = normalizeProfile(profile);
   const ps = projectSignals(project);
   const recipe = [];
+  // Explicit user corrections from the Learning DNA panel outrank every
+  // inference: "rejected" suppresses a directive no matter how strong the
+  // signal; "confirmed" applies it even below threshold.
+  const dna = p.dnaOverrides || {};
+  const allowed = (key) => dna[key] !== "rejected";
+  const confirmed = (key) => dna[key] === "confirmed";
+  const naturallyShort = p.traits.averageMessageLength > 0 && p.traits.averageMessageLength < 10 && p.signals.implicit >= 5;
 
   // Escalated, quantitative directives first — these are the closed loop.
-  if (p.signals.tooLong >= ADAPT.conciseHard || ps.tooLong >= 2) {
+  if (allowed("concise") && (p.signals.tooLong >= ADAPT.conciseHard || ps.tooLong >= 2 || confirmed("concise"))) {
     recipe.push("HARD LENGTH CAP: this learner has repeatedly flagged answers as too long. Keep this answer under 120 words — one tight explanation, one check question, nothing else. Do not pad.");
-  } else if (p.preferences.concise > 0 || p.signals.tooLong > 0) {
-    recipe.push("Keep the first answer concise; expand only if asked.");
+  } else if (allowed("concise") && (p.preferences.concise > 0 || p.signals.tooLong > 0 || naturallyShort)) {
+    recipe.push("This learner communicates in short messages and prefers tight answers. Keep the first answer concise; expand only if asked.");
   }
-  if (p.preferences.exampleFirst >= ADAPT.exampleLead || p.signals.goodExample >= ADAPT.exampleLead || ps.goodExample >= ADAPT.exampleLead) {
+  if (allowed("exampleFirst") && (p.preferences.exampleFirst >= ADAPT.exampleLead || p.signals.goodExample >= ADAPT.exampleLead || ps.goodExample >= ADAPT.exampleLead || confirmed("exampleFirst"))) {
     recipe.push("OPEN with a concrete worked example BEFORE any abstract statement — examples are proven to land for this learner. Name the general idea only after the example has done the work.");
-  } else if (p.preferences.exampleFirst > 0 || p.preferences.visual > 0) {
+  } else if (allowed("exampleFirst") && (p.preferences.exampleFirst > 0 || p.preferences.visual > 0)) {
     recipe.push("Use a concrete example or analogy before abstraction.");
   }
+  // The learner's own analogy world beats a generic one.
+  const analogy = topAnalogyDomain(p);
+  if (allowed("analogy") && analogy && (analogy.count >= 2 || confirmed("analogy"))) {
+    recipe.push(`When a concept is hard, LEAD with an analogy from ${analogy.domain} — this learner reaches for ${analogy.domain} comparisons themselves, so meet them there before going abstract.`);
+  }
+  // Session-opening style, per subject.
+  if (allowed("warmup") && ps.warmup >= 2 && ps.warmup > ps.diveIn) {
+    recipe.push("When a session in this subject starts, open the first answer with a two-line recap of where you left off last time before introducing anything new — this learner likes to warm up.");
+  } else if (allowed("diveIn") && ps.diveIn >= 2 && ps.diveIn > ps.warmup) {
+    recipe.push("This learner dives straight in — skip recaps and pleasantries at session start unless they ask.");
+  }
   // Per-subject pacing: this project's history wins over the global setting.
-  if (ps.tooAdvanced >= ADAPT.easierHere && p.explanationDepth !== "simple") {
+  if (allowed("easierHere") && ps.tooAdvanced >= ADAPT.easierHere && p.explanationDepth !== "simple") {
     recipe.push("FOR THIS SUBJECT ONLY: recent answers here were too hard for this learner. Teach at simple depth — tiny steps, define every term, no assumed background — regardless of the global depth setting.");
   }
   const strength = projectStrength(project);
-  if (strength !== null && strength >= ADAPT.strongHere && ps.confused + ps.tooAdvanced === 0) {
+  if (allowed("fasterPace") && strength !== null && strength >= ADAPT.strongHere && ps.confused + ps.tooAdvanced === 0) {
     recipe.push("The learner has high mastery in this subject — skip the basics, use precise terminology, and move at a faster, denser pace than you would by default.");
   }
 
@@ -381,7 +409,7 @@ export function buildTeachingRecipe(profile, project, mode) {
   if (p.traits.frustrationPhrases > 0 || p.traits.confusionPhrases > 1) recipe.push("Reduce cognitive load and avoid long theory blocks.");
   if (project?.mastery?.concepts?.some((concept) => concept.status === "weak")) recipe.push("Reinforce weak concepts before introducing new ones.");
   if (!recipe.length) recipe.push("Use a short explanation, one example, and one check question.");
-  return recipe.slice(0, 7);
+  return recipe.slice(0, 8);
 }
 
 // The one-line "Peer just adapted to you" moments. Each fires ONCE, exactly
