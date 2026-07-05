@@ -88,15 +88,25 @@ Checklist (screen = restyled + screenshot desktop/mobile + feature-parity click-
   hljs-highlighted code (input HTML-escaped first — CodeEditor escapeHtml;
   CodeBlock uses textContent) and KaTeX output (library-generated with
   throwOnError:false; input never interpolated as HTML). Verified by code audit.
-- [ ] **Bundle secret scan** — TODO tonight: build + grep dist for every secret.
-- [ ] **Security headers + CORS** — TODO tonight: CSP, XCTO, frame-ancestors,
-  Referrer-Policy on the dev server; CORS origin allowlist for /api; edge
-  functions currently `*` (flagged in code comments) — tighten.
-- [ ] **Rate limiting** — TODO tonight: per-user+IP limiter on /api/chat,
-  /api/image, /api/embed-doc, /api/ocr, /api/run + burst test.
-- [ ] **Secret-scan step** — TODO tonight: script + npm hook to block key-shaped
-  strings in committed files.
-- [ ] **npm audit** — TODO tonight.
+- [x] **Bundle secret scan** — `npm run scan:secrets` (tools/verify-secrets.mjs):
+  8 real secret VALUES from .env grepped across every file in dist/ → 0 leaks;
+  also scans all 69 tracked repo files for values + key-shaped patterns
+  (sk-ant-, sb_secret_, GOCSPX-, sk_live_, whsec_, private keys) → 0 findings.
+- [x] **Security headers + CORS** — server/security.js applied to every dev-server
+  response: CSP (no wildcards, frame-ancestors 'none', supabase/fonts/fal
+  allowlisted; note: script-src keeps 'unsafe-inline'/'unsafe-eval' ONLY for
+  Vite dev tooling — production host must drop them), XCTO nosniff, XFO DENY,
+  Referrer-Policy, Permissions-Policy, HSTS. /api Origin allowlist (localhost +
+  PEER_ALLOWED_ORIGINS). Edge functions' CORS switched from `*` to the same
+  allowlist. Verified: tools/verify-hardening.mjs 11/11 (foreign origin → 403,
+  app still loads clean under CSP).
+- [x] **Rate limiting** — per-route sliding windows keyed by user id (JWT sub)
+  or IP: chat 20/min, image 6/min, embed 12/min, ocr 6/min, run 10/min,
+  delete-account 3/h. Burst-tested live: 30 rapid chat calls → exactly 20
+  passed then 10× 429 with Retry-After + friendly code (verify-hardening).
+- [x] **Secret-scan step** — `npm run scan:secrets` covers repo + bundle;
+  supports `--staged` for a pre-commit hook.
+- [x] **npm audit** — 0 vulnerabilities (2026-07-05, after all new deps).
 - [x] **.env git-ignored** — confirmed (`git check-ignore .env` passes; never staged).
 - [x] **Tokens/session** — Supabase JWTs in supabase-js storage w/ auto-refresh;
   server verifies via auth.getUser on every gated endpoint (expired/garbage
@@ -108,13 +118,14 @@ Checklist (screen = restyled + screenshot desktop/mobile + feature-parity click-
 
 ## 4. Stubbed pending keys (zero-code-change flip when keys arrive)
 
-- **Facebook login** — full OAuth flow implemented via Supabase signInWithOAuth.
-  TODO tonight: hide the button when the server reports the provider disabled
-  (auth settings endpoint) instead of showing an error toast.
-- **Stripe** — checkout/portal/webhook fully implemented (server/handleBilling.js);
-  paywall + meter fully live. With STRIPE_* empty: checkout returns 501 and the
-  paywall shows the plan; TODO tonight: swap the upgrade buttons to a graceful
-  "Pro upgrades coming very soon" state when 501.
+- **Facebook login** — full OAuth flow implemented (signInWithOAuth). The button
+  now auto-hides while the provider is disabled server-side (checked live:
+  only "Continue with Google" renders since google:true, facebook:false).
+  Zero-code flip: enable Facebook in the Supabase dashboard → button appears.
+- **Stripe** — checkout/portal/webhook fully implemented + signature-verified.
+  With STRIPE_* empty, checkout returns 501 whose message surfaces as a
+  friendly toast: "Payments aren't configured yet — Pro is coming very soon."
+  Paywall/meter/quota all fully live regardless. Zero-code flip when keys land.
 
 ## 5. Decisions made autonomously tonight
 - (log entries appended here as they happen)

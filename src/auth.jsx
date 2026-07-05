@@ -3,9 +3,36 @@
 // or magic link, and local guest mode. Replaces the old fake demo-code flow.
 // Social providers need owner-side configuration in the Supabase dashboard;
 // until then the buttons surface a clear "not enabled yet" message.
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Loader2, Mail, Sparkles, FileText, CheckCircle2, Wand2 } from "lucide-react";
 import { getSupabase } from "./supabase.js";
+
+// Which OAuth providers are actually switched on server-side. Buttons for
+// disabled providers hide entirely (no dead ends); the moment the owner
+// enables one in the Supabase dashboard it appears with zero code changes.
+function useEnabledProviders() {
+  const [providers, setProviders] = useState({ google: false, facebook: false });
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const config = await (await fetch("/api/config")).json();
+        if (!config.supabaseUrl || !config.supabaseAnonKey) return;
+        const settings = await (await fetch(`${config.supabaseUrl}/auth/v1/settings`, {
+          headers: { apikey: config.supabaseAnonKey },
+        })).json();
+        if (active) {
+          setProviders({
+            google: Boolean(settings.external?.google),
+            facebook: Boolean(settings.external?.facebook),
+          });
+        }
+      } catch { /* leave both hidden — email always works */ }
+    })();
+    return () => { active = false; };
+  }, []);
+  return providers;
+}
 
 // Map a Supabase session user to the app's account shape.
 export function accountFromUser(user) {
@@ -44,6 +71,7 @@ function FacebookMark() {
 }
 
 export function LandingAuthFlow({ continueAsGuest, PeerLogo }) {
+  const providers = useEnabledProviders();
   const [mode, setMode] = useState("signin"); // signin | signup | magic | sent | confirm-sent
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -170,16 +198,24 @@ export function LandingAuthFlow({ continueAsGuest, PeerLogo }) {
                 : "Sign in to pick up where you left off — on any device."}
             </p>
 
-            <div className="auth-providers">
-              <button type="button" onClick={() => signInWithProvider("google")} disabled={Boolean(busy)}>
-                {busy === "google" ? <Loader2 size={16} className="spin" /> : <GoogleMark />} Continue with Google
-              </button>
-              <button type="button" onClick={() => signInWithProvider("facebook")} disabled={Boolean(busy)}>
-                {busy === "facebook" ? <Loader2 size={16} className="spin" /> : <FacebookMark />} Continue with Facebook
-              </button>
-            </div>
+            {(providers.google || providers.facebook) && (
+              <div className="auth-providers">
+                {providers.google && (
+                  <button type="button" onClick={() => signInWithProvider("google")} disabled={Boolean(busy)}>
+                    {busy === "google" ? <Loader2 size={16} className="spin" /> : <GoogleMark />} Continue with Google
+                  </button>
+                )}
+                {providers.facebook && (
+                  <button type="button" onClick={() => signInWithProvider("facebook")} disabled={Boolean(busy)}>
+                    {busy === "facebook" ? <Loader2 size={16} className="spin" /> : <FacebookMark />} Continue with Facebook
+                  </button>
+                )}
+              </div>
+            )}
 
-            <div className="auth-divider" role="separator"><span>or use email</span></div>
+            {(providers.google || providers.facebook) && (
+              <div className="auth-divider" role="separator"><span>or use email</span></div>
+            )}
 
             <form className="auth-form" onSubmit={submitEmail}>
               {mode === "signup" && (

@@ -4,12 +4,21 @@
 // Deploy: supabase functions deploy delete-account --project-ref <ref>
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const CORS_HEADERS: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*", // M5 hardening: restrict to app origins
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// CORS: only the app's own origins (PEER_ALLOWED_ORIGINS, comma-separated)
+// plus localhost for development — never *.
+const ALLOWED_ORIGINS = (Deno.env.get("PEER_ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
+function corsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("Origin") || "";
+  const ok = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) || ALLOWED_ORIGINS.includes(origin);
+  return {
+    ...(ok && origin ? { "Access-Control-Allow-Origin": origin, "Vary": "Origin" } : {}),
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  };
+}
+let CORS_HEADERS: Record<string, string> = {};
 
 Deno.serve(async (req) => {
+  CORS_HEADERS = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
   if (req.method !== "POST") return json(405, { error: "Method not allowed" });
 
