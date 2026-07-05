@@ -227,6 +227,7 @@ export default function CodingPanel({ profile, projects = [], onSaveToBrain }) {
   const [question, setQuestion] = useState("");
   const [applied, setApplied] = useState(false);
   const abortRef = useRef(null);
+  const tutorHistoryRef = useRef([]); // [{role, content}] — prior tutor turns
 
   useEffect(() => { if (!projectId && projects[0]) setProjectId(projects[0].id); }, [projects, projectId]);
   useEffect(() => { localStorage.setItem("peer-code-plugins", JSON.stringify(plugins)); }, [plugins]);
@@ -241,6 +242,8 @@ export default function CodingPanel({ profile, projects = [], onSaveToBrain }) {
     setLanguage(id);
     if (STARTERS[id]) setCode(STARTERS[id]);
     setOutput([]); setExit(null);
+    // a new language means a new file and a fresh tutoring conversation
+    tutorHistoryRef.current = [];
   }
 
   function applySuggestion() {
@@ -288,6 +291,13 @@ export default function CodingPanel({ profile, projects = [], onSaveToBrain }) {
     setRunning(false);
   }
 
+  // Conversation memory for the coding tutor: the system prompt rebuilds
+  // with the CURRENT code each turn, but the dialogue itself must carry
+  // over or Peer forgets everything after one exchange. Bounded so cost
+  // and context stay sane.
+  const TUTOR_HISTORY_TURNS = 12; // messages (6 user/assistant pairs)
+  const TUTOR_MSG_CAP = 4000;     // chars per stored message
+
   async function askPeer(title, request) {
     if (aiBusy) return;
     abortRef.current?.abort();
@@ -307,7 +317,19 @@ The learner's current ${lang.label} code:
 ${code || "(empty)"}
 \`\`\`${brainCtx}`;
     try {
-      await streamChat({ system, messages: [{ role: "user", content: request }], onChunk: (c) => setAiResponse(c), signal: controller.signal });
+      let finalContent = "";
+      await streamChat({
+        system,
+        messages: [...tutorHistoryRef.current, { role: "user", content: request }],
+        onChunk: (c) => { finalContent = c; setAiResponse(c); },
+        signal: controller.signal,
+      });
+      // record the completed turn, bounded (last N messages, capped length)
+      tutorHistoryRef.current = [
+        ...tutorHistoryRef.current,
+        { role: "user", content: request.slice(0, TUTOR_MSG_CAP) },
+        { role: "assistant", content: finalContent.slice(0, TUTOR_MSG_CAP) },
+      ].slice(-TUTOR_HISTORY_TURNS);
     } catch (err) {
       if (err.name !== "AbortError") setAiResponse(`⚠ ${err.message || "The AI request failed. Add an API key in .env."}`);
     } finally {
