@@ -91,6 +91,7 @@ import {
 } from "./stateModel.js";
 import { DOMAINS, GENERAL_DOMAIN, classifySubject, domainForProject, getDomain } from "./subjects.js";
 import { computeBadges, detectNewBadges, getBadgeDef } from "./badges.js";
+import { hapticTap } from "./native.js";
 import PeerNavRail from "./components/PeerNavRail.jsx";
 
 // Heavy screens load on demand: the Brain pulls in Three.js (~600KB) and the
@@ -260,6 +261,7 @@ export default function App() {
     if (!fresh.length) return;
     updateState((current) => ({ ...current, badges: [...(current.badges || []), ...fresh] }));
     const def = getBadgeDef(fresh[0].badgeId);
+    hapticTap("MEDIUM"); // a little celebration buzz on phones
     showToast(fresh.length === 1
       ? `Badge earned: ${def?.title || "Achievement"} 🏆`
       : `${fresh.length} badges earned! Check your trophy case 🏆`);

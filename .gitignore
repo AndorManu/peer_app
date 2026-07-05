@@ -9,3 +9,11 @@ npm-debug.log*
 
 # Local debug screenshots from tools/brain-shot.mjs
 artifacts/
+
+# native build outputs
+android/.gradle/
+android/app/build/
+android/build/
+ios/App/Pods/
+ios/App/build/
+src-tauri/target/

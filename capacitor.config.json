@@ -1,0 +1,18 @@
+{
+  "appId": "app.peer.study",
+  "appName": "Peer",
+  "webDir": "dist",
+  "backgroundColor": "#15120d",
+  "android": {
+    "allowMixedContent": false
+  },
+  "ios": {
+    "contentInset": "automatic"
+  },
+  "plugins": {
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#15120d"
+    }
+  }
+}
