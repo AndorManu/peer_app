@@ -111,7 +111,7 @@ export async function checkEntitlement(userId, tzOffsetMinutes) {
   };
 }
 
-export async function recordUsage({ userId, kind = "chat", model, tokensIn = 0, tokensOut = 0 }) {
+export async function recordUsage({ userId, kind = "chat", model, tokensIn = 0, tokensOut = 0, costUsdOverride = null }) {
   const admin = getServiceClient();
   if (!admin || !userId) return;
   await admin.from("usage_events").insert({
@@ -120,6 +120,12 @@ export async function recordUsage({ userId, kind = "chat", model, tokensIn = 0, 
     model,
     tokens_in: tokensIn,
     tokens_out: tokensOut,
-    cost_usd: costUsd(model, tokensIn, tokensOut),
+    cost_usd: costUsdOverride ?? costUsd(model, tokensIn, tokensOut),
   }).then(() => {}, () => {});
 }
+
+// Image generation has a real per-call cost even on a cheap model, so it's
+// metered "heavier" than a typical text turn: each image eats a flat chunk of
+// the daily token allowance regardless of how short the prompt was. At 4000
+// tokens/image, free (30k/day) gets ~7 images/day, Pro (500k/day) gets ~125.
+export const IMAGE_TOKEN_EQUIVALENT = 4000;
