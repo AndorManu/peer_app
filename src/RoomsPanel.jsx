@@ -14,7 +14,7 @@ import { DOMAIN_ICONS } from "./constants.js";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
-export default function RoomsPanel({ account, decks, projects, showToast, onSignIn, startCommunityChallenge, challenges }) {
+export default function RoomsPanel({ account, decks, projects, showToast, onSignIn, startCommunityChallenge, challenges, onRoomSession }) {
   const signedIn = Boolean(account?.verified);
   const [rooms, setRooms] = useState(null); // null = loading
   const [activeRoom, setActiveRoom] = useState(null);
@@ -110,6 +110,7 @@ export default function RoomsPanel({ account, decks, projects, showToast, onSign
         account={account}
         decks={decks}
         showToast={showToast}
+        onRoomSession={onRoomSession}
         leave={() => { setActiveRoom(null); refreshRooms(); }}
       />
     );
@@ -211,7 +212,9 @@ export default function RoomsPanel({ account, decks, projects, showToast, onSign
 }
 
 // ── the live room: presence + broadcast chat + synchronized co-op quiz ──
-function LiveRoom({ room, account, decks, showToast, leave }) {
+function LiveRoom({ room, account, decks, showToast, leave, onRoomSession }) {
+  // one session credit per room entry (badge signal)
+  useEffect(() => { onRoomSession?.(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [members, setMembers] = useState([]);
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState("");

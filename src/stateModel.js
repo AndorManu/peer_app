@@ -37,6 +37,8 @@ export const defaultState = () => {
     // deletion log for cloud sync: deletes push as soft-deleted rows so other
     // devices learn about them; entries clear after a successful push
     tombstones: [],
+    // earned achievements: { id, badgeId, domainId, earnedAt }
+    badges: [],
   };
 };
 
@@ -124,6 +126,16 @@ export function normalizeState(stored) {
     projects,
     chats: safeChats,
     activeId,
+    badges: Array.isArray(stored.badges)
+      ? stored.badges
+          .filter((entry) => entry && entry.badgeId)
+          .map((entry) => ({
+            id: entry.id || uid(),
+            badgeId: String(entry.badgeId),
+            domainId: entry.domainId || null,
+            earnedAt: entry.earnedAt || Date.now(),
+          }))
+      : [],
     tombstones: Array.isArray(stored.tombstones)
       ? stored.tombstones
           .filter((tomb) => tomb && typeof tomb.table === "string" && tomb.id)
