@@ -282,3 +282,24 @@ code, pre, kbd, samp, .hljs, .term-body, .vscode-code, .room-code {
 /* ---------- calmer message chips: "More" expander ---------- */
 .message-actions .action-more { opacity: 0.75; }
 .message-actions .action-more[aria-expanded="true"] { opacity: 1; }
+
+/* ---------- adaptive-learning visibility: in-chat note + persona card ---------- */
+.adaptation-note {
+  display: flex; align-items: center; gap: 7px;
+  margin: 2px 0 4px 46px; padding: 6px 12px;
+  width: fit-content; border-radius: 999px;
+  background: rgba(224, 160, 57, 0.09);
+  border: 1px solid rgba(224, 160, 57, 0.22);
+  color: rgba(244, 232, 213, 0.8);
+  font-size: 12px; font-style: italic;
+}
+.adaptation-note > svg { color: var(--sh-accent-hi, #f0b354); flex: 0 0 auto; }
+.theme-light .adaptation-note { color: rgba(42, 35, 24, 0.8); }
+
+.persona-list { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.persona-list li {
+  display: flex; align-items: baseline; gap: 9px;
+  font-size: 13.5px; line-height: 1.55; color: rgba(244, 232, 213, 0.88);
+}
+.persona-list li > svg { color: var(--sh-accent-hi, #f0b354); flex: 0 0 auto; transform: translateY(2px); }
+.theme-light .persona-list li { color: rgba(42, 35, 24, 0.88); }
