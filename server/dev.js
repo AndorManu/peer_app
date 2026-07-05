@@ -13,6 +13,7 @@ import {
   handleUsageRequest,
 } from "./handleBilling.js";
 import { handleEmbedDocRequest, handleOcrRequest } from "./handleRag.js";
+import { applySecurityHeaders, enforceOrigin, rateLimit } from "./security.js";
 
 loadDotEnv();
 
@@ -24,6 +25,15 @@ let vite;
 
 const server = createHttpServer(async (req, res) => {
   try {
+    applySecurityHeaders(res, { supabaseUrl: process.env.SUPABASE_URL || "" });
+
+    // API hardening: origin allowlist + per-user/IP rate limits
+    if (req.url?.startsWith("/api/")) {
+      if (!enforceOrigin(req, res)) return;
+      const route = req.url.split("?")[0].replace("/api/", "").split("/")[0];
+      if (!rateLimit(route, req, res)) return;
+    }
+
     // Public client config — ONLY values that are safe in a browser
     // (the anon key is designed to be public; RLS does the protecting).
     if (req.url?.startsWith("/api/config")) {
