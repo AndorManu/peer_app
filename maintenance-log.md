@@ -1,5 +1,46 @@
 # Maintenance log
 
+## 2026-07-05 — M8: Document intelligence (RAG)
+
+**What changed**
+- **Semantic retrieval pipeline** ([server/handleRag.js](server/handleRag.js)):
+  `/api/embed-doc` chunks uploaded documents (~1200 chars, paragraph-aware,
+  200 overlap), embeds them at **1024 dimensions**, and stores them in
+  `document_chunks` (pgvector + HNSW, migrations 0002/0003 applied live).
+  Embedding provider is pluggable: **Voyage AI** (`VOYAGE_API_KEY`,
+  voyage-3.5-lite) or **OpenAI** (`OPENAI_API_KEY`, text-embedding-3-small with
+  `dimensions=1024`) — both multilingual.
+- **Grounded, cited answers**: when a subject's library exceeds ~8k characters,
+  the client stops inlining every document into the prompt (cheaper, cleaner)
+  and sends a retrieval marker instead; the chat proxy embeds the learner's
+  question, fetches their own top chunks (`match_document_chunks`, RLS-scoped),
+  and injects them as excerpts with instructions to cite document names in
+  brackets and to say so when the material lacks the answer.
+- **OCR** (`/api/ocr`): Claude vision transcribes text from uploaded images
+  (structure preserved as markdown, original language) — an "Extract text
+  (OCR)" button in the document modal makes scanned pages searchable and
+  embeddable. Gated + metered like everything else.
+- Docs auto-embed on upload (fire-and-forget); deleting a doc removes its
+  chunks; embedding/OCR usage is metered with real token counts.
+
+**What I tested (live: `tools/verify-rag.mjs`)**
+- PASS: retrieval-marked chat streams; user B cannot match user A's chunks (RPC
+  + direct select both blocked by RLS); deleting a doc removes its chunks; and
+  with no excerpts available the tutor honestly said it couldn't answer rather
+  than inventing the made-up test fact — exactly the anti-hallucination
+  behavior the prompt demands.
+- **BLOCKED — needs owner**: the actual embed→retrieve→cite loop can't run
+  because the OpenAI key has no billing credit (`insufficient_quota`) and no
+  Voyage key exists yet. The verify script is ready to prove the full loop
+  (a made-up "Verholt constant" fact that only retrieval could supply) the
+  moment either key works. Two options:
+  1. **Voyage AI (free)**: sign up at https://dashboard.voyageai.com, create an
+     API key, put it in `.env` as `VOYAGE_API_KEY=...` — free tier is plenty.
+  2. **OpenAI**: add ~$5 credit at platform.openai.com → Billing; the existing
+     key then works unchanged.
+  Then run: `npm run dev` + `PEER_DEV_URL=http://127.0.0.1:5173 node tools/verify-rag.mjs`
+- 59/59 tests; build clean.
+
 ## 2026-07-05 — M7: Image generation for visual teaching
 
 **What changed**
