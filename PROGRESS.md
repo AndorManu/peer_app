@@ -192,6 +192,39 @@ layer has before/after tests plus at least one live proof.
   reaches the model only as aggregates + max 9 one-line directives —
   never raw history dumps.
 
+## Rooms discovery + subscription page + modal/fullscreen fixes (owner-reported, 2026-07-05, third pass)
+
+- **Rooms public/private + discovery** (`81feecb`): migration 0006 adds
+  rooms.visibility (private default = exactly today's behavior) +
+  list_public_rooms() (SECURITY DEFINER, safe fields only — no invite codes/
+  owner ids) + join_public_room() (server-side visibility re-check).
+  RoomsPanel: Private/Public toggle at creation + a discovery feed grouped by
+  the 12-domain taxonomy (filter, member counts, "active today", one-click
+  join). Proof: tools/verify-discovery.mjs 12/12 with two fresh accounts
+  (public listed / private invisible+unjoinable / counts update / contents
+  sealed) AND verify-rooms.mjs re-run 9/9 (no regression).
+- **REAL BUG — all modals rendered in document flow** (`83d2230`): a
+  makeover z-layering rule forced position:relative onto every backdrop,
+  defeating the fixed+centered base; the command palette had self-healed
+  with !important, masking the breadth. Fixed at source; onboarding/project/
+  confirm/paywall verified centered at 1920/1280/375.
+- **Brain fullscreen** (`b6a80f5`): real immersive mode — rail/bottom-nav
+  collapse (never dependent on the Fullscreen API, which some webviews
+  deny), browser fullscreen layered on when allowed; canvas reflows via the
+  existing ResizeObserver. Verified: 78px rail reclaimed at 1280, bottom nav
+  + safe-area padding gone at 375, restore + Escape paths clean.
+- **Subscription page** (`d363c44`): Settings → Plan — always-browsable
+  Free/Pro comparison, live usage meter (verified showing the real 28k/30k
+  day), renewal date via usage API (renewsAt), Manage-billing portal link,
+  same checkout entry + same Stripe-stub messaging as the reactive paywall.
+- **STANDING QUALITY BAR — per-device layouts** (this commit): every UI
+  change is checked at in-between and extreme widths (foldable ~834,
+  ultrawide 2560–3440), not just 320/768/1440. Verified this pass: chat
+  column stays readable (≤860px) at 3440, settings/profile grids cap
+  sensibly, Brain lanes overlap-free at 3440, no h-scroll at 834; new
+  components (plan cards, discovery groups) use auto-fit grids that adapt
+  by available width rather than fixed breakpoints.
+
 ## Bug-fix + multi-theme pass (owner-reported, 2026-07-05, second session)
 
 - **REAL BUG — Code lab tutor had no memory** (`057df93`): askPeer sent only
