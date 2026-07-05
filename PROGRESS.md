@@ -1,17 +1,20 @@
 # PROGRESS — Peer build status (unattended overnight run)
 
-> **RESUME EXACTLY HERE:** M0–M10 done + verified. Security hardening pass
-> DONE (all checklist items below verified, commit `aa6fe8f`). "Study Hall"
-> makeover foundation + all screens swept and parity-checked (commits
-> `3007746`, `c3776e0`, `c1e7ac9`, plus the final sweep commit). Tests 65/65,
-> build clean, working tree clean at last commit.
-> **NEXT TASK: M11 — native packaging.** Concretely: `npm i -D @capacitor/core
-> @capacitor/cli @capacitor/ios @capacitor/android` + `npx cap init` (appId
-> e.g. app.peer.study, webDir dist), add Tauri (`npm i -D @tauri-apps/cli` +
-> `npx tauri init`, point devUrl/frontendDist at Vite), wire icons/splash from
-> public/icon.svg, document store-release steps (owner supplies Apple/Google
-> accounts + signing later). After M11: M12 a11y deep pass (needs physical
-> device for mic audio + pinch-zoom), M13 launch polish.
+> **RESUME EXACTLY HERE:** M0–M11 done + verified. Security hardening pass
+> DONE (commit `aa6fe8f`). "Study Hall" makeover swept + parity-checked
+> (`3007746`, `c3776e0`, `c1e7ac9`, `22b9444`). M11 native packaging DONE
+> (this commit): Capacitor android/+ios/ scaffolded & synced (appId
+> app.peer.study), Tauri src-tauri/ scaffolded (strict CSP), src/native.js
+> shell glue (status bar, deep links, Android back, haptics) — web verified
+> unaffected (65/65 tests, clean build, 0 console errors). Platform builds
+> need toolchains this machine lacks — NATIVE.md has exact commands + owner
+> steps (icons/splash, push, signing, store accounts).
+> **NEXT TASK: M12 — a11y deep pass.** Headless-doable tonight: axe-core +
+> Lighthouse a11y ≥95 on every screen, full keyboard-only pass per screen
+> (focus order, traps, visible focus, escape routes), prefers-reduced-motion
+> honored, contrast audit of the Study Hall palette. Physical-device items
+> (mic audio, pinch-zoom, VoiceOver/TalkBack) → document as owner steps.
+> After M12: M13 launch polish (onboarding, dashboard, landing, legal).
 > Read this file top to bottom; every claim states how it was verified.
 
 ## 1. Milestones
@@ -29,8 +32,8 @@
 | M8 RAG | ✅ done | `39da873`+`86e5c2c` | Voyage embeddings; planted-fact cite test 9/9 live |
 | M9 rooms | ✅ done | `0b98df7` | realtime 2-client verify 9/9 (presence/chat/quiz/RLS) |
 | M10 badges | ✅ done | `e06d29b` | 30 badges, trophy case, sync; live badge earn verified |
-| **M11 native (Capacitor+Tauri)** | ⬜ **next in line** | | scaffold configs + build docs; store accounts = owner, later |
-| M12 a11y deep pass | ⬜ pending | | needs physical device for mic audio + pinch-zoom checks |
+| M11 native (Capacitor+Tauri) | ✅ scaffolded + wired | (this commit) | android/ + ios/ generated & synced (appId app.peer.study); src-tauri/ scaffolded (strict CSP, 1280×860); src/native.js: status bar, deep links (OAuth redirects re-enter SPA), Android back, hapticTap on badge earns — all feature-detected, web verified unaffected (0 console errors). Platform BUILDS need toolchains this machine lacks (no Rust/Java/Android SDK) — exact commands in NATIVE.md; icons/splash + push notifications documented as owner steps. |
+| **M12 a11y deep pass** | ⬜ **next in line** | | axe/Lighthouse ≥95 per screen + keyboard passes doable headless; mic audio + pinch-zoom + real screen readers need a physical device (owner) |
 | M13 launch polish | ⬜ pending | | onboarding, dashboard, landing page, legal |
 
 Verification scripts (all runnable anytime, all passing as of last run):

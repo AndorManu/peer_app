@@ -2,6 +2,7 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.jsx";
 import { clearState } from "./storage.js";
+import { initNativeShell } from "./native.js";
 import "open-dyslexic/open-dyslexic-regular.css";
 import "./styles.css";
 import "./peer-theme.css";
@@ -37,6 +38,10 @@ class ErrorBoundary extends React.Component {
     return this.props.children;
   }
 }
+
+// Native shell niceties (status bar, deep links, hardware back) — silent
+// no-op on the plain web/PWA.
+initNativeShell();
 
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>

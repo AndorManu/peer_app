@@ -1,5 +1,38 @@
 # Maintenance log
 
+## 2026-07-05 — M11: Native packaging (Capacitor + Tauri)
+
+**What changed**
+- **Capacitor 8** ([capacitor.config.json](capacitor.config.json)): appId
+  `app.peer.study`, webDir `dist`, background #15120d, StatusBar DARK. Real
+  `android/` and `ios/` platform projects generated (`npx cap add`) and synced
+  with the production build (`npx cap sync`). Plugins: app, haptics,
+  status-bar, share.
+- **Tauri 2** ([src-tauri/](src-tauri/tauri.conf.json)): same identifier,
+  1280×860 window (min 380×600, warm-ink bg), devUrl → Vite, frontendDist →
+  dist, before-commands wired to npm scripts, and a strict desktop CSP
+  (self-only scripts; supabase/fonts/fal allowlisted — no wildcards).
+- **Native shell glue** ([src/native.js](src/native.js), called once from
+  [main.jsx](src/main.jsx)): dark status bar; `appUrlOpen` deep-link handler
+  that rebuilds origin+search+hash so Supabase OAuth/magic-link redirects
+  re-enter the SPA; Android hardware back → history.back or minimize at root;
+  `hapticTap()` fired on badge earns ([App.jsx](src/App.jsx)). Everything is
+  dynamic-import + try/catch, so the plain web/PWA is a silent no-op.
+- **[NATIVE.md](NATIVE.md)**: exact build/release commands per platform and
+  the owner-only steps (branded icons/splash via capacitor-assets + tauri
+  icon, FCM/APNs push, deep-link domains, store accounts + signing,
+  PEER_API_BASE for a hosted API).
+- `.gitignore`: android/ios/tauri build outputs excluded.
+
+**What I tested**
+- `npx cap add android` / `add ios` / `cap sync` complete cleanly (both
+  platforms report all 4 plugins found).
+- Web unaffected: `npm test` 65/65, `npm run build` clean, preview server
+  eval → `appLoaded:true`, Fraunces active, **zero console errors** with the
+  native shell import in place.
+- Platform *builds* not runnable here (no Rust/Java/Android SDK on this
+  machine) — commands documented in NATIVE.md instead of claiming success.
+
 ## 2026-07-05 — M10: Badges & gamification
 
 **What changed**
