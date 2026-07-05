@@ -3,6 +3,7 @@ import { useFocusTrap, useMediaQuery } from "./a11y.js";
 import { useCloudSync } from "./useCloudSync.js";
 import { LandingAuthFlow, accountFromUser } from "./auth.jsx";
 import { getSupabase } from "./supabase.js";
+import { aiRequestHeaders } from "./peerChat.js";
 import {
   BookOpen,
   Bot,
@@ -154,6 +155,8 @@ export default function App() {
   const [extracting, setExtracting] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState(null);
+  const [aiGate, setAiGate] = useState(null); // { code: "auth_required" | "quota_exhausted", details }
+  const [usageInfo, setUsageInfo] = useState(null); // { plan, usedToday, allowance }
   const [chatSearch, setChatSearch] = useState("");
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
@@ -242,6 +245,38 @@ export default function App() {
         }
       },
     });
+  }
+
+  // Daily AI usage meter (server-computed; the client only displays it).
+  const refreshUsage = useCallback(async () => {
+    try {
+      const response = await fetch("/api/usage", { headers: await aiRequestHeaders() });
+      if (!response.ok) {
+        setUsageInfo(null);
+        return;
+      }
+      setUsageInfo(await response.json());
+    } catch {
+      setUsageInfo(null);
+    }
+  }, []);
+  useEffect(() => {
+    if (hydrated && state.landingComplete) refreshUsage();
+  }, [hydrated, state.landingComplete, state.account?.id, refreshUsage]);
+
+  async function startCheckout(interval = "monthly") {
+    try {
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: await aiRequestHeaders(),
+        body: JSON.stringify({ interval, origin: window.location.origin }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Checkout is not available yet.");
+      window.location.href = data.url;
+    } catch (err) {
+      showToast(friendlyError(err, "Checkout is not available yet."));
+    }
   }
 
   // Background cloud sync (dormant until a session exists)
@@ -718,7 +753,7 @@ export default function App() {
     const recipe = buildTeachingRecipe(profileOverride, project, modeId);
     const response = await fetch("/api/chat", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: await aiRequestHeaders(),
       body: JSON.stringify({
         system: buildSystemPrompt(project, profileOverride, modeId, recipe),
         messages,
@@ -728,8 +763,12 @@ export default function App() {
 
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
+      if (response.status === 401 || response.status === 402) {
+        setAiGate({ code: data.code || (response.status === 401 ? "auth_required" : "quota_exhausted"), details: data });
+      }
       throw new Error(data.error || "The AI request failed.");
     }
+    refreshUsage();
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -1807,6 +1846,7 @@ export default function App() {
             profileLanguage={state.profile.language}
             explanationDepth={state.profile.explanationDepth}
             setExplanationDepth={changeExplanationDepth}
+            usage={usageInfo}
           />
         )}
       </main>
@@ -1844,6 +1884,18 @@ export default function App() {
           setQuery={setCommandQuery}
           close={() => setCommandOpen(false)}
           commands={commands}
+        />
+      )}
+
+      {aiGate && (
+        <PaywallModal
+          gate={aiGate}
+          onClose={() => setAiGate(null)}
+          onSignIn={() => {
+            setAiGate(null);
+            updateState((current) => ({ ...current, landingComplete: false }));
+          }}
+          onUpgrade={startCheckout}
         />
       )}
 
@@ -2283,6 +2335,7 @@ function Composer({
   profileLanguage,
   explanationDepth,
   setExplanationDepth,
+  usage,
 }) {
   const attachRef = useRef(null);
   const hasSpeech = typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
@@ -2397,6 +2450,13 @@ function Composer({
       </div>
       <div className="composer-hint">
         Drop PDFs, text, code, or images here. Peer saves them to this project automatically.
+        {usage && Number.isFinite(usage.allowance) && (
+          <span className={`usage-meter ${usage.usedToday / usage.allowance > 0.85 ? "usage-low" : ""}`}>
+            {" · "}
+            {Math.max(0, Math.round((usage.allowance - usage.usedToday) / 1000))}k AI tokens left today
+            {usage.plan === "pro" ? " (Pro)" : ""}
+          </span>
+        )}
       </div>
     </footer>
   );
@@ -3224,6 +3284,62 @@ function OnboardingModal({ profileDraft, setProfileDraft, complete, skip }) {
           <button onClick={skip}>Skip</button>
           <button className="primary-button" onClick={complete}>Start learning</button>
         </div>
+      </section>
+    </div>
+  );
+}
+
+// AI gate: sign-in prompt (401) or the daily-quota paywall (402).
+function PaywallModal({ gate, onClose, onSignIn, onUpgrade }) {
+  const trapRef = useFocusTrap(true, { onEscape: onClose });
+  const quota = gate.code === "quota_exhausted";
+  const details = gate.details || {};
+  const pct = details.allowance ? Math.min(100, Math.round(((details.usedToday || 0) / details.allowance) * 100)) : 100;
+
+  return (
+    <div className="modal-backdrop confirm-backdrop" onClick={onClose}>
+      <section
+        ref={trapRef}
+        className="confirm-dialog paywall-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="paywall-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        {quota ? (
+          <>
+            <h2 id="paywall-title">You've used today's free AI</h2>
+            <div className="paywall-meter" role="img" aria-label={`${pct}% of today's allowance used`}>
+              <div style={{ width: `${pct}%` }} />
+            </div>
+            <p>
+              Free includes {Math.round((details.allowance || 30000) / 1000)}k AI tokens every day — you've spent today's.
+              It resets at midnight, or go Pro for a far bigger daily allowance and a smarter tutor model.
+            </p>
+            <ul className="paywall-perks">
+              <li>Much larger daily AI allowance</li>
+              <li>Smarter tutor model (deeper explanations)</li>
+              <li>Priority for upcoming features</li>
+            </ul>
+            <div className="confirm-actions paywall-actions">
+              <button type="button" onClick={onClose} data-autofocus>Come back tomorrow</button>
+              <button type="button" className="primary-button" onClick={() => onUpgrade("monthly")}>Go Pro — $8.99/mo</button>
+              <button type="button" className="primary-button" onClick={() => onUpgrade("yearly")}>$79/yr (2 months free)</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h2 id="paywall-title">Sign in to use the AI tutor</h2>
+            <p>
+              Peer's AI needs an account so your daily free allowance is yours alone.
+              Signing in also backs up your subjects, notes, and progress.
+            </p>
+            <div className="confirm-actions paywall-actions">
+              <button type="button" onClick={onClose}>Not now</button>
+              <button type="button" className="primary-button" onClick={onSignIn} data-autofocus>Sign in — it's free</button>
+            </div>
+          </>
+        )}
       </section>
     </div>
   );

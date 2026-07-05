@@ -4128,6 +4128,33 @@ code, pre, kbd, samp, .hljs, .code-block, .code-block code, .markdown code, .mar
   .starter-grid { grid-template-columns: 1fr !important; }
 }
 
+/* ── Paywall + usage meter ── */
+.paywall-dialog { width: min(480px, calc(100vw - 32px)); }
+.paywall-meter {
+  height: 10px;
+  margin: 4px 0 14px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(109, 94, 240, 0.12);
+  border: 1px solid rgba(109, 94, 240, 0.22);
+}
+.paywall-meter div {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #8b5cf6, #22d3ee);
+}
+.paywall-perks {
+  margin: 0 0 20px;
+  padding-left: 20px;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+.paywall-actions { flex-wrap: wrap; }
+.paywall-actions .primary-button { min-height: 42px; margin: 0; }
+.usage-meter { color: var(--accent-2, #8b7cf6); font-weight: 600; }
+.usage-meter.usage-low { color: #fbbf24; }
+
 /* ── Real auth panel (landing) ── */
 .auth-providers {
   display: flex;
