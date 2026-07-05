@@ -1287,17 +1287,52 @@ export default function App() {
     try {
       const response = await fetch("/api/image", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        headers: await aiRequestHeaders(),
+        body: JSON.stringify({ prompt, topic }),
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || "Image generation failed.");
-      const imgMsg = { id: uid(), role: "assistant", content: "Here's a visual representation:", imageUrl: data.url, createdAt: Date.now() };
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 402) {
+          setAiGate({ code: data.code || (response.status === 401 ? "auth_required" : "quota_exhausted"), details: data });
+        }
+        throw new Error(data.error || "Image generation failed.");
+      }
+      refreshUsage();
+
+      const altText = data.altText || topic;
+      const imgMsg = {
+        id: uid(),
+        role: "assistant",
+        content: `Here's a visual representation of "${topic}": ${altText}`,
+        imageUrl: data.url,
+        imageAlt: altText,
+        createdAt: Date.now(),
+      };
+      const projectId = activeChat.projectId;
       updateState((current) => ({
         ...current,
         chats: current.chats.map((chat) =>
           chat.id === activeChat.id ? { ...chat, messages: [...chat.messages, imgMsg] } : chat
         ),
+        // saved with the lesson: the visual becomes a file the Brain can show
+        projects: projectId
+          ? current.projects.map((project) => (project.id === projectId
+              ? {
+                  ...project,
+                  docs: [...(project.docs || []), {
+                    id: imgMsg.id,
+                    name: `Visual: ${topic.slice(0, 60)}`,
+                    kind: "image",
+                    pages: 0,
+                    chars: 0,
+                    text: `[Generated image] ${altText}`,
+                    previewUrl: data.url,
+                    note: altText,
+                    addedAt: Date.now(),
+                  }],
+                }
+              : project))
+          : current.projects,
       }));
       showToast("Image ready");
     } catch (err) {
@@ -2282,7 +2317,7 @@ function ChatArea({ activeChat, activeProject, activeMode, loading, error, sendM
             {message.role === "assistant"
               ? <StreamingMessage content={message.content} streaming={message.streaming} />
               : <p>{message.displayContent || message.content}</p>}
-            {message.imageUrl && <img className="message-image" src={message.imageUrl} alt="Generated visual" />}
+            {message.imageUrl && <img className="message-image" src={message.imageUrl} alt={message.imageAlt || "Generated educational visual"} />}
             {message.role === "user" && message.attachments?.length > 0 && (
               <div className="message-attachments">
                 {message.attachments.map((file) => (

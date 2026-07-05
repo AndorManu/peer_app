@@ -1,5 +1,39 @@
 # Maintenance log
 
+## 2026-07-05 — M7: Image generation for visual teaching
+
+**What changed**
+- **Real image generation** ([server/handleImage.js](server/handleImage.js)):
+  the endpoint now calls **fal.ai FLUX schnell** with the owner's `IMAGE_API_KEY`
+  (16:9 educational diagrams, 4 inference steps ≈ $0.003/image). Same gate as
+  chat: Supabase session required (401 → sign-in modal), daily quota enforced
+  (402 → paywall), and each image is metered heavier — a flat 4,000-token
+  equivalent (~7 images/day free, ~125 Pro) with the real dollar cost recorded.
+- **Saved with the lesson**: a generated visual lands in the chat inline AND is
+  added to the subject's library as an image document, so it appears in the
+  Brain as a Material node and in the project modal.
+- **Alt text always**: the server echoes an `altText` (derived from the topic),
+  the `<img>` uses it, and the message content includes the description for
+  screen readers and the transcript.
+- Message images got proper styling (rounded, bordered, shadowed, responsive).
+
+**What I tested (live, real fal.ai calls)**
+- Server: authed request → 200 with a real image URL, usage row
+  `{kind: "image", model: "fal-ai/flux/schnell", tokens_out: 4000, cost_usd: 0.003}`.
+- Browser: signed in, asked about the water cycle, clicked **Visualize** → a
+  genuine labeled water-cycle diagram rendered inline with meaningful alt text,
+  and showed up in the Brain outline as a Material node under the subject.
+- 59/59 tests; build clean.
+- Note: test account `peer-m7-browser@example.com` (password `Peer-m7-Browser!`)
+  was left in the Supabase project at the owner's request — handy for manual
+  testing; delete it from Authentication → Users whenever.
+
+**Also this session (owner setup progress)**
+- `IMAGE_API_KEY` (fal.ai) and `GOOGLE_CLIENT_ID/SECRET` are now filled in
+  `.env`. Google still needs the provider toggled ON in Supabase Dashboard →
+  Authentication → Providers → Google (paste the same ID/secret there) — as of
+  the last check `/auth/v1/settings` still reports google: false.
+
 ## 2026-07-05 — M6: Voice-to-voice (perfected)
 
 **What changed**
