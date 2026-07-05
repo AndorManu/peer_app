@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Peer</string>
+    <string name="title_activity_main">Peer</string>
+    <string name="package_name">app.peer.study</string>
+    <string name="custom_url_scheme">app.peer.study</string>
+</resources>
