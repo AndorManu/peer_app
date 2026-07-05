@@ -1,5 +1,47 @@
 # Maintenance log
 
+## 2026-07-05 — M12: Accessibility deep pass (WCAG 2.2 AA)
+
+**What changed**
+- **Contrast, fixed at the source**: the low end of the parchment text ramp in
+  [peerTheme.js](src/peerTheme.js) compressed to ≥4.5:1 on the warm ink
+  surfaces (text40/42/45 → 0.58, text50 → 0.60, text55 → 0.62); nav-rail
+  labels/icons 0.40→0.66; brain heading/toolbar/detail metrics; terminal meta
+  + muted lines; extensions popover; recap labels; sidebar section headings
+  (amber 0.38→0.78). Light theme: rail labels 0.55→0.75, logo word,
+  new-project-chat, and the legacy-blue side headings → warm ink.
+- **Names & semantics**: aria-labels on icon-only buttons (code-lab send, rail
+  Settings) and the text-size slider; landing `<section>`→`<main>`; sidebar
+  drawer renders a `<div role="dialog">` (ARIA disallows dialog on `<aside>`);
+  chat topbar ViewTitle div→`<h1>` (chat had no level-one heading — the topbar
+  only renders on chat, every other view keeps its own h1); scrollable
+  terminal output keyboard-focusable with `role="log"`.
+- **Focus ring**: light theme's leftover violet → dark amber #8a5a14.
+
+**What I tested** (axe-core 4.12.1 injected into the live app via Vite /@fs)
+- **0 violations on every screen**: landing, chat (+sidebar), brain, code,
+  notes, cards, rooms, settings (all 3 tabs), profile, project-library modal,
+  delete confirm, command palette — in dark AND light, at 1280×800 AND
+  320×700 (bottom-nav/drawer variant).
+- **Lighthouse a11y 100/100** on the landing (headless Chrome; signed-in
+  screens aren't URL-addressable in a fresh profile, so axe — the same engine
+  underneath — covered those per-screen instead).
+- **Keyboard**: no positive tabindex anywhere; skip link on all 8 screens;
+  project modal + command palette move focus in, Escape closes, focus returns
+  to the trigger; :focus-visible rules intact in every CSS layer (script
+  focus can't trigger the pseudo-class, so the visual ring check is the M0
+  real-keyboard pass).
+- **Reflow (WCAG 1.4.10)**: no horizontal scroll on any screen at 320px;
+  max in-app text size (19px) reflows cleanly.
+- **Reduced motion**: 0.01ms animation/transition blankets (app + landing) +
+  JS checks (App confetti, Brain decorative orbit) all present post-makeover.
+- npm test 65/65 after each fix batch; zero browser console errors/warnings.
+
+**Owner steps (need a physical device — cannot be verified headless)**
+- VoiceOver (iOS/macOS) + TalkBack (Android) run-through of the 8 screens.
+- Mic input for voice mode (browser speech APIs need real hardware).
+- Real pinch-zoom on the Brain map + OS-level 200% zoom sanity check.
+
 ## 2026-07-05 — M11: Native packaging (Capacitor + Tauri)
 
 **What changed**

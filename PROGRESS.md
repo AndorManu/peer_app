@@ -1,20 +1,20 @@
 # PROGRESS — Peer build status (unattended overnight run)
 
-> **RESUME EXACTLY HERE:** M0–M11 done + verified. Security hardening pass
-> DONE (commit `aa6fe8f`). "Study Hall" makeover swept + parity-checked
-> (`3007746`, `c3776e0`, `c1e7ac9`, `22b9444`). M11 native packaging DONE
-> (this commit): Capacitor android/+ios/ scaffolded & synced (appId
-> app.peer.study), Tauri src-tauri/ scaffolded (strict CSP), src/native.js
-> shell glue (status bar, deep links, Android back, haptics) — web verified
-> unaffected (65/65 tests, clean build, 0 console errors). Platform builds
-> need toolchains this machine lacks — NATIVE.md has exact commands + owner
-> steps (icons/splash, push, signing, store accounts).
-> **NEXT TASK: M12 — a11y deep pass.** Headless-doable tonight: axe-core +
-> Lighthouse a11y ≥95 on every screen, full keyboard-only pass per screen
-> (focus order, traps, visible focus, escape routes), prefers-reduced-motion
-> honored, contrast audit of the Study Hall palette. Physical-device items
-> (mic audio, pinch-zoom, VoiceOver/TalkBack) → document as owner steps.
-> After M12: M13 launch polish (onboarding, dashboard, landing, legal).
+> **RESUME EXACTLY HERE:** M0–M12 done + verified. Security pass `aa6fe8f`;
+> Study Hall makeover `3007746`..`22b9444`; M11 native `b152de7` (NATIVE.md
+> = build commands + owner steps); M12 a11y `cae3dae`+`32eea2e`: axe-core
+> 0 violations on every screen (dark+light, 1280px+320px), Lighthouse a11y
+> 100/100, keyboard/reflow/reduced-motion verified — device-only items
+> (VoiceOver/TalkBack, mic, pinch) documented for owner in maintenance-log.
+> **NEXT TASK: M13 — launch polish.** Concretely: (1) first-run onboarding
+> that lands the "adaptive study partner" promise, (2) progress dashboard
+> (streaks, mastery deltas, review-now queue from spaced-rep data),
+> (3) study reminders (in-app; push needs owner FCM/APNs per NATIVE.md),
+> (4) marketing landing page + SEO meta/OG tags, (5) legal: privacy policy,
+> terms, GDPR export + delete (delete-account endpoint already live, add
+> data export). Keep quotas/paywall untouched; Stripe still stubbed.
+> After M13: makeover polish backlog (populated-deck review, live-room w/
+> partner, paywall screenshot) + owner key flips (Stripe, Facebook).
 > Read this file top to bottom; every claim states how it was verified.
 
 ## 1. Milestones
@@ -33,8 +33,8 @@
 | M9 rooms | ✅ done | `0b98df7` | realtime 2-client verify 9/9 (presence/chat/quiz/RLS) |
 | M10 badges | ✅ done | `e06d29b` | 30 badges, trophy case, sync; live badge earn verified |
 | M11 native (Capacitor+Tauri) | ✅ scaffolded + wired | `b152de7` | android/ + ios/ generated & synced (appId app.peer.study); src-tauri/ scaffolded (strict CSP, 1280×860); src/native.js: status bar, deep links (OAuth redirects re-enter SPA), Android back, hapticTap on badge earns — all feature-detected, web verified unaffected (0 console errors). Platform BUILDS need toolchains this machine lacks (no Rust/Java/Android SDK) — exact commands in NATIVE.md; icons/splash + push notifications documented as owner steps. |
-| **M12 a11y deep pass** | ⬜ **next in line** | | axe/Lighthouse ≥95 per screen + keyboard passes doable headless; mic audio + pinch-zoom + real screen readers need a physical device (owner) |
-| M13 launch polish | ⬜ pending | | onboarding, dashboard, landing page, legal |
+| M12 a11y deep pass | ✅ done | `cae3dae`+`32eea2e` | axe-core 4.12.1 injected live: **0 violations on every screen** (landing/chat/brain/code/notes/cards/rooms/settings×3/profile + modal/confirm/palette), dark AND light, 1280px AND 320px. Lighthouse a11y **100/100** (landing). Keyboard: focus in/Escape/restore on dialogs, skip links, no positive tabindex. Reflow 320px + 19px text: no overflow. Reduced-motion blankets intact. Owner (device-only): VoiceOver/TalkBack run-through, mic audio, real pinch-zoom — steps in maintenance-log M12 entry. |
+| **M13 launch polish** | ⬜ **next in line** | | onboarding, progress dashboard, study reminders, landing/marketing page, SEO, legal (privacy/terms/GDPR export+deletion) |
 
 Verification scripts (all runnable anytime, all passing as of last run):
 `tools/verify-supabase.mjs` (RLS), `tools/verify-roundtrip.mjs` (sync),
