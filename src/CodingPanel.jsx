@@ -266,6 +266,24 @@ export default function CodingPanel({ profile, projects = [], onSaveToBrain }) {
       });
       return;
     }
+    // Python runs IN the browser via Pyodide so real libraries (numpy,
+    // pandas, matplotlib, ...) actually import; graphical libs get an
+    // honest explanation. The server runner stays as the offline fallback.
+    if (language === "python") {
+      try {
+        const { runPython } = await import("./pyRunner.js");
+        const result = await runPython(code, {
+          onStatus: (text) => setOutput(text ? [{ k: "muted", t: text }] : []),
+        });
+        setOutput(result.lines);
+        setExit({ code: result.code, ms: result.ms, where: "browser · pyodide" });
+        setRunning(false);
+        return;
+      } catch {
+        setOutput([{ k: "muted", t: "Python runtime unavailable — falling back to the server runner (stdlib only)…" }]);
+        // fall through to the Wandbox path below
+      }
+    }
     try {
       const r = await fetch("/api/run", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -419,11 +437,11 @@ ${code || "(empty)"}
             <div className="term-tabbar">
               <span className="term-tab active">TERMINAL</span>
               <span className="term-meta">
-                {exit ? <>exit {exit.code} · {exit.ms}ms{exit.where === "sandbox" ? " · sandbox" : exit.version ? ` · ${lang.label} ${exit.version}` : ""}</> : lang.local ? "in-browser sandbox" : "server runner"}
+                {exit ? <>exit {exit.code} · {exit.ms}ms{exit.where ? ` · ${exit.where}` : exit.version ? ` · ${lang.label} ${exit.version}` : ""}</> : lang.local ? "in-browser sandbox" : language === "python" ? "in-browser python + real packages" : "server runner"}
               </span>
             </div>
             <div className="term-body" tabIndex={0} role="log" aria-label="Terminal output">
-              <div className="term-cmd">$ run {lang.ext}{lang.local ? "" : "  →  server"}</div>
+              <div className="term-cmd">$ run {lang.ext}{lang.local ? "" : language === "python" ? "  →  browser (pyodide)" : "  →  server"}</div>
               {running ? (
                 <div className="term-line muted">running…<span className="term-caret" /></div>
               ) : output.length === 0 ? (

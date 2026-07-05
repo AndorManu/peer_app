@@ -17,13 +17,15 @@ export function applySecurityHeaders(res, { supabaseUrl = "" } = {}) {
   // 'unsafe-inline'/'unsafe-eval' in script-src are required by Vite DEV
   // tooling (HMR preamble) — a production host should drop them; everything
   // else is the real policy.
+  // cdn.jsdelivr.net: Pyodide (in-browser Python + its package wheels) loads
+  // from there — script for pyodide.js, connect for the .wasm/.whl fetches.
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' data: https://fonts.gstatic.com",
     "img-src 'self' data: blob: https://*.fal.media",
-    `connect-src 'self' ws: wss: https://fonts.googleapis.com https://fonts.gstatic.com${supabaseHost ? ` https://${supabaseHost} wss://${supabaseHost}` : ""}`,
+    `connect-src 'self' ws: wss: https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net${supabaseHost ? ` https://${supabaseHost} wss://${supabaseHost}` : ""}`,
     "worker-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",
