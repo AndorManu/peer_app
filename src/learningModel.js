@@ -35,7 +35,28 @@ const BASE_TRAITS = {
   asksExamples: 0,
   confusionPhrases: 0,
   frustrationPhrases: 0,
+  // Learning DNA implicit signals (inferred, never asked):
+  // which everyday domains the learner reaches for when THEY explain things
+  analogyDomains: {},        // e.g. { cooking: 2, gaming: 1 }
+  lastFrustrationAt: 0,      // recency matters more than lifetime count
+  cramSignals: 0,            // "test tomorrow", "need this fast", ...
+  lastCramAt: 0,
 };
+
+// Domains people commonly explain things through. Word lists stay small on
+// purpose — a false negative costs nothing, a false positive pollutes DNA.
+const ANALOGY_DOMAINS = {
+  sports: /\b(football|soccer|basketball|tennis|baseball|golf|running|marathon|gym|workout|team plays?|scoring)\b/,
+  cooking: /\b(cooking|recipe|baking|kitchen|ingredients?|oven|simmer|dough|seasoning)\b/,
+  gaming: /\b(video ?games?|gaming|minecraft|rpg|level(?:ing)? up|boss fight|quest|respawn|xp)\b/,
+  music: /\b(guitar|piano|chords?|melody|rhythm|orchestra|drums|tuning)\b/,
+  driving: /\b(driving|car engine|gears?|steering|highway|traffic|brakes)\b/,
+  building: /\b(lego|carpentry|blueprint|scaffolding|bricks?|foundation of a house)\b/,
+};
+const ANALOGY_FRAMING = /\b(like|similar to|as if|think of it|imagine|kind of like|it'?s like)\b/;
+
+// "I need this fast" — deadlines, exams, time pressure in the learner's words.
+const CRAM_PATTERN = /\b(test|exam|quiz|toets|tentamen|deadline|due)\s+(is\s+)?(tomorrow|today|tonight|morgen|vandaag)\b|\bcram(ming)?\b|\bneed (this|it) fast\b|\bin a hurry\b|\bquick(ly)? before\b/;
 
 export function makeProfile() {
   return {
@@ -72,7 +93,12 @@ const BASE_MASTERY_SIGNALS = {
   tooAdvanced: 0,
   tooLong: 0,
   goodExample: 0,
+  // how this learner OPENS a session in this subject:
+  warmup: 0,   // "where were we?", "recap", "remind me"
+  diveIn: 0,   // straight into new material
 };
+
+const WARMUP_PATTERN = /\b(where (were|was) (we|i)|recap|remind me|what did we|last time|pick up where|refresh my memory|samenvatting|waar waren we)\b/i;
 
 export function makeMastery() {
   return {
@@ -144,6 +170,21 @@ export function inferProfileFromMessage(profile, content) {
   next.traits.asksExamples += asksExamples ? 1 : 0;
   next.traits.confusionPhrases += confused ? 1 : 0;
   next.traits.frustrationPhrases += frustrated ? 1 : 0;
+  if (frustrated) next.traits.lastFrustrationAt = Date.now();
+
+  // Learning DNA: the learner explaining through their OWN world is one of
+  // the strongest teaching hints there is — remember which world.
+  if (ANALOGY_FRAMING.test(text)) {
+    for (const [domain, pattern] of Object.entries(ANALOGY_DOMAINS)) {
+      if (pattern.test(text)) {
+        next.traits.analogyDomains = { ...next.traits.analogyDomains, [domain]: (next.traits.analogyDomains?.[domain] || 0) + 1 };
+      }
+    }
+  }
+  if (CRAM_PATTERN.test(text)) {
+    next.traits.cramSignals += 1;
+    next.traits.lastCramAt = Date.now();
+  }
 
   const observations = [];
   if (confused) observations.push("Learner used confusion language; simplify before adding depth.");
@@ -240,6 +281,13 @@ export function setExplanationDepth(profile, depth) {
     observations: prependItems(next.observations, [observations[cleanDepth]]),
     updatedAt: Date.now(),
   });
+}
+
+// True when the next message would be the first of a new local-day session —
+// the moment where warm-up vs dive-in preference shows itself.
+export function isSessionOpening(profile) {
+  const streak = normalizeProfile(profile).streak;
+  return streak.lastStudyDate !== localDateKey() || !(streak.messagesToday > 0);
 }
 
 export function recordStudyActivity(profile) {
@@ -458,8 +506,12 @@ export function buildSessionRecap(chat, project) {
   };
 }
 
-export function updateMasteryFromMessage(mastery, content, domainHints = []) {
+export function updateMasteryFromMessage(mastery, content, domainHints = [], { sessionOpening = false } = {}) {
   const next = normalizeMastery(mastery);
+  if (sessionOpening) {
+    if (WARMUP_PATTERN.test(content)) next.signals.warmup += 1;
+    else next.signals.diveIn += 1;
+  }
   const concepts = extractConcepts(content, domainHints);
   const misconception = detectMisconception(content);
 
