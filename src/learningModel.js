@@ -404,7 +404,7 @@ export function buildTeachingRecipe(profile, project, mode) {
   if (p.explanationDepth === "expert") recipe.push("Use expert depth: precise terminology, edge cases, and tradeoffs.");
   if (p.explanationDepth === "exam") recipe.push("Use exam depth: recall prompts, common traps, and a short practice check.");
   if (p.preferences.simple >= p.preferences.technical || p.signals.tooAdvanced > 0) recipe.push("Start with plain language and define key terms.");
-  if (p.preferences.technical > p.preferences.simple) recipe.push("Include precise terminology and small code-shaped examples when relevant.");
+  if (allowed("technical") && p.preferences.technical > p.preferences.simple) recipe.push("Include precise terminology and small code-shaped examples when relevant.");
   if (p.preferences.socratic > 0 || mode === "quiz" || mode === "duck") recipe.push("Ask one focused check question instead of multiple questions.");
   if (p.traits.frustrationPhrases > 0 || p.traits.confusionPhrases > 1) recipe.push("Reduce cognitive load and avoid long theory blocks.");
   if (project?.mastery?.concepts?.some((concept) => concept.status === "weak")) recipe.push("Reinforce weak concepts before introducing new ones.");
@@ -436,26 +436,45 @@ export function markAdaptationNoticeShown(profile, kind) {
   return { ...next, adaptationNotes: { ...(next.adaptationNotes || {}), [kind]: true }, updatedAt: Date.now() };
 }
 
-// Specific, human sentences about how this learner actually learns — shown on
-// the Profile recap card. Everything derives from real accumulated signals;
-// with no history it says so instead of pretending.
+// Specific, human sentences about how this learner actually learns — the
+// "Learning DNA" panel. Everything derives from real accumulated signals;
+// with no history it says so instead of pretending. Entries with a `key`
+// are editable: the user can confirm ("spot on") or reject ("not me"), and
+// that explicit correction outranks the inference (see dnaOverrides in
+// buildTeachingRecipe). `status` mirrors any existing override.
 export function buildPersonaInsights(state) {
   const p = normalizeProfile(state?.profile);
   const projects = Array.isArray(state?.projects) ? state.projects : [];
+  const dna = p.dnaOverrides || {};
   const insights = [];
+  const add = (key, text) => insights.push({ key, text, status: key ? dna[key] || null : null });
 
   if (p.preferences.exampleFirst >= 2 && p.preferences.exampleFirst >= p.preferences.technical) {
-    insights.push("You learn best from worked examples before theory — Peer now opens with one.");
+    add("exampleFirst", "You learn best from a concrete example before the abstract rule — Peer opens with one.");
   } else if (p.preferences.technical > p.preferences.simple && p.preferences.technical >= 2) {
-    insights.push("You like precise, technical depth — Peer skips the hand-holding.");
-  } else if (p.preferences.analogyFirst >= 2 || p.preferences.visual >= 3) {
-    insights.push("Analogies and visual models are what make ideas stick for you.");
+    add("technical", "You like precise, technical depth — Peer skips the hand-holding.");
   }
 
-  if (p.signals.tooLong >= ADAPT.conciseHard) {
-    insights.push("Short beats thorough for you — answers stay under a hard length cap now.");
+  const analogy = topAnalogyDomain(p);
+  if (analogy && analogy.count >= 2) {
+    add("analogy", `Ideas stick for you when they're framed in ${analogy.domain} terms — you explain them that way yourself, so Peer meets you there.`);
+  }
+
+  if (p.signals.tooLong >= ADAPT.conciseHard || dna.concise === "confirmed") {
+    add("concise", "Short beats thorough for you — answers stay under a hard length cap.");
+  } else if (p.traits.averageMessageLength > 0 && p.traits.averageMessageLength < 10 && p.signals.implicit >= 5) {
+    add("concise", "You write short and to the point — Peer keeps its answers the same way.");
   } else if (p.signals.confused >= 3) {
-    insights.push("When something's unclear you say so — Peer restarts smaller instead of repeating itself.");
+    add(null, "When something's unclear you say so — Peer restarts smaller instead of repeating itself.");
+  }
+
+  const warmups = projects.filter((project) => (project.mastery?.signals?.warmup || 0) >= 2 && (project.mastery?.signals?.warmup || 0) > (project.mastery?.signals?.diveIn || 0));
+  const divers = projects.filter((project) => (project.mastery?.signals?.diveIn || 0) >= 2 && (project.mastery?.signals?.diveIn || 0) > (project.mastery?.signals?.warmup || 0));
+  if (warmups.length) add("warmup", `You like easing into ${warmups[0].name} with a quick recap of last time.`);
+  else if (divers.length) add("diveIn", `You dive straight into new material — no recaps unless you ask.`);
+
+  if (p.traits.cramSignals >= 2) {
+    add("cram", "You tend to study close to deadlines — Peer keeps answers tight and exam-shaped when it senses crunch.");
   }
 
   const rated = projects
@@ -464,17 +483,28 @@ export function buildPersonaInsights(state) {
   const strongest = rated.filter((e) => e.strength !== null && e.strength >= 0.6).sort((a, b) => b.strength - a.strength)[0];
   const weakest = rated.filter((e) => e.weak >= 2 && e.name !== strongest?.name).sort((a, b) => b.weak - a.weak)[0];
   if (strongest && weakest) {
-    insights.push(`You're moving fast through ${strongest.name}, but ${weakest.name} wants more repetition.`);
+    add(null, `You're moving fast through ${strongest.name}, but ${weakest.name} wants more repetition.`);
   } else if (strongest) {
-    insights.push(`You're moving quickly through ${strongest.name} — Peer paces it faster than your other subjects.`);
+    add(null, `You're moving quickly through ${strongest.name} — Peer paces it faster than your other subjects.`);
   } else if (weakest) {
-    insights.push(`${weakest.name} is the one asking for more repetition right now.`);
+    add(null, `${weakest.name} is the one asking for more repetition right now.`);
   }
 
   if (!insights.length) {
-    insights.push("Still learning how you learn — tap the feedback chips when an answer lands (or doesn't) and this gets specific.");
+    add(null, "Still learning how you learn — keep asking questions and tapping the feedback chips, and this gets specific.");
   }
-  return insights.slice(0, 3);
+  return insights.slice(0, 5);
+}
+
+// Toggle an explicit correction: clicking the same verdict again clears it
+// (back to pure inference).
+export function setDnaOverride(profile, key, verdict) {
+  const next = normalizeProfile(profile);
+  const current = (next.dnaOverrides || {})[key];
+  const dnaOverrides = { ...(next.dnaOverrides || {}) };
+  if (current === verdict) delete dnaOverrides[key];
+  else dnaOverrides[key] = verdict;
+  return { ...next, dnaOverrides, updatedAt: Date.now() };
 }
 
 // Universal skill tree: concepts group by how solid they are, which is
