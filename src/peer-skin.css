@@ -315,10 +315,12 @@
 
 /* ---------- chat empty state (welcome) ---------- */
 .peer-skin .welcome-mark {
-  background: linear-gradient(135deg,#e0a039,#f0b354) !important;
-  box-shadow: 0 0 26px -2px rgba(224,160,57,0.7) !important;
+  background: linear-gradient(135deg, var(--sh-accent, #e0a039), var(--sh-accent-hi, #f0b354)) !important;
+  box-shadow: 0 0 26px -2px color-mix(in srgb, var(--sh-accent, #e0a039) 70%, transparent) !important;
+  color: var(--sh-accent-ink, #1c1509) !important;
   animation: pfloat 6s ease-in-out infinite !important;
 }
+.peer-skin .welcome-mark svg { color: var(--sh-accent-ink, #1c1509) !important; }
 .peer-skin .welcome h1 { font-family: 'Space Grotesk', sans-serif !important; letter-spacing: -.4px !important; }
 .peer-skin .starter-card {
   background: rgba(244,232,213,0.025) !important;

@@ -126,13 +126,14 @@ code, pre, kbd, samp, .hljs, .term-body, .vscode-code, .room-code {
 /* the old avatar pulse glow reads neon — calm it */
 .peer-skin .message.assistant .avatar {
   animation: none !important;
-  background: #3f8f74 !important;
+  /* theme accent, not a hardcoded pine green — Peer's mark wears the theme */
+  background: linear-gradient(135deg, var(--sh-accent), var(--sh-accent-hi)) !important;
   padding: 0 !important;
 }
 .peer-skin .message.assistant .avatar svg,
 .peer-skin .message.assistant .avatar > * {
   background: transparent !important;
-  color: #0d1a16 !important;
+  color: var(--sh-accent-ink) !important;
 }
 .peer-rail-logo-mark {
   background: var(--sh-accent);
