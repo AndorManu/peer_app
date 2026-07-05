@@ -23,6 +23,7 @@
 .peer-rail-logo-mark {
   width: 38px; height: 38px; border-radius: 13px;
   background: linear-gradient(140deg,var(--sh-accent),var(--sh-accent-hi));
+  color: var(--sh-accent-ink); /* the stone glyph inks against the accent tile */
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 0 22px -2px rgba(var(--sh-accent-rgb),.8);
   animation: pfloat 6s ease-in-out infinite;

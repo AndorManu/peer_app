@@ -192,6 +192,42 @@ layer has before/after tests plus at least one live proof.
   reaches the model only as aggregates + max 9 one-line directives —
   never raw history dumps.
 
+## Fourth pass: code libraries, brain navigation, the Stone mark (2026-07-05)
+
+- **Code lab libraries** (`8dadfc2`): Python now runs IN the browser via
+  Pyodide — numpy/pandas/matplotlib/scipy/sympy genuinely import
+  (loadPackagesFromImports); verified live: numpy matrix program printed
+  real output ("numpy 1.26.4", exit 0 · 888ms · browser · pyodide).
+  Graphical libs (pygame/tkinter/turtle) are fundamentally un-terminalable —
+  detected up front with an honest, friendly explanation (verified with a
+  real pygame window program). **Follow-up (documented, not silently
+  broken): a browser-canvas mode for graphical Python via pygame-web/pygbag;
+  npm-package support for the JS sandbox.** Wandbox stays as Python's
+  offline fallback; CSP allowlists cdn.jsdelivr.net.
+- **StyledSelect v2** (`4b83838`): re-audit proved all 12 selects were
+  skinned — the remaining "default bar" was the NATIVE OPTION POPUP (OS
+  chrome, unstylable). The popup is now our own ARIA listbox with full
+  keyboard support + typeahead; same API, all call sites unchanged.
+- **Brain navigation overhaul** (`014426d`): free pan (right/middle/
+  shift-drag, two-finger), zoom-at-cursor (map-app: the point under the
+  pointer stays put), pinch = zoom+pan combined, Reset = true fit-to-view
+  (centroid + extent), zoom range 7..90. Camera-state readout proves it:
+  pan moved target 7.9 units; wheel at a corner took radius 26->9.5 while
+  pulling the target 1.39 units toward the cursor; Reset reframed to the
+  real centroid.
+- **The Peer mark — Philosopher's Stone** (this commit): the alchemical
+  "squaring the circle" (circle r44 → inscribed triangle at 90°/210°/330° →
+  square of side s(2√3−3) on its base → center circle), precise geometry,
+  clean linework, currentColor. Two cuts: full (3sw, stroked center) and
+  bold (6.5sw, filled dot, auto below 26px). Replaces the rail star, the
+  welcome/avatar marks, favicon + PWA icons; verified inking correctly
+  against all three themes' accent tiles (mono = its natural home).
+  **Full native icon exports generated now** (not left as owner step):
+  92 Android + 7 iOS via @capacitor/assets, PWA webp set, Tauri
+  icns/ico/png set — all from resources/icon.png rendered off the SVG.
+  (Note: @capacitor/assets clobbered public/ during generate — SVGs +
+  manifest restored, generated PWA icons relocated to public/icons/.)
+
 ## Rooms discovery + subscription page + modal/fullscreen fixes (owner-reported, 2026-07-05, third pass)
 
 - **Rooms public/private + discovery** (`81feecb`): migration 0006 adds

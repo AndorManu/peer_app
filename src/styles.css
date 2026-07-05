@@ -112,6 +112,13 @@ body { background: var(--sh-bg, var(--sh-bg)); }
   flex-shrink: 0;
   animation: logoBreathe 3.5s ease-in-out infinite;
 }
+/* on accent-filled tiles (rail logo, avatars, welcome mark) the glyph must
+   ink AGAINST the accent, not disappear into it */
+.peer-rail-logo-mark .peer-logo-mark,
+.welcome-mark .peer-logo-mark,
+.message.assistant .avatar .peer-logo-mark {
+  color: var(--sh-accent-ink, #1c1509);
+}
 @keyframes logoBreathe {
   0%, 100% { filter: drop-shadow(0 0 4px rgba(var(--sh-accent-rgb), 0.4)); }
   50%       { filter: drop-shadow(0 0 10px rgba(var(--sh-accent-rgb), 0.7)); }
