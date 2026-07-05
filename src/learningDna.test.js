@@ -197,6 +197,28 @@ test("practice generation targets recurring misconceptions and gapped concepts",
   assert.equal(practiceFocus(makeMastery()), "", "no trouble -> no targeting clause");
 });
 
+// ---- Layer 5: the meta-profile carries to new subjects immediately ----
+
+test("a brand-new subject inherits the learner's meta-profile on day one", () => {
+  // learner with established DNA: terse, example-first, gaming analogies
+  let p = makeProfile();
+  for (const msg of ["what is LTP", "like a boss fight?", "like leveling up xp?", "ok", "why"]) p = inferProfileFromMessage(p, msg);
+  p = { ...p, signals: { ...p.signals, tooLong: 3, goodExample: 2 } };
+
+  // subject #2 starts completely cold — empty mastery, zero history
+  const brandNewProject = { id: "new", name: "Art History", mastery: makeMastery() };
+  const recipe = buildTeachingRecipe(p, brandNewProject, "auto").join(" ");
+  assert.match(recipe, /HARD LENGTH CAP/, "concision carries over");
+  assert.match(recipe, /OPEN with a concrete worked example/, "example-first carries over");
+  assert.match(recipe, /LEAD with an analogy from gaming/, "analogy domain carries over");
+
+  // ...while subject-specific pacing does NOT leak: a struggle recorded in
+  // one subject never gentles a different one
+  const struggling = { id: "old", name: "Calculus", mastery: { ...makeMastery(), signals: { ...makeMastery().signals, tooAdvanced: 2 } } };
+  assert.match(buildTeachingRecipe(p, struggling, "auto").join(" "), /FOR THIS SUBJECT ONLY/);
+  assert.doesNotMatch(recipe, /FOR THIS SUBJECT ONLY/);
+});
+
 test("DNA fields survive normalization (persistence + sync round-trips)", () => {
   const profile = normalizeProfile({
     ...makeProfile(),
