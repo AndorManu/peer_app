@@ -65,6 +65,7 @@ import {
   buildTeachingRecipe,
   getWeakSpots,
   inferProfileFromMessage,
+  isSessionOpening,
   makeMastery,
   markAdaptationNoticeShown,
   recordStudyActivity,
@@ -1046,10 +1047,11 @@ export default function App() {
     // render-time snapshot (and so THIS request already obeys any directive
     // the feedback just triggered, e.g. the hard length cap).
     const baseProfile = options.profileOverride || state.profile;
+    const sessionOpening = isSessionOpening(baseProfile);
     const learnedProfile = recordStudyActivity(inferProfileFromMessage(baseProfile, visibleContent));
     const currentProject = options.projectOverride || state.projects.find((item) => item.id === activeChat.projectId);
     const learnedProject = currentProject
-      ? { ...currentProject, mastery: updateMasteryFromMessage(currentProject.mastery, visibleContent, domainForProject(currentProject).conceptHints) }
+      ? { ...currentProject, mastery: updateMasteryFromMessage(currentProject.mastery, visibleContent, domainForProject(currentProject).conceptHints, { sessionOpening }) }
       : null;
     const userMessage = {
       id: uid(),
