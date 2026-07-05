@@ -2469,7 +2469,7 @@ function ChatArea({ activeChat, activeProject, activeMode, loading, error, sendM
   if (!activeChat?.messages.length) {
     return (
       <section className="welcome">
-        <div className="welcome-mark"><Brain size={31} /></div>
+        <div className="welcome-mark"><PeerLogo size={31} /></div>
         <h1>{activeProject ? `Studying ${activeProject.name}` : "What do you want to understand?"}</h1>
         {activeProject && domainForProject(activeProject).id !== "general" && (
           <DomainBadge domain={domainForProject(activeProject)} />
@@ -2515,7 +2515,7 @@ function ChatArea({ activeChat, activeProject, activeMode, loading, error, sendM
       </div>
       {activeChat.messages.map((message, index) => (
         <article className={`message ${message.role}`} key={message.id || `${message.role}-${index}`}>
-          <div className="avatar">{message.role === "assistant" ? <Brain size={17} /> : "You"}</div>
+          <div className="avatar">{message.role === "assistant" ? <PeerLogo size={22} /> : "You"}</div>
           <div className="message-stack">
             <div className="bubble">
             {message.role === "assistant"
@@ -2553,7 +2553,7 @@ function ChatArea({ activeChat, activeProject, activeMode, loading, error, sendM
       )}
       {loading && (
         <article className="message assistant">
-          <div className="avatar" aria-hidden="true"><Brain size={17} /></div>
+          <div className="avatar" aria-hidden="true"><PeerLogo size={22} /></div>
           <div className="typing" role="status" aria-label="Peer is thinking"><span /><span /><span /></div>
         </article>
       )}
@@ -3615,7 +3615,7 @@ function OnboardingModal({ profileDraft, setProfileDraft, complete, skip }) {
         aria-modal="true"
         aria-labelledby="onboarding-title"
       >
-        <div className="welcome-mark"><Brain size={30} aria-hidden="true" /></div>
+        <div className="welcome-mark"><PeerLogo size={30} /></div>
         <h1 id="onboarding-title">Meet Peer — your study partner</h1>
         <p>Thirty seconds of context and Peer adapts to you from the very first answer. You can change all of this later in your profile.</p>
         <label>
