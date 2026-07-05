@@ -5,6 +5,7 @@
 // active view. Wired to the existing `view` / `setView` routing.
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Settings } from "lucide-react";
+import PeerLogo from "./PeerLogo.jsx";
 
 // design rail order; `key` is the app's `view` routing key
 const NAV_ITEMS = [
@@ -47,11 +48,7 @@ export default function PeerNavRail({ view, setView, account, onAvatar }) {
     <nav className="peer-rail" aria-label="Primary">
       {/* floating logo */}
       <div className="peer-rail-logo" aria-hidden="true">
-        <div className="peer-rail-logo-mark">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="#0b0b16">
-            <path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z" />
-          </svg>
-        </div>
+        <div className="peer-rail-logo-mark"><PeerLogo size={24} /></div>
         <div className="peer-rail-logo-word">Peer</div>
       </div>
 
