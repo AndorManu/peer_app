@@ -151,6 +151,47 @@ progress meter, all correct under the Study Hall skin.)
   friendly toast: "Payments aren't configured yet — Pro is coming very soon."
   Paywall/meter/quota all fully live regardless. Zero-code flip when keys land.
 
+## Learning DNA (north-star adaptive tutor, 2026-07-05)
+
+Built in 5 verified layers on the EXISTING profile/mastery shapes — every
+signal feeds the same place the tutor prompt already reads from, and every
+layer has before/after tests plus at least one live proof.
+
+- **L1 signals** (`4fcb7f2`): implicit capture, zero extra clicks —
+  analogy domains the learner volunteers (framing-gated so "I have
+  basketball practice" doesn't pollute), cram cues + recency, frustration
+  recency, per-subject warm-up vs dive-in session openings. All fields
+  survive normalize/persist/sync/export (round-trip tested).
+- **L2 loops** (`abd109c`): short-message writers get concise answers with
+  no chip click; 2+ analogies from one domain → tutor LEADS with that
+  domain (live-proven: after two gaming analogies, "explain LTD" opened
+  with "like a skill you stop practicing... a move in your game", 64
+  words); misconception recall is proactive ("Last time you thought X —
+  let's make sure that's solid"), never a reprimand; warm-up learners get
+  a session-opening recap, dive-in learners don't.
+- **L3 trust layer** (`0bc0cf8`): Profile "Learning DNA" panel — specific
+  sentences from real signals, each inference editable ("spot on" /
+  "not me"). An explicit correction outranks any inference strength
+  (live-proven: rejecting the gaming line struck it through, stored
+  dnaOverrides.analogy="rejected" in the export, and removes the
+  directive; toggling restores pure inference). axe 0 violations.
+- **L4 calibration + mood** (`4b571eb`): failing a flashcard on a concept
+  the learner rated strong records a confidence/reality gap → tutor
+  quietly verifies before building on it (live-proven: NMDA Receptor
+  74%→46%, CALIBRATION directive appeared naming it); frustration within
+  30 min → proactively smaller steps; cram cue within 48h → deadline
+  mode; practice sets target recurring misconceptions + gapped concepts,
+  not just "more of the topic".
+- **L5 carryover** (this commit): meta-profile (concision, example-first,
+  analogy world) applies to a brand-new subject on day one, while
+  subject-specific struggle signals never leak across subjects — both
+  directions unit-proven.
+- **Privacy**: DNA lives in the same RLS rows as everything else
+  (profiles.data + projects.mastery, isolation verified 12/12), is fully
+  present in the GDPR export (live-verified) and the delete cascade, and
+  reaches the model only as aggregates + max 9 one-line directives —
+  never raw history dumps.
+
 ## Polish pass (owner-requested sweep, 2026-07-05)
 
 - **Chat chips**: 19-chip wall → 5 contextual chips + "More" expander; the
