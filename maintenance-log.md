@@ -1,5 +1,46 @@
 # Maintenance log
 
+## 2026-07-05 — M4: Real auth
+
+**What changed**
+- **The fake demo-code auth is gone.** [src/auth.jsx](src/auth.jsx) is a real
+  Supabase Auth panel: email + password sign-up/sign-in, magic-link flow,
+  Google + Facebook OAuth buttons (`signInWithOAuth`, with a clear "not switched
+  on yet" message until the owner configures the providers), and guest mode.
+- **Sessions drive the app**: `onAuthStateChange` mirrors the session into
+  `state.account` (name/email/provider), signing in flips past the landing,
+  sessions persist across reloads (supabase-js token storage + auto-refresh).
+- **Guest→account migration** falls out of the M3 sync design: the first sync
+  after sign-in pulls the cloud, then pushes everything that only exists locally
+  — a guest's subjects/chats/notes upload automatically.
+- **Sign out** (Settings → Account) keeps local data and returns to the landing.
+- **Account deletion**: JWT-verified `/api/delete-account` (dev server) +
+  matching edge function; the service role deletes the auth user and FK cascades
+  erase every cloud row. Confirmed via an accessible confirm dialog.
+- AUTH_PROVIDERS trimmed to google/facebook/email (old stored providers
+  normalize to email).
+
+**What I tested (live, through the real UI in a browser)**
+- Created a confirmed user via the admin API, then: created a **guest** subject
+  ("Genetics") → signed in through the login form → within seconds the cloud had
+  both guest subjects + the profile row (verified server-side with the service
+  role). Session survived a full page reload. Account card showed the signed-in
+  user with sync status "idle". Sign out returned to the landing with local data
+  intact. Signed back in, deleted the account through the danger-zone flow →
+  auth user gone, cascaded rows gone (verified: 0 users).
+- Zero console errors; `npm test` 59/59; build clean.
+
+**Owner setup needed to light up social sign-in (M4 done-criteria remainder)**
+1. **Google**: create an OAuth client (Web) in Google Cloud Console with redirect
+   URI `https://<project-ref>.supabase.co/auth/v1/callback`, then enable the
+   Google provider in Supabase Dashboard → Authentication → Providers with that
+   client ID/secret (also drop them in `.env` as GOOGLE_CLIENT_ID/SECRET).
+2. **Facebook**: create a Facebook Login app with the same redirect URI, enable
+   the Facebook provider in the dashboard, fill FACEBOOK_APP_ID/SECRET.
+3. In Supabase → Authentication → URL Configuration set the Site URL (and later
+   the production domain) so magic links / OAuth land back in the app.
+   The code paths are already wired — no app changes needed afterwards.
+
 ## 2026-07-05 — M3: Backend foundation (Supabase)
 
 **What changed**
