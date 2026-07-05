@@ -147,3 +147,31 @@ test("tombstoneRows and clearTombstones round-trip the deletion log", () => {
   const cleared = clearTombstones(state, new Set(["notes/n1", "messages/m1"]));
   assert.equal(cleared.tombstones.length, 0);
 });
+
+test("bootstrap prunes the untouched starter project when the cloud has real ones", async () => {
+  const { prunePristineStarter } = await import("./sync.js");
+  const starter = { id: "local-starter", name: "My first topic", docs: [], mastery: { concepts: [] } };
+  const real = { id: "cloud-p", name: "Organic Chemistry", docs: [], mastery: { concepts: [] } };
+  const state = {
+    projects: [starter, real],
+    chats: [
+      { id: "c-starter", projectId: "local-starter", messages: [] },
+      { id: "c-real", projectId: "cloud-p", messages: [{ id: "m", role: "user", content: "hi" }] },
+    ],
+    activeId: "c-starter",
+  };
+  const pruned = prunePristineStarter(state, new Set(["cloud-p"]));
+  assert.deepEqual(pruned.projects.map((p) => p.id), ["cloud-p"]);
+  assert.deepEqual(pruned.chats.map((c) => c.id), ["c-real"]);
+  assert.equal(pruned.activeId, "c-real", "active chat moves off the pruned starter");
+
+  // a USED starter (has messages) is never pruned
+  const used = {
+    ...state,
+    chats: [{ id: "c-starter", projectId: "local-starter", messages: [{ id: "m2", role: "user", content: "q" }] }, state.chats[1]],
+  };
+  assert.equal(prunePristineStarter(used, new Set(["cloud-p"])).projects.length, 2);
+
+  // nothing pulled -> nothing pruned
+  assert.equal(prunePristineStarter(state, new Set()).projects.length, 2);
+});

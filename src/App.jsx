@@ -1991,7 +1991,12 @@ export default function App() {
               <Volume2 size={15} className="speaking-icon" /> Stop
             </button>
           )}
-          <div className="status-pill"><span /> Local app</div>
+          <div className="status-pill">
+            <span />{" "}
+            {state.account?.verified
+              ? (cloudSync?.status === "idle" ? "Synced" : cloudSync?.status === "error" ? "Sync issue" : "Syncing…")
+              : "On this device"}
+          </div>
         </header>
 
         {view === "settings" && <SettingsPanel state={state} updateState={updateState} resetData={confirmResetData} loadSampleData={loadSampleData} cloudSync={cloudSync} signOut={signOut} confirmDeleteAccount={confirmDeleteAccount} />}
@@ -2006,7 +2011,7 @@ export default function App() {
             <CodingPanel profile={state.profile} projects={state.projects} onSaveToBrain={saveCodeToBrain} />
           </React.Suspense>
         )}
-        {view === "notes" && <NotesPanel notes={state.notes} projects={state.projects} deleteNote={confirmDeleteNote} toggleShareNote={toggleShareNote} onPractice={generatePractice} />}
+        {view === "notes" && <NotesPanel notes={state.notes} projects={state.projects} deleteNote={confirmDeleteNote} toggleShareNote={toggleShareNote} onPractice={generatePractice} setView={setView} />}
         {view === "flashcards" && <FlashcardsPanel flashcards={state.flashcards} projects={state.projects} setView={setView} deleteFlashcardDeck={confirmDeleteDeck} gradeFlashcard={gradeFlashcard} autoStartReview={autoReview} onAutoStartConsumed={() => setAutoReview(false)} />}
         {view === "community" && (
           <React.Suspense fallback={<PanelLoading label="Opening peer rooms…" />}>
@@ -3144,7 +3149,7 @@ function PreferenceBars({ preferences }) {
   );
 }
 
-function NotesPanel({ notes, projects, deleteNote, toggleShareNote, onPractice }) {
+function NotesPanel({ notes, projects, deleteNote, toggleShareNote, onPractice, setView }) {
   const [query, setQuery] = useState("");
   const [projectFilter, setProjectFilter] = useState("all");
   const filtered = notes.filter((note) => {
@@ -3182,7 +3187,8 @@ function NotesPanel({ notes, projects, deleteNote, toggleShareNote, onPractice }
         <div className="empty-state">
           <Save size={28} />
           <strong>No notes yet</strong>
-          <span>Save strong AI answers, then organize and share them from this notebook.</span>
+          <span>When an answer is worth keeping, hit "Save" under it — it lands here, organized by project.</span>
+          <button className="primary-button" onClick={() => setView("chat")}>Go to chat</button>
         </div>
       ) : filtered.length === 0 ? (
         <div className="empty-state"><Search size={28} /><strong>No matching notes</strong><span>Try another keyword or project filter.</span></div>

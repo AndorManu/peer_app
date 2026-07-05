@@ -151,6 +151,33 @@ progress meter, all correct under the Study Hall skin.)
   friendly toast: "Payments aren't configured yet — Pro is coming very soon."
   Paywall/meter/quota all fully live regardless. Zero-code flip when keys land.
 
+## Polish pass (owner-requested sweep, 2026-07-05)
+
+- **Chat chips**: 19-chip wall → 5 contextual chips + "More" expander; the
+  contextual slot adapts per message; nothing removed (commit `92c3047`).
+- **BUG: feedback flag lost** on follow-up chips (Too long/Confused/…) —
+  sendMessage overwrote messages from a stale snapshot; fixed (`92c3047`).
+- **BUG: adaptive signals never accumulated** for follow-up feedback — same
+  stale-snapshot clobber on profile/mastery; fixed, loop now provably closes
+  (3× "too long" → 33-word answers vs ~100 before) (`d898c8e`).
+- **Adaptive learning made visible**: Profile "How you learn" card with
+  specific persona lines + once-ever in-chat note when an adaptation kicks
+  in (`d898c8e`).
+- **Stale topbar pill** said "Local app" forever → now live: "Synced" /
+  "Syncing…" / "Sync issue" / "On this device".
+- **Jargon**: "Rubber duck" mode label → "Teach back" (id/behavior unchanged;
+  matches the existing chip).
+- **Notes empty state**: guidance rewritten + "Go to chat" CTA (matches the
+  flashcards empty state).
+- **Duplicate starter project**: every fresh device created its own
+  "My first topic" and bootstrap kept both — bootstrap now prunes the
+  untouched local starter when the cloud brings real projects (unit-tested);
+  the existing duplicate in the test account was deleted via the UI.
+- Checked, no action needed: flashcards/rooms/review empty states already
+  guide + CTA; makeFlashcards/save/export all give immediate feedback
+  (toasts/label change); no duplicate controls found; spacing consistent
+  post-makeover (axe/screenshot sweep in M12 double-checked).
+
 ## 5. Decisions made autonomously tonight
 - **Canonical domain**: index.html canonical/OG URLs assume `https://peer.study`
   (matches appId app.peer.study). Not purchased yet — swap if the owner picks
