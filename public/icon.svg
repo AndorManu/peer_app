@@ -1,22 +1,11 @@
 <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Peer app icon">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#7d6ff5"/>
-      <stop offset="1" stop-color="#5a49d8"/>
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" rx="112" fill="url(#g)"/>
-  <g fill="none" stroke="#ffffff" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" opacity="0.96">
-    <line x1="176" y1="186" x2="320" y2="146"/>
-    <line x1="176" y1="186" x2="200" y2="338"/>
-    <line x1="320" y1="146" x2="356" y2="300"/>
-    <line x1="200" y1="338" x2="356" y2="300"/>
-    <line x1="320" y1="146" x2="200" y2="338"/>
-  </g>
-  <g fill="#ffffff">
-    <circle cx="176" cy="186" r="34"/>
-    <circle cx="320" cy="146" r="28"/>
-    <circle cx="356" cy="300" r="26"/>
-    <circle cx="200" cy="338" r="30"/>
+  <!-- The Peer mark: the alchemical "squaring the circle" — circle, inscribed
+       triangle, inscribed square, center point. Bold cut so it survives 16px. -->
+  <rect width="512" height="512" rx="112" fill="#15120d"/>
+  <g transform="translate(256 256) scale(0.78) translate(-256 -256)" fill="none" stroke="#e0a039" stroke-width="34" stroke-linejoin="round">
+    <circle cx="256" cy="256" r="225"/>
+    <path d="M256 31 L451.1 368.6 L60.9 368.6 Z"/>
+    <rect x="165.4" y="187.5" width="181.1" height="181.1"/>
+    <circle cx="256" cy="278" r="41" fill="#e0a039" stroke="none"/>
   </g>
 </svg>

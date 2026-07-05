@@ -104,6 +104,7 @@ import { hapticTap } from "./native.js";
 import { LegalDialog, downloadDataExport } from "./legal.jsx";
 import { computeStudyPulse, buildReminder, REMINDER_SNOOZE_KEY } from "./studyPulse.js";
 import PeerNavRail from "./components/PeerNavRail.jsx";
+import PeerLogo from "./components/PeerLogo.jsx";
 import StyledSelect from "./components/StyledSelect.jsx";
 
 // Heavy screens load on demand: the Brain pulls in Three.js (~600KB) and the
@@ -124,35 +125,6 @@ function PanelLoading({ label }) {
 }
 import { gradeCard, dueQueue, dueCount } from "./spacedRepetition.js";
 
-function PeerLogo({ size = 28 }) {
-  return (
-    <svg
-      className="peer-logo-mark"
-      width={size}
-      height={size}
-      viewBox="0 0 28 28"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <defs>
-        <linearGradient id="peerLogoGlow" x1="4" y1="3" x2="24" y2="25" gradientUnits="userSpaceOnUse">
-          <stop stopColor="currentColor" />
-          <stop offset="1" stopColor="currentColor" stopOpacity="0.42" />
-        </linearGradient>
-      </defs>
-      <rect x="1.6" y="1.6" width="24.8" height="24.8" rx="6.2" stroke="currentColor" strokeWidth="1.1" strokeOpacity="0.22" />
-      <path d="M7.4 21.4V6.6h8.2c3.4 0 5.6 1.9 5.6 4.8s-2.2 4.8-5.6 4.8H10" stroke="url(#peerLogoGlow)" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M10 10.1h5.1c1.1 0 1.8.5 1.8 1.3s-.7 1.3-1.8 1.3H10" stroke="currentColor" strokeWidth="1.15" strokeLinecap="round" strokeOpacity="0.6" />
-      <path d="M6.4 21.4h6.1M18.6 4.8l2.6-2.1M21.1 11.4h3.2M18.4 18.3l2.9 2.4" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeOpacity="0.42" />
-      <circle cx="7.4" cy="6.6" r="1.75" fill="currentColor" />
-      <circle cx="21.2" cy="11.4" r="1.8" fill="currentColor" />
-      <circle cx="7.4" cy="21.4" r="1.75" fill="currentColor" />
-      <circle cx="21.3" cy="20.7" r="1.2" fill="currentColor" fillOpacity="0.55" />
-      <circle cx="21.2" cy="2.7" r="1.2" fill="currentColor" fillOpacity="0.55" />
-    </svg>
-  );
-}
 
 export default function App() {
   const [state, setState] = useState(initialState);
