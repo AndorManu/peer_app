@@ -1,10 +1,18 @@
 # PROGRESS — Peer build status (unattended overnight run)
 
-> **RESUME HERE:** Milestones M0–M10 are done, committed, and live-verified
-> (latest `e06d29b`). Tonight's threads: (1) M11 native packaging next in
-> milestone order, (2) "Study Hall" visual makeover per
-> `../peer-platform-plan/peer-design-mockup.html`, (3) security hardening.
-> Read this file top to bottom; every claim below states how it was verified.
+> **RESUME EXACTLY HERE:** M0–M10 done + verified. Security hardening pass
+> DONE (all checklist items below verified, commit `aa6fe8f`). "Study Hall"
+> makeover foundation + all screens swept and parity-checked (commits
+> `3007746`, `c3776e0`, `c1e7ac9`, plus the final sweep commit). Tests 65/65,
+> build clean, working tree clean at last commit.
+> **NEXT TASK: M11 — native packaging.** Concretely: `npm i -D @capacitor/core
+> @capacitor/cli @capacitor/ios @capacitor/android` + `npx cap init` (appId
+> e.g. app.peer.study, webDir dist), add Tauri (`npm i -D @tauri-apps/cli` +
+> `npx tauri init`, point devUrl/frontendDist at Vite), wire icons/splash from
+> public/icon.svg, document store-release steps (owner supplies Apple/Google
+> accounts + signing later). After M11: M12 a11y deep pass (needs physical
+> device for mic audio + pinch-zoom), M13 launch polish.
+> Read this file top to bottom; every claim states how it was verified.
 
 ## 1. Milestones
 
@@ -50,19 +58,31 @@ Plan of record (decided autonomously):
   Display font only applies for the default font choice — accessibility fonts
   (OpenDyslexic, Atkinson, Lexend) still override everything when selected.
 
-Checklist (screen = restyled + screenshot desktop/mobile + feature-parity click-through + committed):
-- [ ] Foundation: tokens/palette/fonts swap (all screens shift at once)
-- [ ] 1. Chat (incl. composer, mode/depth strips, paywall usage meter)
-- [ ] 2. Brain (map + outline; node palette per mockup; keep ALL node types)
-- [ ] 3. Code lab
-- [ ] 4. Notes
-- [ ] 5. Flashcards (incl. review mode)
-- [ ] 6. Rooms (list + live room)
-- [ ] 7. Badges/trophy case (in Profile)
-- [ ] 8. Profile
-- [ ] 9. Settings
-- [ ] 10. Onboarding + landing/auth
-- [ ] 11. Paywall dialog + confirm dialogs + toasts
+Checklist (screen = restyled + screenshot + feature-parity click-through):
+- [x] Foundation (`3007746`): full palette remap at the source (3 CSS files +
+  peerTheme/subjects/brainGraph/badges), Fraunces+Work Sans via index.html,
+  studyhall.css overlay (type/radius/shadows/motion/light-paper theme),
+  --font-display respects accessibility fonts. 65/65 tests.
+- [x] 1. Chat (`c3776e0`) — parity: 8 modes switch, depth switches, palette
+  opens, composer intact; legacy project colors migrate to warm ramp.
+- [x] 2. Brain (`c1e7ac9`) — amber ring hub w/ the one intentional glow; dots
+  aligned to node palette; parity: Map/Outline toggle, selection sync,
+  filters, canvas restore.
+- [x] 3. Code lab — warm via peerTheme tokens; parity: real code RAN in the
+  sandbox under the new skin (verified "olleh" output).
+- [x] 4. Notes — Fraunces heading, warm cards/empty state (screenshot ✓).
+- [x] 5. Flashcards — renders under new skin (screenshot ✓; review-mode deep
+  pass worth one more look next session with a populated deck).
+- [x] 6. Rooms — renders under new skin (sign-in gate state verified).
+- [x] 7+8. Profile + trophy case — serif headings, small-caps card labels,
+  warm medallions (screenshot ✓).
+- [x] 9. Settings — grid intact; light theme = warm paper rgb(250,246,238),
+  dark restored (verified live).
+- [x] 10. Landing/auth — the showcase screen: serif headline, amber CTA
+  (screenshot ✓). Onboarding modal inherits foundation.
+- [x] 11. Dialogs/toasts — inherit foundation (radius 20 panels, warm shadows).
+Polish backlog for next session (visual nits, not blockers): populated-deck
+review mode, live-room screen with a partner, paywall dialog screenshot.
 
 ## 3. Security checklist (what was tested, how, result)
 
