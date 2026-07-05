@@ -27,6 +27,7 @@ Codebase byte-identical to Run 2 (all src files mtime Jun 30; server/handleChat.
 ### Notes
 - Verification: `npm run build` ✅ (vite 6.4.x, 6.55s), `npm test` ✅ 17/17, `node server/dev.js` ✅ (HTTP 200 at 127.0.0.1). Needed `npm install` first — node_modules absent in fresh clone.
 - Recurring pattern: none outstanding. The two real reliability gaps history surfaced (learningModel upsert mutation in Run 1, SSE error swallowing in Run 2) are both closed. Three consecutive clean-or-fixed runs; the codebase is stable. The only lever left is the eager 1.33MB bundle (perf improvement, not a bug).
+- ⚠️ INFRA (new this run): the Phase 7 Discord webhook could NOT be delivered. The environment's egress proxy returned 403 on CONNECT to discord.com:443 (org network policy denial — confirmed via $HTTPS_PROXY/__agentproxy/status recentRelayFailures; README says do not route around it). discord.com is not on this session's network allowlist. The daily report reached GitHub (PR) fine — only Discord delivery is blocked. Action for the owner: add discord.com to the environment's network allowlist if Discord delivery is wanted, otherwise rely on the PR + PushNotification. Future runs will hit the same wall until the policy changes — no point retrying the curl.
 
 ---
 
