@@ -399,6 +399,19 @@ export function buildTeachingRecipe(profile, project, mode) {
   if (allowed("fasterPace") && strength !== null && strength >= ADAPT.strongHere && ps.confused + ps.tooAdvanced === 0) {
     recipe.push("The learner has high mastery in this subject — skip the basics, use precise terminology, and move at a faster, denser pace than you would by default.");
   }
+  // Confidence-vs-reality: verify before accepting "got it" on gapped concepts.
+  const gapped = (project?.mastery?.concepts || []).filter((concept) => (concept.selfReportGap || 0) >= 1).slice(0, 3);
+  if (gapped.length) {
+    recipe.push(`CALIBRATION: the learner's "got it" has run ahead of actual recall on ${gapped.map((c) => c.label).join(", ")}. When these come up, verify with one quick check question before building on them — never mention this gap to the learner.`);
+  }
+  // Session mood: recency-based, so yesterday's frustration doesn't haunt today.
+  const now = Date.now();
+  if (allowed("gentle") && p.traits.lastFrustrationAt && now - p.traits.lastFrustrationAt < 30 * 60_000) {
+    recipe.push("The learner sounded frustrated moments ago. Proactively soften the pace: give the smallest useful step first and one brief reassuring line — before they have to say they're stuck.");
+  }
+  if (allowed("cram") && p.traits.lastCramAt && now - p.traits.lastCramAt < 48 * 3_600_000) {
+    recipe.push("DEADLINE MODE: the learner is under time pressure. Tight, exam-shaped answers only — the must-know core, one worked example, one likely exam trap. No enrichment tangents.");
+  }
 
   if (p.explanationDepth === "simple") recipe.push("Use simple depth: tiny steps, low jargon, one concrete analogy.");
   if (p.explanationDepth === "expert") recipe.push("Use expert depth: precise terminology, edge cases, and tradeoffs.");
@@ -409,7 +422,7 @@ export function buildTeachingRecipe(profile, project, mode) {
   if (p.traits.frustrationPhrases > 0 || p.traits.confusionPhrases > 1) recipe.push("Reduce cognitive load and avoid long theory blocks.");
   if (project?.mastery?.concepts?.some((concept) => concept.status === "weak")) recipe.push("Reinforce weak concepts before introducing new ones.");
   if (!recipe.length) recipe.push("Use a short explanation, one example, and one check question.");
-  return recipe.slice(0, 8);
+  return recipe.slice(0, 9);
 }
 
 // The one-line "Peer just adapted to you" moments. Each fires ONCE, exactly
@@ -615,6 +628,51 @@ export function updateMasteryFromFeedback(mastery, feedback, activeText = "", do
   }
   next.updatedAt = Date.now();
   return next;
+}
+
+// Confidence-vs-reality calibration: a failed flashcard review ("again") on
+// a concept the learner reported strong means their self-assessment runs
+// ahead of recall. Track the gap per concept — the tutor verifies a bit more
+// before accepting mastery there, without ever lecturing about it.
+export function recordReviewMiss(mastery, cardText = "") {
+  const next = normalizeMastery(mastery);
+  const haystack = String(cardText).toLowerCase();
+  // Match the card against concepts we ALREADY track (reliable substring
+  // check) rather than re-extracting concepts from quiz phrasing.
+  for (const existing of next.concepts) {
+    if ((existing.confidence || 0) <= 0.55) continue; // struggling there is expected, not a gap
+    if (!existing.label || !haystack.includes(String(existing.label).toLowerCase())) continue;
+    existing.selfReportGap = (existing.selfReportGap || 0) + 1;
+    existing.confidence = clamp(existing.confidence - 0.12, 0, 1);
+    existing.status = "review";
+    existing.evidence = "Missed a flashcard on this after reporting it understood";
+    existing.updatedAt = Date.now();
+    existing.history = [...(existing.history || []), { at: Date.now(), confidence: existing.confidence, status: existing.status }].slice(-12);
+  }
+  next.updatedAt = Date.now();
+  return next;
+}
+
+// Recurring trouble to aim practice at: repeated misconceptions and
+// concepts whose self-reported confidence outran recall. Returns a prompt
+// fragment or "" — richer than "more calculus problems".
+export function practiceFocus(mastery) {
+  const m = normalizeMastery(mastery);
+  const parts = [];
+  const seen = new Map();
+  for (const item of m.misconceptions) {
+    seen.set(item.concept, (seen.get(item.concept) || 0) + 1);
+  }
+  const recurring = [...seen.entries()].filter(([, count]) => count >= 2).map(([concept]) => concept);
+  for (const concept of recurring.slice(0, 2)) {
+    const latest = m.misconceptions.find((item) => item.concept === concept);
+    parts.push(`the learner has repeatedly believed "${latest.belief}" about ${concept} — include at least one question designed to catch exactly that mistake`);
+  }
+  const gapped = m.concepts.filter((concept) => (concept.selfReportGap || 0) >= 1).slice(0, 2);
+  for (const concept of gapped) {
+    parts.push(`recall on "${concept.label}" has lagged their confidence — probe it from an angle they haven't seen`);
+  }
+  return parts.length ? ` Target recurring trouble spots: ${parts.join("; ")}.` : "";
 }
 
 export function addReflection(mastery, summary) {

@@ -68,6 +68,8 @@ import {
   isSessionOpening,
   makeMastery,
   markAdaptationNoticeShown,
+  practiceFocus,
+  recordReviewMiss,
   recordStudyActivity,
   setDnaOverride,
   setExplanationDepth,
@@ -989,9 +991,10 @@ export default function App() {
     const project = state.projects.find((item) => item.id === opts.projectId) || activeProject;
     const domain = domainForProject(project);
     const grounding = opts.context ? `\n\nGround the questions in this material:\n${String(opts.context).slice(0, 1500)}` : "";
+    const focus = practiceFocus(project?.mastery);
     setView("chat");
     sendMessage(
-      `Create a focused ${n}-question practice set on "${t}". Ask one question at a time, wait for my answer, then give brief feedback before moving on. Shape the questions for ${domain.label}: use ${domain.practice}. Start with question 1 now.${grounding}`,
+      `Create a focused ${n}-question practice set on "${t}". Ask one question at a time, wait for my answer, then give brief feedback before moving on. Shape the questions for ${domain.label}: use ${domain.practice}.${focus} Start with question 1 now.${grounding}`,
       { mode: "quiz" },
     );
   }
@@ -1544,15 +1547,30 @@ export default function App() {
 
   // Spaced repetition — grade a card ("again" | "good") and reschedule it.
   function gradeFlashcard(deckId, cardIndex, grade) {
-    updateState((current) => ({
-      ...current,
-      flashcards: current.flashcards.map((deck) =>
-        deck.id !== deckId ? deck : {
-          ...deck,
-          cards: deck.cards.map((card, i) => (i === cardIndex ? gradeCard(card, grade) : card)),
-        }
-      ),
-    }));
+    updateState((current) => {
+      const deck = current.flashcards.find((item) => item.id === deckId);
+      const card = deck?.cards[cardIndex];
+      // "again" on a concept the learner reported strong = a confidence/
+      // reality gap — record it on the deck's project so the tutor verifies
+      // a bit more before accepting mastery there.
+      const projects = grade === "again" && card && deck?.projectId
+        ? current.projects.map((project) => (
+            project.id === deck.projectId
+              ? { ...project, mastery: recordReviewMiss(project.mastery, `${card.question} ${card.answer}`) }
+              : project
+          ))
+        : current.projects;
+      return {
+        ...current,
+        projects,
+        flashcards: current.flashcards.map((item) =>
+          item.id !== deckId ? item : {
+            ...item,
+            cards: item.cards.map((c, i) => (i === cardIndex ? gradeCard(c, grade) : c)),
+          }
+        ),
+      };
+    });
   }
 
   async function makeFlashcards(message) {
