@@ -1,13 +1,37 @@
 // The "learning brain" subsystem: an interactive 3D concept map (Three.js)
-// plus the graph-building logic that turns the learner's projects, concepts,
-// notes, and chats into nodes and links. Extracted wholesale from App.jsx —
-// it is self-contained and its only public entry point is LearningBrainPanel.
+// with a fully equivalent accessible outline view. Graph-building logic lives
+// in brainGraph.js (pure, unit-tested); this file renders it.
+//
+// Views:
+//  • Map — additive-glow 3D graph. Shape-coded sprites (ring = hub, circle =
+//    concept, diamond = weak spot, square = source) so type never relies on
+//    color alone. Mouse, trackpad, and touch (drag-orbit, pinch-zoom, tap).
+//  • Outline — keyboard/screen-reader equivalent tree of the same graph:
+//    domains → subjects → concepts → sources, same selection + actions.
+// If WebGL is unavailable the outline takes over automatically.
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { Brain, GitBranch, RotateCcw, Search } from "lucide-react";
-import { DOMAINS, domainForProject } from "./subjects.js";
+import { Brain, GitBranch, List, Minus, Orbit, RotateCcw, Search, TrendingDown, TrendingUp } from "lucide-react";
+import {
+  brainLinkRest,
+  brainNodeRadius,
+  brainPalette,
+  buildBrainOutline,
+  buildLearningBrainGraph,
+  nodeTrajectory,
+  nodeTypeLabel,
+  relativeDate,
+  shapeForType,
+  shortLabel,
+} from "./brainGraph.js";
 
-export function LearningBrainPanel({ state, activeProject, setView, updateState, setManagedProjectId, setSelectedDocId, onPractice }) {
+const TRAJECTORY_META = {
+  improving: { icon: TrendingUp, label: "Improving", className: "traj-improving" },
+  slipping: { icon: TrendingDown, label: "Slipping — revisit soon", className: "traj-slipping" },
+  steady: { icon: Minus, label: "Steady", className: "traj-steady" },
+};
+
+export function LearningBrainPanel({ state, activeProject, setView, updateState, setManagedProjectId, setSelectedDocId, onPractice, onExplain }) {
   const firstProjectId = state.projects[0]?.id || "";
   const [scope, setScope] = useState("global");
   const [projectId, setProjectId] = useState(activeProject?.id || firstProjectId);
@@ -24,6 +48,17 @@ export function LearningBrainPanel({ state, activeProject, setView, updateState,
     quizzes: true,
   });
   const [selectedNodeId, setSelectedNodeId] = useState("");
+  const [webglFailed, setWebglFailed] = useState(false);
+  const [viewMode, setViewMode] = useState(() => {
+    try { return localStorage.getItem("peer-brain-view") === "list" ? "list" : "map"; }
+    catch { return "map"; }
+  });
+  const effectiveMode = webglFailed ? "list" : viewMode;
+
+  function chooseViewMode(mode) {
+    setViewMode(mode);
+    try { localStorage.setItem("peer-brain-view", mode); } catch { /* private mode */ }
+  }
 
   useEffect(() => {
     if (!projectId && firstProjectId) setProjectId(firstProjectId);
@@ -54,6 +89,17 @@ export function LearningBrainPanel({ state, activeProject, setView, updateState,
       setView("profile");
       return;
     }
+    if (node.type === "domain") {
+      // focus the cluster's first subject
+      const member = graph.nodes.find((item) => item.type === "project" && item.domainId === node.domainId);
+      if (member) {
+        setScope("project");
+        setProjectId(member.sourceId || member.projectId);
+        setSelectedNodeId("");
+        setCameraReset((value) => value + 1);
+      }
+      return;
+    }
     if (node.type === "project") {
       setScope("project");
       setProjectId(node.sourceId || node.projectId);
@@ -65,7 +111,7 @@ export function LearningBrainPanel({ state, activeProject, setView, updateState,
       updateState((current) => ({ ...current, activeId: node.sourceId }));
       setView("chat");
     }
-    if (node.type === "file") {
+    if (node.type === "file" || node.type === "code") {
       setManagedProjectId(node.projectId);
       setSelectedDocId(node.sourceId);
     }
@@ -73,16 +119,20 @@ export function LearningBrainPanel({ state, activeProject, setView, updateState,
     if (node.type === "quiz") setView("flashcards");
   }
 
+  const isConceptNode = selectedNode && (selectedNode.type === "concept" || selectedNode.type === "weak");
+  const trajectory = isConceptNode ? nodeTrajectory(selectedNode) : null;
+  const trajectoryMeta = trajectory && TRAJECTORY_META[trajectory];
+
   return (
     <section className="learning-brain-panel">
       <div className="brain-heading">
         <div>
           <span className="brain-kicker"><GitBranch size={14} /> Learning graph</span>
           <h1>Your Brain</h1>
-          <p>A living map of everything you're learning · drag to orbit, click a node</p>
+          <p>A living map of everything you're learning · {effectiveMode === "map" ? "drag to orbit, pinch or scroll to zoom, tap a node" : "browse the outline, every node is a button"}</p>
         </div>
         <div className="brain-summary">
-          <span><strong>{graph.summary.projects}</strong> projects</span>
+          <span><strong>{graph.summary.projects}</strong> subjects</span>
           <span><strong>{graph.summary.concepts}</strong> concepts</span>
           <span><strong>{graph.summary.weak}</strong> weak spots</span>
           <span><strong>{graph.summary.sources}</strong> sources</span>
@@ -94,12 +144,12 @@ export function LearningBrainPanel({ state, activeProject, setView, updateState,
           <label>
             Scope
             <select value={scope} onChange={(event) => setScope(event.target.value)}>
-              <option value="global">All projects</option>
-              <option value="project">Single project</option>
+              <option value="global">All subjects</option>
+              <option value="project">Single subject</option>
             </select>
           </label>
           <label>
-            Project
+            Subject
             <select
               value={projectId}
               disabled={scope === "global"}
@@ -114,14 +164,34 @@ export function LearningBrainPanel({ state, activeProject, setView, updateState,
           <label className="brain-search">
             Search brain
             <span>
-              <Search size={15} />
-              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Concept, file, chat..." />
+              <Search size={15} aria-hidden="true" />
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Concept, file, chat..." aria-label="Search the brain" />
             </span>
           </label>
         </div>
         <div className="brain-filter-row">
+          <div className="brain-view-toggle" role="group" aria-label="Brain view mode">
+            <button
+              type="button"
+              className={effectiveMode === "map" ? "active" : ""}
+              aria-pressed={effectiveMode === "map"}
+              disabled={webglFailed}
+              title={webglFailed ? "3D is unavailable on this device" : "3D map view"}
+              onClick={() => chooseViewMode("map")}
+            >
+              <Orbit size={14} aria-hidden="true" /> Map
+            </button>
+            <button
+              type="button"
+              className={effectiveMode === "list" ? "active" : ""}
+              aria-pressed={effectiveMode === "list"}
+              onClick={() => chooseViewMode("list")}
+            >
+              <List size={14} aria-hidden="true" /> Outline
+            </button>
+          </div>
           {[
-            ["projects", "Projects"],
+            ["projects", "Subjects"],
             ["concepts", "Concepts"],
             ["weak", "Weak spots"],
             ["files", "Files"],
@@ -130,37 +200,52 @@ export function LearningBrainPanel({ state, activeProject, setView, updateState,
             ["chats", "Chats"],
             ["quizzes", "Quizzes"],
           ].map(([key, label]) => (
-            <button key={key} className={filters[key] ? "active" : ""} onClick={() => toggleFilter(key)}>
+            <button key={key} className={filters[key] ? "active" : ""} aria-pressed={filters[key]} onClick={() => toggleFilter(key)}>
               {label}
             </button>
           ))}
-          <button className="brain-reset-view" onClick={() => setCameraReset((value) => value + 1)}>
-            <RotateCcw size={14} /> Reset
-          </button>
+          {effectiveMode === "map" && (
+            <button className="brain-reset-view" onClick={() => setCameraReset((value) => value + 1)}>
+              <RotateCcw size={14} aria-hidden="true" /> Reset
+            </button>
+          )}
         </div>
       </div>
 
       <div className="brain-workspace">
-        <div className="brain-map-card">
-          <div className="brain-map-legend" aria-hidden="true">
-            <span><i className="brain-dot project" /> Project</span>
-            <span><i className="brain-dot concept" /> Concept</span>
-            <span><i className="brain-dot weak" /> Weak</span>
-            <span><i className="brain-dot file" /> File</span>
-            <span><i className="brain-dot code" /> Code</span>
-            <span><i className="brain-dot note" /> Note</span>
-            <span><i className="brain-dot chat" /> Chat</span>
-            <span><i className="brain-dot quiz" /> Quiz</span>
-          </div>
-          <ThreeBrainMap
-            graph={graph}
-            selectedNodeId={selectedNode?.id || ""}
-            setSelectedNodeId={setSelectedNodeId}
-            resetSignal={cameraReset}
-          />
+        <div className={`brain-map-card ${effectiveMode === "list" ? "outline-mode" : ""}`}>
+          {effectiveMode === "map" ? (
+            <>
+              <div className="brain-map-legend" aria-hidden="true">
+                <span><i className="brain-dot domain" /> Domain</span>
+                <span><i className="brain-dot project" /> Subject</span>
+                <span><i className="brain-dot concept" /> Concept</span>
+                <span><i className="brain-dot weak" /> Weak</span>
+                <span><i className="brain-dot file" /> File</span>
+                <span><i className="brain-dot code" /> Code</span>
+                <span><i className="brain-dot note" /> Note</span>
+                <span><i className="brain-dot chat" /> Chat</span>
+                <span><i className="brain-dot quiz" /> Quiz</span>
+              </div>
+              <ThreeBrainMap
+                graph={graph}
+                selectedNodeId={selectedNode?.id || ""}
+                setSelectedNodeId={setSelectedNodeId}
+                resetSignal={cameraReset}
+                onContextFail={() => setWebglFailed(true)}
+              />
+            </>
+          ) : (
+            <BrainOutline
+              graph={graph}
+              selectedNodeId={selectedNode?.id || ""}
+              setSelectedNodeId={setSelectedNodeId}
+              webglFailed={webglFailed}
+            />
+          )}
         </div>
 
-        <aside className="brain-detail">
+        <aside className="brain-detail" aria-label="Selected node details">
           {selectedNode ? (
             <>
               <span className={`brain-detail-type ${selectedNode.type}`}>{nodeTypeLabel(selectedNode)}</span>
@@ -171,6 +256,13 @@ export function LearningBrainPanel({ state, activeProject, setView, updateState,
                 {selectedNode.confidence != null && <span><strong>{Math.round(selectedNode.confidence * 100)}%</strong>Mastery</span>}
                 {selectedNode.updatedAt && <span><strong>{relativeDate(selectedNode.updatedAt)}</strong>Updated</span>}
               </div>
+              {trajectoryMeta && (
+                <div className={`brain-trajectory ${trajectoryMeta.className}`}>
+                  <trajectoryMeta.icon size={15} aria-hidden="true" />
+                  <span>{trajectoryMeta.label}</span>
+                  <MasterySparkline history={selectedNode.history} />
+                </div>
+              )}
               {selectedNode.evidence && (
                 <div className="brain-evidence">
                   <strong>Why Peer linked this</strong>
@@ -182,23 +274,28 @@ export function LearningBrainPanel({ state, activeProject, setView, updateState,
                   <strong>Connected to</strong>
                   {selectedNode.related.slice(0, 6).map((item) => (
                     <button key={item.id} onClick={() => setSelectedNodeId(item.id)}>
-                      <span className={`brain-dot ${item.type}`} />
+                      <span className={`brain-dot ${item.type}`} aria-hidden="true" />
                       {item.label}
                     </button>
                   ))}
                 </div>
               )}
-              {(selectedNode.type === "concept" || selectedNode.type === "weak") && onPractice && (
+              {isConceptNode && onPractice && (
                 <button className="brain-open-btn" onClick={() => onPractice(selectedNode.label, { context: selectedNode.evidence, projectId: selectedNode.projectId })}>
                   Practice this
+                </button>
+              )}
+              {isConceptNode && onExplain && (
+                <button className="brain-open-btn brain-open-secondary" onClick={() => onExplain(selectedNode.label, { context: selectedNode.evidence, projectId: selectedNode.projectId })}>
+                  Explain this to me
                 </button>
               )}
               <button className="brain-open-btn brain-open-secondary" onClick={() => openNode(selectedNode)}>
                 {selectedNode.type === "brain"
                   ? "Open profile"
-                  : selectedNode.type === "project"
-                    ? "Focus project"
-                    : selectedNode.type === "concept" || selectedNode.type === "weak"
+                  : selectedNode.type === "domain" || selectedNode.type === "project"
+                    ? "Focus this"
+                    : isConceptNode
                       ? "Inspect connections"
                       : "Open source"}
               </button>
@@ -207,7 +304,7 @@ export function LearningBrainPanel({ state, activeProject, setView, updateState,
             <div className="empty-state compact">
               <Brain size={28} />
               <strong>No brain nodes yet</strong>
-              <span>Start a chat or drop materials into a project to grow the graph.</span>
+              <span>Start a chat or drop materials into a subject to grow the graph.</span>
             </div>
           )}
         </aside>
@@ -216,41 +313,93 @@ export function LearningBrainPanel({ state, activeProject, setView, updateState,
   );
 }
 
-// Design palette (Peer.dc.html): project=violet, concept=cyan, weak=amber,
-// with complementary hues for the extra node types the real feature keeps.
-const BRAIN_PALETTE = {
-  brain: { core: 0xc9c2fb, glow: 0x8b5cf6 },
-  project: { core: 0xb9a8ff, glow: 0x8b5cf6 },
-  concept: { core: 0x7fe9ff, glow: 0x22d3ee },
-  weak: { core: 0xffd08a, glow: 0xf59e0b },
-  file: { core: 0xa5b4fc, glow: 0x818cf8 },
-  note: { core: 0xffcd86, glow: 0xfb923c },
-  chat: { core: 0x8ef0c9, glow: 0x34d399 },
-  quiz: { core: 0xf3b6f7, glow: 0xe879f9 },
-  code: { core: 0xeaffb0, glow: 0x84cc16 },
-};
-
-function brainPalette(type) {
-  return BRAIN_PALETTE[type] || BRAIN_PALETTE.concept;
+// Tiny mastery-over-time line for the detail panel.
+function MasterySparkline({ history }) {
+  const points = Array.isArray(history) ? history : [];
+  if (points.length < 2) return null;
+  const width = 96;
+  const height = 26;
+  const path = points
+    .map((entry, index) => {
+      const x = (index / (points.length - 1)) * (width - 4) + 2;
+      const y = height - 3 - Math.max(0, Math.min(1, entry.confidence || 0)) * (height - 6);
+      return `${Math.round(x * 10) / 10},${Math.round(y * 10) / 10}`;
+    })
+    .join(" ");
+  const summary = points.map((entry) => `${Math.round((entry.confidence || 0) * 100)}%`).join(", ");
+  return (
+    <svg
+      className="brain-sparkline"
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      role="img"
+      aria-label={`Mastery over time: ${summary}`}
+    >
+      <polyline points={path} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
-function brainNodeRadius(node) {
-  if (node.type === "brain") return 1.3;
-  if (node.type === "project") return 0.78;
-  if (node.type === "code") return 0.5;
-  const confidence = Number(node.confidence ?? 0.4);
-  const base = node.type === "weak" ? 0.4 : 0.32;
-  return base + Math.max(0, Math.min(1, confidence)) * 0.36;
+// ── Accessible outline view: the same graph as a keyboard-navigable tree ──
+function BrainOutline({ graph, selectedNodeId, setSelectedNodeId, webglFailed }) {
+  const outline = useMemo(() => buildBrainOutline(graph), [graph]);
+
+  function row(node, extraClass = "") {
+    const trajectory = (node.type === "concept" || node.type === "weak") ? nodeTrajectory(node) : null;
+    const meta = [
+      nodeTypeLabel(node),
+      node.confidence != null ? `${Math.round(node.confidence * 100)}% mastery` : null,
+      trajectory && trajectory !== "new" ? trajectory : null,
+    ].filter(Boolean).join(" · ");
+    return (
+      <button
+        type="button"
+        className={`outline-row ${node.type} ${extraClass} ${selectedNodeId === node.id ? "active" : ""}`}
+        aria-current={selectedNodeId === node.id ? "true" : undefined}
+        onClick={() => setSelectedNodeId(node.id)}
+      >
+        <i className={`brain-dot ${node.type}`} aria-hidden="true" />
+        <span className="outline-label">{node.label}</span>
+        <span className="outline-meta">{meta}</span>
+      </button>
+    );
+  }
+
+  return (
+    <nav className="brain-outline" aria-label="Learning brain outline">
+      {webglFailed && (
+        <p className="brain-outline-notice" role="status">
+          3D isn't available on this device, so here's the same brain as an outline.
+        </p>
+      )}
+      {outline.root && row(outline.root, "outline-root")}
+      <ul>
+        {outline.groups.map((group, groupIndex) => (
+          <li key={group.domain?.id || `ungrouped-${groupIndex}`}>
+            {group.domain && row(group.domain)}
+            <ul>
+              {group.projects.map(({ node, concepts, sources }) => (
+                <li key={node.id}>
+                  {node.id !== outline.root?.id && row(node)}
+                  {(concepts.length > 0 || sources.length > 0) && (
+                    <ul>
+                      {concepts.map((concept) => <li key={concept.id}>{row(concept)}</li>)}
+                      {sources.map((source) => <li key={source.id}>{row(source)}</li>)}
+                    </ul>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+        {outline.orphans.map((node) => <li key={node.id}>{row(node)}</li>)}
+      </ul>
+    </nav>
+  );
 }
 
-function brainLinkRest(link, nodeMap) {
-  if (link.kind === "related") return 4.6;
-  const source = nodeMap.get(link.source);
-  if (source?.type === "brain") return 7;
-  if (source?.type === "project") return 5.2;
-  return 6;
-}
-
+// ── Sprite textures: soft glow halo + shape-coded cores ──
 function makeGlowTexture() {
   const size = 128;
   const canvas = document.createElement("canvas");
@@ -269,34 +418,107 @@ function makeGlowTexture() {
   return texture;
 }
 
-function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }) {
+function makeShapeTexture(shape) {
+  const size = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  const c = size / 2;
+
+  if (shape === "circle") {
+    const gradient = ctx.createRadialGradient(c, c, 0, c, c, c);
+    gradient.addColorStop(0, "rgba(255,255,255,1)");
+    gradient.addColorStop(0.2, "rgba(255,255,255,0.85)");
+    gradient.addColorStop(0.5, "rgba(255,255,255,0.28)");
+    gradient.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+  } else if (shape === "ring") {
+    const gradient = ctx.createRadialGradient(c, c, 0, c, c, c);
+    gradient.addColorStop(0, "rgba(255,255,255,0.30)");
+    gradient.addColorStop(0.30, "rgba(255,255,255,0.10)");
+    gradient.addColorStop(0.46, "rgba(255,255,255,0.95)");
+    gradient.addColorStop(0.58, "rgba(255,255,255,0.95)");
+    gradient.addColorStop(0.74, "rgba(255,255,255,0.14)");
+    gradient.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+  } else {
+    // diamond / square: soft-glow filled shape
+    ctx.shadowColor = "rgba(255,255,255,0.9)";
+    ctx.shadowBlur = 26;
+    ctx.fillStyle = "rgba(255,255,255,0.95)";
+    const half = size * 0.21;
+    ctx.save();
+    ctx.translate(c, c);
+    if (shape === "diamond") ctx.rotate(Math.PI / 4);
+    ctx.beginPath();
+    const r = 6;
+    ctx.moveTo(-half + r, -half);
+    ctx.lineTo(half - r, -half);
+    ctx.quadraticCurveTo(half, -half, half, -half + r);
+    ctx.lineTo(half, half - r);
+    ctx.quadraticCurveTo(half, half, half - r, half);
+    ctx.lineTo(-half + r, half);
+    ctx.quadraticCurveTo(-half, half, -half, half - r);
+    ctx.lineTo(-half, -half + r);
+    ctx.quadraticCurveTo(-half, -half, -half, -half);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fill(); // double fill strengthens the soft core
+    ctx.restore();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal, onContextFail }) {
   const mountRef = useRef(null);
   const engineRef = useRef(null);
   const positionsRef = useRef(new Map());
   const setSelectedRef = useRef(setSelectedNodeId);
+  const onContextFailRef = useRef(onContextFail);
   const [labels, setLabels] = useState([]);
 
   useEffect(() => {
     setSelectedRef.current = setSelectedNodeId;
-  }, [setSelectedNodeId]);
+    onContextFailRef.current = onContextFail;
+  }, [setSelectedNodeId, onContextFail]);
 
-  // Mount-once engine: renderer, scene, camera, lights, simulation, interaction.
+  // Mount-once engine: renderer, scene, camera, simulation, interaction.
   useEffect(() => {
     const mount = mountRef.current;
     if (!mount) return undefined;
 
+    let renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+    } catch {
+      // No WebGL on this device/browser — the outline view takes over.
+      onContextFailRef.current?.();
+      return undefined;
+    }
+
     const scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x07070c, 0.014);
     const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 600);
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
     renderer.setClearColor(0x000000, 0);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.domElement.style.touchAction = "none"; // we own pan/pinch gestures
     mount.appendChild(renderer.domElement);
 
-    // Nodes are pure additive glow+core sprites (design look) — no lighting needed.
-    const lightenColor = (hex, amt) => { const c = new THREE.Color(hex); c.r += (1 - c.r) * amt; c.g += (1 - c.g) * amt; c.b += (1 - c.b) * amt; return c; };
+    const lightenColor = (hex, amt) => { const color = new THREE.Color(hex); color.r += (1 - color.r) * amt; color.g += (1 - color.g) * amt; color.b += (1 - color.b) * amt; return color; };
     const glowTexture = makeGlowTexture();
+    const shapeTextures = {
+      circle: makeShapeTexture("circle"),
+      ring: makeShapeTexture("ring"),
+      diamond: makeShapeTexture("diamond"),
+      square: makeShapeTexture("square"),
+    };
 
     // Soft focal haze behind the graph.
     const hazeMaterial = new THREE.SpriteMaterial({ map: glowTexture, color: 0x1b1640, transparent: true, opacity: 0.34, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
@@ -305,7 +527,7 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
     haze.position.set(0, 0, -8);
     scene.add(haze);
 
-    // Star field (design aesthetic) — a sphere of faint points, slow rotation.
+    // Star field — a sphere of faint points, slow rotation.
     const starCount = 1100;
     const starPos = new Float32Array(starCount * 3);
     for (let s = 0; s < starCount; s += 1) {
@@ -345,6 +567,7 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
       glows: [],
       glowMaterials: [],
       baseRadius: [],
+      linkBase: [],
       linePositions: null,
       lineColors: null,
       alpha: 1,
@@ -367,6 +590,9 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
     const raycaster = new THREE.Raycaster();
     const ndc = new THREE.Vector2();
     const pointerState = { down: false, mode: "idle", x: 0, y: 0 };
+    const activePointers = new Map(); // pointerId -> {x, y} for pinch
+    let pinchStartDistance = 0;
+    let pinchStartRadius = 26;
     let frame = 0;
     let animationId = 0;
 
@@ -385,7 +611,7 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
       const saved = positionsRef.current.get(node.id);
       if (saved) return new THREE.Vector3(saved.x, saved.y, saved.z);
       if (idx === 0) return new THREE.Vector3(0, 0, 0);
-      const ring = node.type === "project" ? 6 : 9 + Math.random() * 4;
+      const ring = node.type === "domain" ? 4.5 : node.type === "project" ? 6 : 9 + Math.random() * 4;
       const phi = Math.acos(2 * Math.random() - 1);
       const theta = Math.random() * Math.PI * 2;
       return new THREE.Vector3(
@@ -418,10 +644,10 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
 
       for (let i = 0; i < nodes.length; i += 1) {
         const node = nodes[i];
-        const palette = brainPalette(node.type);
+        const palette = brainPalette(node);
         const radius = state.baseRadius[i];
-        // bright additive core sprite (replaces the old lit sphere)
-        const material = new THREE.SpriteMaterial({ map: glowTexture, color: lightenColor(palette.core, 0.6), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0.95 });
+        // bright additive shape-coded core sprite
+        const material = new THREE.SpriteMaterial({ map: shapeTextures[shapeForType(node.type)], color: lightenColor(palette.core, 0.6), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0.95 });
         const mesh = new THREE.Sprite(material);
         mesh.scale.setScalar(radius);
         mesh.position.copy(state.pos[i]);
@@ -433,7 +659,7 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
 
         const glowMaterial = new THREE.SpriteMaterial({ map: glowTexture, color: palette.glow, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false });
         const glow = new THREE.Sprite(glowMaterial);
-        const glowScale = radius * (node.type === "brain" ? 4 : node.type === "project" ? 3.8 : 3.4);
+        const glowScale = radius * (node.type === "brain" ? 4 : node.type === "domain" ? 3.9 : node.type === "project" ? 3.8 : 3.4);
         glow.scale.setScalar(glowScale);
         glow.position.copy(state.pos[i]);
         glow.renderOrder = 1;
@@ -441,6 +667,15 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
         state.glows.push(glow);
         state.glowMaterials.push(glowMaterial);
       }
+
+      // Per-link base tint from the parent node's palette, so each cluster's
+      // edges carry its color (subtly).
+      state.linkBase = state.links.map((link) => {
+        const source = state.nodeMap.get(link.source);
+        const palette = brainPalette(source);
+        const color = new THREE.Color(palette.glow);
+        return { r: color.r * 0.34, g: color.g * 0.34, b: color.b * 0.34 };
+      });
 
       const linkCount = state.links.length;
       state.linePositions = new Float32Array(linkCount * 6);
@@ -457,8 +692,8 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
      }
     }
 
-    // Hovering a node focuses the graph on its neighbourhood. Selection (from the
-    // side panel) only emphasises a single node and never dims the rest.
+    // Hovering a node focuses the graph on its neighbourhood. Selection (from
+    // the side panel) only emphasises a single node and never dims the rest.
     function hoverSet() {
       const focus = state.hovered;
       if (!focus || !state.adjacency.has(focus)) return null;
@@ -485,7 +720,8 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
         } else if (related) {
           r = 0.15; g = 0.44; b = 0.38;
         } else {
-          r = 0.17; g = 0.28; b = 0.4;
+          const base = state.linkBase[i] || { r: 0.17, g: 0.28, b: 0.4 };
+          r = base.r; g = base.g; b = base.b;
         }
         const o = i * 6;
         colors[o] = r; colors[o + 1] = g; colors[o + 2] = b;
@@ -501,7 +737,7 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
         const inSet = set ? set.has(node.id) : true;
         const isHot = node.id === state.hovered || node.id === state.selected;
         const targetOpacity = set ? (inSet ? 1 : 0.14) : 1;
-        const baseEmissive = node.type === "brain" ? 0.5 : node.type === "project" ? 0.46 : 0.4;
+        const baseEmissive = node.type === "brain" ? 0.5 : node.type === "domain" ? 0.48 : node.type === "project" ? 0.46 : 0.4;
         const targetEmissive = isHot ? 0.95 : inSet ? baseEmissive : baseEmissive * 0.45;
         const targetScale = (isHot ? 1.4 : 1) * state.baseRadius[i];
         const material = state.materials[i];
@@ -510,7 +746,7 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
           material.opacity = targetOpacity * 0.95;
           state.meshes[i].scale.setScalar(targetScale);
         }
-        material.userData = { targetOpacity: targetOpacity * 0.95, targetScale };
+        material.userData = { targetOpacity: targetOpacity * 0.95, targetScale, targetEmissive };
         glowMaterial.userData = { targetOpacity: set ? (inSet ? 0.6 : 0.06) : 0.6 };
       }
     }
@@ -572,19 +808,17 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
       const height = renderer.domElement.clientHeight;
       const set = hoverSet();
       const zoomedIn = cam.radius < 22;
-      const knowledgeTypes = new Set(["brain", "project", "concept", "weak"]);
+      const knowledgeTypes = new Set(["brain", "domain", "project", "concept", "weak"]);
       const next = [];
       for (let i = 0; i < state.nodes.length; i += 1) {
         const node = state.nodes[i];
         projV.copy(state.pos[i]).project(camera);
         if (projV.z >= 1) continue; // behind the camera
-        // Always label the meaningful "knowledge" nodes; reveal source nodes on
-        // hover, on selection, or when zoomed in close.
         let show = knowledgeTypes.has(node.type) || zoomedIn;
-        if (set) show = set.has(node.id) || knowledgeTypes.has(node.type); // hover: neighbourhood + concept map
+        if (set) show = set.has(node.id) || knowledgeTypes.has(node.type);
         if (node.id === state.selected || node.id === state.hovered) show = true;
         if (!show) continue;
-        const strong = node.id === state.hovered || node.id === state.selected || node.type === "brain";
+        const strong = node.id === state.hovered || node.id === state.selected || node.type === "brain" || node.type === "domain";
         next.push({
           id: node.id,
           label: node.label,
@@ -605,8 +839,8 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
       animationId = requestAnimationFrame(tick);
       frame += 1;
       const dt = 0.85;
-      // Decorative motion (star drift, breathing haze) pauses under
-      // prefers-reduced-motion; the graph itself stays interactive.
+      // Decorative motion pauses under prefers-reduced-motion; the graph
+      // stays interactive.
       if (!reduceMotion) {
         hazeMaterial.opacity = 0.26 + Math.sin(frame * 0.018) * 0.06;
         stars.rotation.y = frame * 0.0004;
@@ -705,7 +939,22 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
       return hit ? hit.object : null;
     }
 
+    function pinchDistance() {
+      const [a, b] = [...activePointers.values()];
+      return Math.hypot(a.x - b.x, a.y - b.y) || 1;
+    }
+
     function onPointerDown(event) {
+      activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (activePointers.size === 2) {
+        // second finger: switch from orbit/drag to pinch-zoom
+        pointerState.mode = "pinch";
+        pointerState.down = true;
+        state.pinned = -1;
+        pinchStartDistance = pinchDistance();
+        pinchStartRadius = goal.radius;
+        return;
+      }
       pointerState.down = true;
       pointerState.x = event.clientX;
       pointerState.y = event.clientY;
@@ -723,6 +972,15 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
     }
 
     function onPointerMove(event) {
+      if (activePointers.has(event.pointerId)) {
+        activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      }
+      if (pointerState.mode === "pinch" && activePointers.size >= 2) {
+        autoFit = false;
+        const scale = pinchStartDistance / pinchDistance();
+        goal.radius = Math.max(11, Math.min(64, pinchStartRadius * scale));
+        return;
+      }
       if (!pointerState.down) {
         // Hover detection.
         const mesh = pickMesh(event);
@@ -754,7 +1012,15 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
     }
 
     function onPointerUp(event) {
+      activePointers.delete(event.pointerId);
       renderer.domElement.releasePointerCapture?.(event.pointerId);
+      if (pointerState.mode === "pinch") {
+        if (activePointers.size < 2) {
+          pointerState.mode = "idle";
+          pointerState.down = false;
+        }
+        return;
+      }
       if (pointerState.mode === "node" && !state.dragMoved) {
         const mesh = pickMesh(event);
         if (mesh) setSelectedRef.current(mesh.userData.id);
@@ -802,6 +1068,7 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
     renderer.domElement.addEventListener("pointermove", onPointerMove);
     renderer.domElement.addEventListener("pointerup", onPointerUp);
     renderer.domElement.addEventListener("pointerleave", onPointerUp);
+    renderer.domElement.addEventListener("pointercancel", onPointerUp);
     renderer.domElement.addEventListener("wheel", onWheel, { passive: false });
     tick();
 
@@ -812,6 +1079,7 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
       renderer.domElement.removeEventListener("pointermove", onPointerMove);
       renderer.domElement.removeEventListener("pointerup", onPointerUp);
       renderer.domElement.removeEventListener("pointerleave", onPointerUp);
+      renderer.domElement.removeEventListener("pointercancel", onPointerUp);
       renderer.domElement.removeEventListener("wheel", onWheel);
       disposeGraph();
       lineGeometry.dispose();
@@ -819,6 +1087,7 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
       hazeMaterial.dispose();
       starGeo.dispose(); starMat.dispose();
       glowTexture.dispose();
+      for (const texture of Object.values(shapeTextures)) texture.dispose();
       renderer.dispose();
       renderer.domElement.remove();
       engineRef.current = null;
@@ -846,7 +1115,7 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
         ref={mountRef}
         className="brain-3d-canvas"
         role="img"
-        aria-label={`3D concept map with ${graph.nodes.length} node${graph.nodes.length === 1 ? "" : "s"}. Node details and actions are available in the detail panel beside the map.`}
+        aria-label={`3D concept map with ${graph.nodes.length} node${graph.nodes.length === 1 ? "" : "s"}. The Outline view presents the same map as a navigable list.`}
       />
       <div className="brain-3d-labels" aria-hidden="true">
         {labels.map((label) => (
@@ -855,469 +1124,16 @@ function ThreeBrainMap({ graph, selectedNodeId, setSelectedNodeId, resetSignal }
             className={`brain-node-label ${label.type} ${label.strong ? "strong" : ""} ${label.dim ? "dim" : ""}`}
             style={{ transform: `translate3d(${label.x}px, ${label.y}px, 0) translate(-50%, 14px)` }}
           >
-            <i className="brain-node-dot" />
-            {shortLabel(label.label, label.type === "brain" || label.type === "project" ? 30 : 24)}
+            <i className={`brain-node-dot brain-dot ${label.type}`} />
+            {shortLabel(label.label, label.type === "brain" || label.type === "domain" || label.type === "project" ? 30 : 24)}
           </span>
         ))}
       </div>
       <div className="brain-3d-help">
         <span>Drag to orbit</span>
-        <span>Scroll to zoom</span>
-        <span>Drag a node to pull it</span>
+        <span>Pinch or scroll to zoom</span>
+        <span>Tap a node to inspect</span>
       </div>
     </div>
   );
 }
-
-
-function buildLearningBrainGraph(state, project, filters, options = {}) {
-  const center = { x: 500, y: 320 };
-  const nodes = [];
-  const links = [];
-  const query = normalizeBrainKey(options.query);
-  const scopedProjects = project ? [project] : state.projects;
-  const projectById = new Map(state.projects.map((item) => [item.id, item]));
-  const isGlobal = !project;
-  const rootId = isGlobal ? "brain:global" : `project:${project.id}`;
-
-  const root = {
-    id: rootId,
-    sourceId: project?.id,
-    projectId: project?.id,
-    type: isGlobal ? "brain" : "project",
-    label: isGlobal ? "Peer learning brain" : project.name,
-    symbol: isGlobal ? "P" : "B",
-    description: isGlobal
-      ? "The complete map of your learning system. Every project, chat, file, note, deck, weak spot, and concept can grow from here."
-      : "The center of this project. Every chat, file, note, quiz, and concept in this project grows from here.",
-    status: state.profile.level || "active",
-    confidence: isGlobal ? globalConfidence(state.projects) : projectConfidence(project.mastery),
-    evidence: state.profile.goal ? `Current goal: ${state.profile.goal}` : "Peer builds this map from local learning activity.",
-    updatedAt: Math.max(...state.projects.map((item) => item.mastery?.updatedAt || 0), state.profile.updatedAt || 0),
-    radius: 44,
-    x: center.x,
-    y: center.y,
-    related: [],
-    sourceText: `${state.profile.subject || ""} ${state.profile.goal || ""}`,
-    labelWidth: measureBrainLabel(isGlobal ? "Peer learning brain" : project.name, 160),
-  };
-  nodes.push(root);
-
-  const projectNodes = isGlobal && filters.projects
-    ? state.projects.map((item) => ({
-      id: `project:${item.id}`,
-      sourceId: item.id,
-      projectId: item.id,
-      type: "project",
-      label: item.name,
-      symbol: "P",
-      description: "A project inside your full learning brain. Focus it to inspect its local concepts and sources.",
-      status: `${item.docs?.length || 0} files`,
-      confidence: projectConfidence(item.mastery),
-      evidence: `${state.chats.filter((chat) => chat.projectId === item.id).length} chats, ${state.notes.filter((note) => note.projectId === item.id).length} notes, ${(item.mastery?.concepts || []).length} tracked concepts.`,
-      updatedAt: item.mastery?.updatedAt || item.docs?.at?.(-1)?.addedAt || Date.now(),
-      radius: 34,
-      related: [],
-      sourceText: `${item.name} ${state.profile.subject || ""}`,
-      labelWidth: measureBrainLabel(item.name, 142),
-    }))
-    : [];
-
-  const scopedChats = state.chats.filter((chat) => !project || chat.projectId === project.id).slice().sort(byBrainRecency);
-  const scopedNotes = state.notes.filter((note) => !project || note.projectId === project.id).slice().sort(byBrainRecency);
-  const scopedDecks = state.flashcards.filter((deck) => !project || deck.projectId === project.id).slice().sort(byBrainRecency);
-  const scopedDocs = scopedProjects.flatMap((item) => (item.docs || []).map((doc) => ({ ...doc, projectId: item.id, projectName: item.name }))).sort(byBrainRecency);
-
-  const conceptItems = scopedProjects.flatMap((item) => (item.mastery?.concepts || []).slice().sort(byBrainConcept).slice(0, isGlobal ? 8 : 14).map((concept) => ({
-    ...concept,
-    projectId: item.id,
-    projectName: item.name,
-  })));
-  const weakKeys = new Set(scopedProjects.flatMap((item) => (item.mastery?.misconceptions || []).map((entry) => normalizeBrainKey(entry.concept))));
-  const conceptNodes = conceptItems
-    .filter((concept) => filters.concepts || (filters.weak && isWeakConcept(concept)))
-    .map((concept) => ({
-      id: `concept:${concept.projectId}:${concept.id || concept.key}`,
-      sourceId: concept.id,
-      projectId: concept.projectId,
-      type: isWeakConcept(concept) ? "weak" : "concept",
-      label: concept.label,
-      key: normalizeBrainKey(concept.key || concept.label),
-      symbol: isWeakConcept(concept) ? "!" : "C",
-      description: isWeakConcept(concept)
-        ? `Peer thinks this concept needs reinforcement in ${concept.projectName}.`
-        : `A concept Peer has seen in ${concept.projectName}.`,
-      status: isWeakConcept(concept) ? "weak" : concept.status || "learning",
-      confidence: Number(concept.confidence ?? 0.35),
-      evidence: concept.evidence || `Detected from learning activity in ${concept.projectName}.`,
-      updatedAt: concept.updatedAt || concept.createdAt,
-      radius: radiusFromConfidence(concept.confidence),
-      related: [],
-      sourceText: `${concept.label} ${concept.projectName}`,
-      labelWidth: measureBrainLabel(concept.label),
-    }));
-
-  const misconceptionNodes = filters.weak
-    ? scopedProjects.flatMap((projectItem) => (projectItem.mastery?.misconceptions || []).slice().sort(byBrainRecency).slice(0, isGlobal ? 5 : 8).map((item) => ({
-      id: `misconception:${projectItem.id}:${item.id}`,
-      sourceId: item.id,
-      projectId: projectItem.id,
-      type: "weak",
-      label: item.concept,
-      key: normalizeBrainKey(item.concept),
-      symbol: "!",
-      description: item.correction || `A possible misunderstanding Peer detected in ${projectItem.name}.`,
-      status: "misconception",
-      confidence: 0.18,
-      evidence: item.belief || "Possible misconception detected.",
-      updatedAt: item.createdAt,
-      radius: 24,
-      related: [],
-      sourceText: `${item.concept} ${item.belief} ${item.correction} ${projectItem.name}`,
-      labelWidth: measureBrainLabel(item.concept),
-    })))
-    : [];
-
-  const fileNodes = filters.files
-    ? scopedDocs.filter((doc) => doc.kind !== "code").slice(0, isGlobal ? 18 : 12).map((doc) => ({
-      id: `file:${doc.projectId}:${doc.id}`,
-      sourceId: doc.id,
-      projectId: doc.projectId,
-      type: "file",
-      label: doc.name,
-      symbol: doc.kind === "image" ? "I" : "F",
-      description: doc.kind === "image" ? `Image material attached to ${doc.projectName}.` : `Study material Peer can ground answers in for ${doc.projectName}.`,
-      status: doc.kind || "file",
-      evidence: `${doc.chars || doc.content?.length || 0} extracted character${(doc.chars || doc.content?.length || 0) === 1 ? "" : "s"}.`,
-      updatedAt: doc.createdAt || doc.addedAt,
-      radius: 22,
-      related: [],
-      sourceText: `${doc.name} ${doc.content || ""} ${doc.projectName}`,
-      labelWidth: measureBrainLabel(doc.name),
-    }))
-    : [];
-
-  const codeNodes = filters.code
-    ? scopedDocs.filter((doc) => doc.kind === "code").slice(0, isGlobal ? 16 : 12).map((doc) => ({
-      id: `code:${doc.projectId}:${doc.id}`,
-      sourceId: doc.id,
-      projectId: doc.projectId,
-      type: "code",
-      label: doc.name,
-      symbol: "</>",
-      description: `A code snippet you wrote in the Code lab (${doc.language || "code"}), connected to ${doc.projectName}.`,
-      status: doc.language || "code",
-      evidence: doc.content ? `${(doc.content.match(/\n/g)?.length || 0) + 1} lines of ${doc.language || "code"}.` : "Saved from the Code lab.",
-      updatedAt: doc.createdAt || doc.addedAt,
-      radius: 24,
-      related: [],
-      sourceText: `${doc.name} ${doc.language || ""} ${doc.content || ""} ${doc.projectName}`,
-      labelWidth: measureBrainLabel(doc.name),
-    }))
-    : [];
-
-  const noteNodes = filters.notes
-    ? scopedNotes.slice(0, isGlobal ? 18 : 12).map((note) => ({
-      id: `note:${note.id}`,
-      sourceId: note.id,
-      projectId: note.projectId,
-      type: "note",
-      label: note.title,
-      symbol: "N",
-      description: `A saved explanation or study note connected to ${projectById.get(note.projectId)?.name || "a project"}.`,
-      status: note.category || "note",
-      evidence: note.tags?.length ? `Tags: ${note.tags.join(", ")}` : "Saved from a useful answer.",
-      updatedAt: note.createdAt,
-      radius: 21,
-      related: [],
-      sourceText: `${note.title} ${note.content} ${(note.tags || []).join(" ")} ${projectById.get(note.projectId)?.name || ""}`,
-      labelWidth: measureBrainLabel(note.title),
-    }))
-    : [];
-
-  const chatNodes = filters.chats
-    ? scopedChats.slice(0, isGlobal ? 18 : 12).map((chat) => ({
-      id: `chat:${chat.id}`,
-      sourceId: chat.id,
-      projectId: chat.projectId,
-      type: "chat",
-      label: chat.name,
-      symbol: "Q",
-      description: `A study conversation inside ${projectById.get(chat.projectId)?.name || "a project"}.`,
-      status: `${chat.messages?.length || 0} messages`,
-      evidence: latestUserQuestion(chat) || "Study thread in this project.",
-      updatedAt: chat.updatedAt || chat.createdAt,
-      radius: 21,
-      related: [],
-      sourceText: `${chat.name} ${(chat.messages || []).map((message) => message.displayContent || message.content).join(" ")} ${projectById.get(chat.projectId)?.name || ""}`,
-      labelWidth: measureBrainLabel(chat.name),
-    }))
-    : [];
-
-  const quizNodes = filters.quizzes
-    ? scopedDecks.slice(0, isGlobal ? 14 : 10).map((deck) => ({
-      id: `quiz:${deck.id}`,
-      sourceId: deck.id,
-      projectId: deck.projectId,
-      type: "quiz",
-      label: deck.chatName || "Flashcards",
-      symbol: "R",
-      description: "Recall practice generated from chats or study material.",
-      status: `${deck.cards?.length || 0} cards`,
-      evidence: deck.shared ? "Shared deck for future study rooms." : "Local practice deck.",
-      updatedAt: deck.createdAt,
-      radius: 21,
-      related: [],
-      sourceText: `${deck.chatName} ${(deck.cards || []).map((card) => `${card.q} ${card.a}`).join(" ")} ${projectById.get(deck.projectId)?.name || ""}`,
-      labelWidth: measureBrainLabel(deck.chatName || "Flashcards"),
-    }))
-    : [];
-
-  const generatedConceptNodes = conceptNodes.length || !filters.concepts
-    ? []
-    : scopedProjects.flatMap((projectItem) => inferBrainConceptsFromActivity(state, projectItem).slice(0, isGlobal ? 4 : 10).map((label, index) => ({
-      id: `seed:${projectItem.id}:${normalizeBrainKey(label)}`,
-      projectId: projectItem.id,
-      type: index === 0 && weakKeys.has(normalizeBrainKey(label)) ? "weak" : "concept",
-      label,
-      key: normalizeBrainKey(label),
-      symbol: "C",
-      description: `A starter concept inferred from ${projectItem.name} until more mastery data exists.`,
-      status: "emerging",
-      confidence: 0.32,
-      evidence: "Inferred from project name, notes, chats, or uploaded material.",
-      updatedAt: Date.now(),
-      radius: 22,
-      related: [],
-      sourceText: `${label} ${projectItem.name}`,
-      labelWidth: measureBrainLabel(label),
-    })));
-
-  const filteredProjectNodes = projectNodes.filter((node) => matchesBrainQuery(node, query));
-  const filteredConceptNodes = conceptNodes.filter((node) => matchesBrainQuery(node, query));
-  const filteredMisconceptionNodes = misconceptionNodes.filter((node) => matchesBrainQuery(node, query));
-  const filteredFileNodes = fileNodes.filter((node) => matchesBrainQuery(node, query));
-  const filteredCodeNodes = codeNodes.filter((node) => matchesBrainQuery(node, query));
-  const filteredNoteNodes = noteNodes.filter((node) => matchesBrainQuery(node, query));
-  const filteredChatNodes = chatNodes.filter((node) => matchesBrainQuery(node, query));
-  const filteredQuizNodes = quizNodes.filter((node) => matchesBrainQuery(node, query));
-  const filteredGeneratedConceptNodes = generatedConceptNodes.filter((node) => matchesBrainQuery(node, query));
-
-  if (isGlobal) {
-    layoutBrainOrbit(filteredProjectNodes, center, 170, -110, 300);
-    nodes.push(...filteredProjectNodes);
-  }
-
-  const groups = [
-    { nodes: filteredFileNodes, anchor: { x: 210, y: 112 }, columns: 4, xGap: 108, yGap: 72 },
-    { nodes: [...filteredConceptNodes, ...filteredGeneratedConceptNodes], anchor: { x: 116, y: 252 }, columns: 3, xGap: 106, yGap: 82 },
-    { nodes: filteredMisconceptionNodes, anchor: { x: 690, y: 210 }, columns: 3, xGap: 96, yGap: 82 },
-    { nodes: filteredNoteNodes, anchor: { x: 138, y: 500 }, columns: 4, xGap: 106, yGap: 68 },
-    { nodes: filteredQuizNodes, anchor: { x: 594, y: 520 }, columns: 3, xGap: 104, yGap: 68 },
-    { nodes: filteredChatNodes, anchor: { x: 735, y: 350 }, columns: 2, xGap: 112, yGap: 78 },
-    { nodes: filteredCodeNodes, anchor: { x: 388, y: 96 }, columns: 4, xGap: 104, yGap: 70 },
-  ];
-
-  for (const group of groups) {
-    layoutBrainCluster(group.nodes, group.anchor, group.columns, group.xGap, group.yGap);
-    nodes.push(...group.nodes);
-  }
-
-  const visibleIds = new Set(nodes.map((node) => node.id));
-  const projectNodeIds = new Map(nodes.filter((node) => node.type === "project").map((node) => [node.projectId || node.sourceId, node.id]));
-
-  for (const node of nodes) {
-    if (node.id === rootId) continue;
-    const projectNodeId = isGlobal && node.type !== "project" ? projectNodeIds.get(node.projectId) : null;
-    if (projectNodeId && visibleIds.has(projectNodeId)) links.push({ source: projectNodeId, target: node.id, kind: "root" });
-    else links.push({ source: rootId, target: node.id, kind: "root" });
-  }
-
-  const conceptLike = nodes.filter((node) => (node.type === "concept" || node.type === "weak") && node.key);
-  const sources = nodes.filter((node) => ["file", "code", "note", "chat", "quiz", "project"].includes(node.type));
-  for (const concept of conceptLike) {
-    const matcher = brainKeyRegex(concept.key);
-    if (!matcher) continue;
-    for (const source of sources) {
-      if (source.id !== concept.id && source.sourceText && matcher.test(source.sourceText)) {
-        links.push({ source: concept.id, target: source.id, kind: "related" });
-      }
-    }
-  }
-
-  const nodeMap = new Map(nodes.map((node) => [node.id, node]));
-  for (const link of links) {
-    const source = nodeMap.get(link.source);
-    const target = nodeMap.get(link.target);
-    if (!source || !target) continue;
-    if (target.id !== rootId) target.related.push(source.id === rootId ? root : source);
-    if (source.id !== rootId) source.related.push(target);
-  }
-
-  return {
-    nodes,
-    links: dedupeBrainLinks(links).slice(0, isGlobal ? 180 : 120),
-    nodeMap,
-    summary: {
-      projects: isGlobal ? filteredProjectNodes.length : 1,
-      concepts: conceptLike.length,
-      weak: nodes.filter((node) => node.type === "weak").length,
-      sources: sources.length,
-    },
-  };
-}
-
-function layoutBrainCluster(nodes, anchor, columns = 3, xGap = 110, yGap = 92) {
-  nodes.forEach((node, index) => {
-    const column = index % columns;
-    const row = Math.floor(index / columns);
-    const stagger = row % 2 ? xGap * 0.28 : 0;
-    node.x = clampBrain(anchor.x + column * xGap + stagger, 76, 924);
-    node.y = clampBrain(anchor.y + row * yGap, 76, 564);
-  });
-}
-
-function layoutBrainOrbit(nodes, center, radius, start = -120, spread = 300) {
-  const count = nodes.length;
-  if (!count) return;
-  nodes.forEach((node, index) => {
-    const angle = count === 1 ? -90 : start + (spread * index) / Math.max(1, count - 1);
-    const wobble = (index % 2 ? 26 : -12) + Math.min(34, Math.floor(index / 6) * 14);
-    const point = polarPoint(center, radius + wobble, angle);
-    node.x = clampBrain(point.x, 70, 930);
-    node.y = clampBrain(point.y, 70, 570);
-  });
-}
-
-function clampBrain(value, min, max) {
-  return Math.max(min, Math.min(max, Math.round(value)));
-}
-
-function polarPoint(center, radius, degrees) {
-  const angle = (degrees * Math.PI) / 180;
-  return {
-    x: Math.round(center.x + Math.cos(angle) * radius),
-    y: Math.round(center.y + Math.sin(angle) * radius),
-  };
-}
-
-function radiusFromConfidence(confidence = 0.35) {
-  return Math.round(20 + Math.max(0, Math.min(1, confidence)) * 10);
-}
-
-function projectConfidence(mastery) {
-  const concepts = mastery?.concepts || [];
-  if (!concepts.length) return 0.25;
-  return concepts.reduce((sum, concept) => sum + Number(concept.confidence || 0), 0) / concepts.length;
-}
-
-function globalConfidence(projects) {
-  const values = projects.map((project) => projectConfidence(project.mastery));
-  if (!values.length) return 0.25;
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
-}
-
-function isWeakConcept(concept) {
-  return concept?.status === "weak" || Number(concept?.confidence || 0) < 0.45;
-}
-
-function inferBrainConceptsFromActivity(state, project) {
-  const text = [
-    project?.name,
-    state.profile.subject,
-    state.profile.goal,
-    ...(project?.docs || []).map((doc) => `${doc.name} ${doc.content || ""}`),
-    ...state.notes.filter((note) => !project || note.projectId === project.id).map((note) => `${note.title} ${note.content}`),
-    ...state.chats.filter((chat) => !project || chat.projectId === project.id).map((chat) => `${chat.name} ${(chat.messages || []).map((message) => message.content).join(" ")}`),
-  ].join(" ").toLowerCase();
-  // Seed candidates from the project's own domain so a history or language
-  // project sprouts history/language concepts, not programming ones.
-  const domain = domainForProject(project);
-  const candidates = domain.conceptHints.length
-    ? domain.conceptHints
-    : DOMAINS.flatMap((item) => item.conceptHints.slice(0, 3));
-  const found = candidates.filter((item) => text.includes(item.toLowerCase().replace(/s$/, "")));
-  return (found.length ? found : [project?.name || state.profile.subject || "Core concepts", "Practice", "Questions"]).slice(0, 10);
-}
-
-function dedupeBrainLinks(links) {
-  const seen = new Set();
-  return links.filter((link) => {
-    const key = [link.source, link.target].sort().join(":");
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-function latestUserQuestion(chat) {
-  return (chat?.messages || []).filter((message) => message.role === "user").at(-1)?.displayContent
-    || (chat?.messages || []).filter((message) => message.role === "user").at(-1)?.content
-    || "";
-}
-
-function normalizeBrainKey(value) {
-  return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-function brainRecency(item) {
-  return Number(item?.updatedAt || item?.createdAt || item?.addedAt || 0);
-}
-
-function byBrainRecency(a, b) {
-  return brainRecency(b) - brainRecency(a);
-}
-
-function byBrainConcept(a, b) {
-  const weakA = isWeakConcept(a) ? 1 : 0;
-  const weakB = isWeakConcept(b) ? 1 : 0;
-  if (weakA !== weakB) return weakB - weakA;
-  return brainRecency(b) - brainRecency(a);
-}
-
-function brainKeyRegex(key) {
-  const value = normalizeBrainKey(key);
-  if (value.length < 3) return null;
-  const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, "i");
-}
-
-function matchesBrainQuery(node, query) {
-  if (!query) return true;
-  return normalizeBrainKey(`${node.label || ""} ${node.description || ""} ${node.evidence || ""} ${node.sourceText || ""}`).includes(query);
-}
-
-function shortLabel(value, max = 16) {
-  const text = String(value || "");
-  return text.length > max ? `${text.slice(0, max - 1)}...` : text;
-}
-
-function measureBrainLabel(value, max = 118) {
-  const text = String(value || "");
-  return Math.min(max, Math.max(58, text.length * 7.4 + 18));
-}
-
-function nodeTypeLabel(node) {
-  const labels = {
-    brain: "Global brain",
-    project: "Project center",
-    concept: "Concept",
-    weak: node.status === "misconception" ? "Misconception" : "Weak spot",
-    file: "Material",
-    note: "Saved note",
-    chat: "Chat thread",
-    quiz: "Recall deck",
-  };
-  return labels[node.type] || "Node";
-}
-
-function relativeDate(value) {
-  const timestamp = Number(value || 0);
-  if (!timestamp) return "unknown";
-  const delta = Date.now() - timestamp;
-  if (delta < 60_000) return "now";
-  if (delta < 3_600_000) return `${Math.max(1, Math.round(delta / 60_000))}m ago`;
-  if (delta < 86_400_000) return `${Math.max(1, Math.round(delta / 3_600_000))}h ago`;
-  return `${Math.max(1, Math.round(delta / 86_400_000))}d ago`;
-}
-

@@ -191,6 +191,9 @@ export function MathTex({ tex, display = false }) {
       setHtml(katex.renderToString(tex, {
         displayMode: display,
         throwOnError: false,
+        // Model-generated TeX contains unicode (en-dashes etc.) — render
+        // best-effort instead of spamming strict-mode warnings.
+        strict: "ignore",
         // htmlAndMathml embeds MathML so screen readers get real math.
         output: "htmlAndMathml",
       }));
