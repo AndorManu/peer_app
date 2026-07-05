@@ -2,7 +2,7 @@
 // state shape has one well-defined home and can be reasoned about (and tested)
 // independently of the React tree.
 import { makeMastery, makeProfile, normalizeMastery, normalizeProfile } from "./learningModel.js";
-import { AUTH_PROVIDERS, FONT_OPTIONS, PROJECT_COLORS, STUDY_MODES } from "./constants.js";
+import { AUTH_PROVIDERS, FONT_OPTIONS, LEGACY_COLOR_MAP, PROJECT_COLORS, STUDY_MODES } from "./constants.js";
 import { classifySubject, getDomain } from "./subjects.js";
 
 export const uid = () => Math.random().toString(36).slice(2, 10);
@@ -54,7 +54,8 @@ export function normalizeState(stored) {
         domainId: project?.domainId && getDomain(project.domainId).id === project.domainId
           ? project.domainId
           : classifySubject(project?.name || ""),
-        color: project?.color || PROJECT_COLORS[index % PROJECT_COLORS.length],
+        // pre-redesign palette migrates to the closest Study Hall hue
+        color: LEGACY_COLOR_MAP[project?.color] || project?.color || PROJECT_COLORS[index % PROJECT_COLORS.length],
         mastery: normalizeMastery(project?.mastery),
         docs: Array.isArray(project?.docs)
           ? project.docs.map((doc) => ({
