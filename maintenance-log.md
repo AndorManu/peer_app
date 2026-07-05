@@ -29,16 +29,17 @@
   with no excerpts available the tutor honestly said it couldn't answer rather
   than inventing the made-up test fact — exactly the anti-hallucination
   behavior the prompt demands.
-- **BLOCKED — needs owner**: the actual embed→retrieve→cite loop can't run
-  because the OpenAI key has no billing credit (`insufficient_quota`) and no
-  Voyage key exists yet. The verify script is ready to prove the full loop
-  (a made-up "Verholt constant" fact that only retrieval could supply) the
-  moment either key works. Two options:
-  1. **Voyage AI (free)**: sign up at https://dashboard.voyageai.com, create an
-     API key, put it in `.env` as `VOYAGE_API_KEY=...` — free tier is plenty.
-  2. **OpenAI**: add ~$5 credit at platform.openai.com → Billing; the existing
-     key then works unchanged.
-  Then run: `npm run dev` + `PEER_DEV_URL=http://127.0.0.1:5173 node tools/verify-rag.mjs`
+- **UNBLOCKED + fully verified (later the same day)**: owner added a Voyage AI
+  key → `tools/verify-rag.mjs` now passes **9/9**: 14 chunks embedded (2,822
+  tokens metered), and the retrieval-backed chat answered a planted fact no
+  model could know — "the Verholt constant equals exactly 42.7183 kilojoules
+  per mole, named after Ada Verholt" — grounded in and citing the learner's own
+  document. M8 done-criteria met end-to-end.
+- Also completed by the owner this session: **Google sign-in is live**
+  (provider enabled in the Supabase dashboard, `auth/v1/settings` reports
+  google: true; Site URL + redirect wildcard configured for localhost:5173).
+  Reminder: the Google OAuth app is in testing mode — add your own Gmail as a
+  test user in Google Cloud Console if sign-in says access denied.
 - 59/59 tests; build clean.
 
 ## 2026-07-05 — M7: Image generation for visual teaching
