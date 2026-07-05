@@ -3466,8 +3466,8 @@ function OnboardingModal({ profileDraft, setProfileDraft, complete, skip }) {
         aria-labelledby="onboarding-title"
       >
         <div className="welcome-mark"><Brain size={30} aria-hidden="true" /></div>
-        <h1 id="onboarding-title">Set up Peer</h1>
-        <p>A tiny bit of context helps Peer start closer to how you actually learn.</p>
+        <h1 id="onboarding-title">Meet Peer — your study partner</h1>
+        <p>Thirty seconds of context and Peer adapts to you from the very first answer. You can change all of this later in your profile.</p>
         <label>
           What are you studying?
           <input value={profileDraft.subject} onChange={(event) => setProfileDraft((current) => ({ ...current, subject: event.target.value }))} placeholder="Biology, history, Spanish, calculus, coding..." />
