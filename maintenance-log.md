@@ -4,6 +4,32 @@ Persistent memory for the daily maintenance agent. Newest entry on top. Never de
 
 ---
 
+## 2026-07-05 · Run 3
+
+Codebase byte-identical to Run 2 (all src files mtime Jun 30; server/handleChat.js mtime Jul 4 from Run 2's SSE fix; branch fresh off main, HEAD == origin/main). No new commits touching src/ or server/ since Run 2. Did not re-deep-read the files confirmed CLEAN; instead independently re-verified the MEDIUM/LOW checklist categories that prior runs treated as "improvements or safe" to guard against silent regressions.
+
+### Fixed
+- (none — no defects found this run)
+
+### Flagged
+- (none)
+
+### Improvements noted
+- Carried over, still open (improvements, not defects — not auto-fixed): code-split LearningBrain + pdf.js via React.lazy — build still emits one 1.33MB JS chunk (gzip 375.78kB) + 2.21MB pdf.worker (moderate); markdown.jsx `Markdown` block parse could `useMemo` on `text` (simple); peerPrompt.js aggregate doc token cap — prompt content off-limits per rules (moderate); FlashcardsPanel keydown effect missing dep array — intentional (simple).
+
+### Clean (skip deep read next run unless changed)
+- Re-verified this run and confirmed clean:
+  - CSS variable integrity — every `var(--…)` reference resolves. Vars are defined in the minified `.app { … }` block in styles.css (--hairline, --accent-ink, --danger, --ring, --ease-out/spring, --motion-fast/med/slow, --mode-button-width, etc.); the dynamic ones (--app-font, --text-size, --accent, --active-mode-index, --deck-color) are set at runtime via inline `style` props in App.jsx. Zero undefined references. (My first pass showed false positives because styles.css is single-line minified and my grep was line-anchored.)
+  - markdown.jsx — all 12 highlight.js language modules imported are registered (c, cpp, js/jsx, ts/tsx, python, bash/sh/shell, json, css, html/xml, rust/rs, go, java); an unknown fence lang degrades to plaintext, not a crash. CodeBlock highlight is gated on [code, lang].
+  - Hygiene — only console calls are LearningBrain.jsx:462 (legit error handler) and dev.js:52 (server-start banner). No ANTHROPIC_API_KEY / api-key references in src/. .gitignore covers node_modules, dist, .env, *.log, artifacts/. .env.example covers all 5 server env vars (ANTHROPIC_API_KEY/MODEL, OPENAI_API_KEY/MODEL, PORT).
+- All files marked CLEAN in Runs 1–2 remain unchanged and clean: storage.js, stateModel.js, learningModel.js, LearningBrain.jsx, handleImage.js, dev.js, constants.js, PeerNavRail.jsx, peerTheme.js, peer-theme.css, main.jsx, materials.js, markdown.jsx, pdf.js, App.jsx, styles.css, peer-skin.css, .env.example. server/handleChat.js remains clean end-to-end after Run 2's SSE error-event fix.
+
+### Notes
+- Verification: `npm run build` ✅ (vite 6.4.x, 6.55s), `npm test` ✅ 17/17, `node server/dev.js` ✅ (HTTP 200 at 127.0.0.1). Needed `npm install` first — node_modules absent in fresh clone.
+- Recurring pattern: none outstanding. The two real reliability gaps history surfaced (learningModel upsert mutation in Run 1, SSE error swallowing in Run 2) are both closed. Three consecutive clean-or-fixed runs; the codebase is stable. The only lever left is the eager 1.33MB bundle (perf improvement, not a bug).
+
+---
+
 ## 2026-07-04 · Run 2
 
 Codebase unchanged since Run 1 (all files same mtime, branch fresh off main). Focused on the open FLAGGED SSE issue from Run 1; skimmed the files marked CLEAN — no new changes.
