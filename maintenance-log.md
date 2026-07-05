@@ -1,5 +1,52 @@
 # Maintenance log
 
+## 2026-07-05 — M5: Paywall + daily free tokens
+
+**What changed**
+- **Server-side entitlements** ([server/entitlements.js](server/entitlements.js)):
+  Free = 30k tokens/day on Haiku 4.5; Pro = 500k/day on Sonnet 4.6 with a fair-use
+  soft-fallback to Haiku past 150k/day. "Daily" = the learner's local midnight
+  (client sends its tz offset). Plan resolution reads the subscriptions table
+  (client-read-only by RLS), usage comes from usage_events (server-written only) —
+  nothing about the gate can be influenced from the browser.
+- **The chat proxy is gated**: no JWT → 401 (clean sign-in modal), quota spent →
+  402 (paywall dialog with usage bar + Pro pitch at $8.99/mo / $79/yr). Model is
+  chosen per plan on the server. Every call is metered (tokens in/out + computed
+  cost) including prompt-cache reads; the big tutor system prompt now uses
+  Anthropic prompt caching (~90% cheaper repeat-turn input).
+- **Usage meter**: `/api/usage` + a live "Xk AI tokens left today" readout under
+  the composer (amber when >85% spent).
+- **Stripe** ([server/handleBilling.js](server/handleBilling.js)): checkout
+  session + customer portal + webhook endpoints. Pro is granted ONLY from a
+  signature-verified webhook (HMAC, timing-safe, 5-min tolerance), idempotent
+  upserts, card data never touches our server. Degrades gracefully (501 +
+  friendly copy) until the owner adds keys.
+
+**What I tested (live, `tools/verify-quota.mjs` → 13/13 PASS)**
+- Unauthenticated chat → 401. Authed free chat → 200, metered server-side
+  (Haiku, real token counts + cost). `/api/usage` reports the free 30k meter.
+  Simulated a spent day → clean 402 with `quota_exhausted` payload. Flipped the
+  user to Pro (service role) → 500k allowance, admitted past the free cap, routed
+  to Sonnet. Webhook signature: valid accepted, forged rejected, stale rejected.
+  Checkout without keys → graceful 501. Guest in the browser → sign-in gate modal
+  with correct focus. 59/59 tests; build clean.
+
+**Owner setup to complete payments (everything else is wired)**
+1. Stripe Dashboard: create a "Peer Pro" product with two prices — $8.99/month
+   and $79/year; copy the price IDs into `.env` (STRIPE_PRICE_ID_MONTHLY/YEARLY)
+   plus STRIPE_SECRET_KEY + STRIPE_PUBLISHABLE_KEY.
+2. Add a webhook endpoint pointing at `/api/stripe-webhook` (dev: `stripe listen
+   --forward-to localhost:5173/api/stripe-webhook`) for events
+   `checkout.session.completed`, `customer.subscription.updated`,
+   `customer.subscription.deleted`; put its signing secret in
+   STRIPE_WEBHOOK_SECRET.
+3. Test with card 4242 4242 4242 4242 — the webhook grants Pro, the meter flips
+   to 500k/day automatically.
+
+**Notes**
+- Image generation (`/api/image`) gets the same gate + heavier metering when M7
+  rebuilds it; the code runner gets rate-limiting in the security pass.
+
 ## 2026-07-05 — M4: Real auth
 
 **What changed**
