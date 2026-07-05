@@ -144,9 +144,7 @@ export const STARTERS = [
 ];
 
 export const AUTH_PROVIDERS = [
-  { id: "google", label: "Google", hint: "Best for Gmail and school accounts", badge: "G" },
-  { id: "github", label: "GitHub", hint: "Useful for coding learners", badge: "GH" },
-  { id: "microsoft", label: "Microsoft", hint: "Works well for Outlook and school tenants", badge: "MS" },
-  { id: "discord", label: "Discord", hint: "Good for study communities", badge: "D" },
-  { id: "email", label: "Email code", hint: "Use any email address", badge: "@" },
+  { id: "google", label: "Google", badge: "G" },
+  { id: "facebook", label: "Facebook", badge: "f" },
+  { id: "email", label: "email", badge: "@" },
 ];
