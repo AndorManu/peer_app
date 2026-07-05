@@ -373,11 +373,11 @@ ${code || "(empty)"}
     askPeer("Your question", q);
   }
 
-  const panel = { background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)" };
-  const selStyle = { background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, color: "#fff", padding: "9px 12px", fontFamily: "Geist, sans-serif", fontSize: 13 };
+  const panel = { background: "rgba(var(--sh-text-rgb), 0.025)", border: "1px solid rgba(var(--sh-text-rgb), 0.07)", borderRadius: 16, backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)" };
+  const selStyle = { background: "rgba(var(--sh-text-rgb), 0.035)", border: "1px solid rgba(var(--sh-text-rgb), 0.08)", borderRadius: 10, color: "var(--sh-text)", padding: "9px 12px", fontFamily: "Geist, sans-serif", fontSize: 13 };
 
   return (
-    <section className="peer-skin" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", background: "#07070e", color: COLORS.text }}>
+    <section className="peer-skin" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", background: "var(--sh-bg-deep, #0c0a07)", color: COLORS.text }}>
       <div className="code-lab-head" style={{ display: "flex", alignItems: "center", gap: 12, padding: "20px 30px 12px", flexWrap: "wrap" }}>
         <div style={{ flex: 1, minWidth: 200 }}>
           <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 23, fontWeight: 600, letterSpacing: "-.4px" }}>Code lab</div>
@@ -385,11 +385,11 @@ ${code || "(empty)"}
         </div>
         {projects.length > 0 && (
           <StyledSelect value={projectId} onChange={(e) => setProjectId(e.target.value)} style={selStyle} title="Which subject this connects to in your brain" aria-label="Subject to connect in your brain">
-            {projects.map((p) => <option key={p.id} value={p.id} style={{ background: "#14141b" }}>{p.name}</option>)}
+            {projects.map((p) => <option key={p.id} value={p.id} style={{}}>{p.name}</option>)}
           </StyledSelect>
         )}
         <StyledSelect value={language} onChange={(e) => changeLanguage(e.target.value)} style={selStyle} aria-label="Programming language">
-          {LANGUAGES.map((l) => <option key={l.id} value={l.id} style={{ background: "#14141b" }}>{l.label}</option>)}
+          {LANGUAGES.map((l) => <option key={l.id} value={l.id} style={{}}>{l.label}</option>)}
         </StyledSelect>
       </div>
 
@@ -455,7 +455,7 @@ ${code || "(empty)"}
 
         {/* AI tutor */}
         <div className="code-lab-tutor" style={{ ...panel, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
-          <div style={{ padding: "14px 16px 10px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <div style={{ padding: "14px 16px 10px", borderBottom: "1px solid rgba(var(--sh-text-rgb), 0.06)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 11 }}>
               <span style={{ width: 22, height: 22, borderRadius: 7, background: GRADIENTS.accent, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <Sparkles size={13} color="#0a0a14" />
@@ -477,7 +477,7 @@ ${code || "(empty)"}
           <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 16px" }}>
             {aiTitle && <div style={{ fontSize: 10.5, letterSpacing: ".5px", textTransform: "uppercase", color: COLORS.text40, marginBottom: 8 }}>{aiTitle}</div>}
             {aiResponse ? (
-              <div className="markdown" style={{ fontSize: 14, lineHeight: 1.6, color: "rgba(255,255,255,0.86)" }}><Markdown text={aiResponse} /></div>
+              <div className="markdown" style={{ fontSize: 14, lineHeight: 1.6, color: "rgba(var(--sh-text-rgb), 0.86)" }}><Markdown text={aiResponse} /></div>
             ) : aiBusy ? (
               <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.text50, fontSize: 13 }}><Loader2 size={15} className="spin" /> Thinking…</div>
             ) : (
@@ -489,8 +489,8 @@ ${code || "(empty)"}
               {applied ? <><Check size={15} /> Applied to editor</> : <><Wand2 size={15} /> Apply Peer's code to the editor</>}
             </button>
           )}
-          <form onSubmit={submitQuestion} style={{ display: "flex", gap: 8, padding: "10px 12px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-            <input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ask Peer to change your code…" aria-label="Ask Peer about your code" style={{ flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, color: "#fff", padding: "9px 12px", fontSize: 13, outline: "none", fontFamily: "Geist, sans-serif" }} />
+          <form onSubmit={submitQuestion} style={{ display: "flex", gap: 8, padding: "10px 12px", borderTop: "1px solid rgba(var(--sh-text-rgb), 0.06)" }}>
+            <input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ask Peer to change your code…" aria-label="Ask Peer about your code" style={{ flex: 1, background: "rgba(var(--sh-text-rgb), 0.04)", border: "1px solid rgba(var(--sh-text-rgb), 0.08)", borderRadius: 10, color: "var(--sh-text)", padding: "9px 12px", fontSize: 13, outline: "none", fontFamily: "Geist, sans-serif" }} />
             <button type="submit" aria-label="Send question to Peer" disabled={aiBusy || !question.trim()} style={{ ...btn(true), padding: "0 12px" }}><Send size={15} /></button>
           </form>
         </div>
@@ -502,9 +502,9 @@ ${code || "(empty)"}
 function btn(primary) {
   return {
     display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 13px", borderRadius: 10, cursor: "pointer",
-    fontSize: 12.5, fontWeight: 500, border: primary ? "none" : "1px solid rgba(255,255,255,0.1)",
-    background: primary ? "linear-gradient(135deg,#8b5cf6,#22d3ee)" : "rgba(255,255,255,0.04)",
-    color: primary ? "#0a0a14" : "rgba(255,255,255,0.8)",
+    fontSize: 12.5, fontWeight: 500, border: primary ? "none" : "1px solid rgba(var(--sh-text-rgb), 0.1)",
+    background: primary ? "linear-gradient(135deg,var(--sh-accent),var(--sh-accent-hi))" : "rgba(var(--sh-text-rgb), 0.04)",
+    color: primary ? "var(--sh-accent-ink, #1c1509)" : "rgba(var(--sh-text-rgb), 0.8)",
     boxShadow: primary ? "0 0 18px -6px rgba(139,92,246,0.7)" : "none",
     transition: `transform .2s ${EASE}, background .2s ease`,
   };
@@ -512,7 +512,7 @@ function btn(primary) {
 function chip() {
   return {
     display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 11px", borderRadius: 999, cursor: "pointer",
-    fontSize: 12, fontWeight: 500, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)",
-    color: "rgba(255,255,255,0.75)", transition: `background .2s ${EASE}, border-color .2s ease, color .2s ease`,
+    fontSize: 12, fontWeight: 500, background: "rgba(var(--sh-text-rgb), 0.04)", border: "1px solid rgba(var(--sh-text-rgb), 0.09)",
+    color: "rgba(var(--sh-text-rgb), 0.75)", transition: `background .2s ${EASE}, border-color .2s ease, color .2s ease`,
   };
 }

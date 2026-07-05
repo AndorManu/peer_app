@@ -228,6 +228,17 @@ layer has before/after tests plus at least one live proof.
   (Note: @capacitor/assets clobbered public/ during generate — SVGs +
   manifest restored, generated PWA icons relocated to public/icons/.)
 
+- **Three-theme re-verification** (this commit): Code lab's remaining
+  hardcodes converted (21: #07070e shell, cool-white rgba ramp, legacy
+  violet-cyan button gradient → theme vars). Automated sweep: 24
+  theme×screen combos (3 themes × 8 screens) checked for off-palette
+  backgrounds and amber leakage under indigo/mono — the ONLY hits are
+  `project-dot` colors, which are per-project USER-DATA identity colors
+  (same intentional category as domain accents and brain node types).
+  Screenshot proof: indigo Code lab (violet→cyan, zero amber) + mono
+  flashcard review (black/white, semantic state tints only) + studyhall
+  full app with the new mark.
+
 ## Rooms discovery + subscription page + modal/fullscreen fixes (owner-reported, 2026-07-05, third pass)
 
 - **Rooms public/private + discovery** (`81feecb`): migration 0006 adds
