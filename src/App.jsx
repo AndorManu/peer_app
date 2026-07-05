@@ -97,6 +97,7 @@ const LearningBrainPanel = React.lazy(() =>
   import("./LearningBrain.jsx").then((module) => ({ default: module.LearningBrainPanel })),
 );
 const CodingPanel = React.lazy(() => import("./CodingPanel.jsx"));
+const RoomsPanel = React.lazy(() => import("./RoomsPanel.jsx"));
 
 function PanelLoading({ label }) {
   return (
@@ -1699,22 +1700,6 @@ export default function App() {
     }));
   }
 
-  function createStudyRoom(project = activeProject) {
-    const topic = project?.name || state.profile.subject || "General study";
-    const room = {
-      id: uid(),
-      name: `${topic} room`,
-      topic,
-      projectId: project?.id || null,
-      members: 1,
-      createdAt: Date.now(),
-      lastActivityAt: Date.now(),
-    };
-    updateState((current) => ({ ...current, studyRooms: [room, ...current.studyRooms] }));
-    setView("community");
-    showToast(`Created ${room.name}`);
-  }
-
   function toggleShareNote(noteId) {
     updateState((current) => ({
       ...current,
@@ -1758,7 +1743,7 @@ export default function App() {
     { label: "Quiz mode", hint: "Ask one question at a time", icon: Target, run: () => updateState((current) => ({ ...current, activeMode: "quiz" })) },
     { label: "Challenge mode", hint: "Turn learning into levels", icon: Trophy, run: () => updateState((current) => ({ ...current, activeMode: "challenge" })) },
     { label: "Upload material", hint: "Open current project library", icon: Paperclip, run: () => activeProject && setManagedProjectId(activeProject.id) },
-    { label: "Create study room", hint: activeProject ? `Room for ${activeProject.name}` : "Room for this subject", icon: Users, run: () => createStudyRoom() },
+    { label: "Open peer rooms", hint: "Host or join a live study room", icon: Users, run: () => setView("community") },
     { label: "Teach to a peer", hint: "Peer scores your clarity and gaps", icon: MessageSquare, run: startTeachBack },
     ...state.chats.slice(0, 12).map((chat) => ({
       label: `Switch: ${chat.name}`,
@@ -1932,15 +1917,17 @@ export default function App() {
         {view === "notes" && <NotesPanel notes={state.notes} projects={state.projects} deleteNote={confirmDeleteNote} toggleShareNote={toggleShareNote} onPractice={generatePractice} />}
         {view === "flashcards" && <FlashcardsPanel flashcards={state.flashcards} projects={state.projects} setView={setView} deleteFlashcardDeck={confirmDeleteDeck} gradeFlashcard={gradeFlashcard} />}
         {view === "community" && (
-          <SocialPanel
-            state={state}
-            activeProject={activeProject}
-            createStudyRoom={createStudyRoom}
-            toggleShareNote={toggleShareNote}
-            toggleShareDeck={toggleShareDeck}
-            startTeachBack={startTeachBack}
-            startCommunityChallenge={startCommunityChallenge}
-          />
+          <React.Suspense fallback={<PanelLoading label="Opening peer rooms…" />}>
+            <RoomsPanel
+              account={state.account}
+              decks={state.flashcards}
+              projects={state.projects}
+              showToast={showToast}
+              onSignIn={() => updateState((current) => ({ ...current, landingComplete: false }))}
+              startCommunityChallenge={startCommunityChallenge}
+              challenges={COMMUNITY_CHALLENGES}
+            />
+          </React.Suspense>
         )}
         {view === "chat" && (
           <ChatArea
@@ -2957,127 +2944,6 @@ function NotesPanel({ notes, projects, deleteNote, toggleShareNote, onPractice }
   );
 }
 
-function SocialPanel({ state, activeProject, createStudyRoom, toggleShareNote, toggleShareDeck, startTeachBack, startCommunityChallenge }) {
-  const sharedNotes = state.notes.filter((note) => note.shared);
-  const sharedDecks = state.flashcards.filter((deck) => deck.shared);
-  const subject = activeProject?.name || state.profile.subject || "your subject";
-  const buddyMatches = buildBuddyMatches(state.profile, activeProject);
-
-  return (
-    <section className="social-panel">
-      <div className="page-heading">
-        <div>
-          <h1>Peer rooms</h1>
-          <p>Local prototype for study rooms, buddy matching, shared decks, and teach-back practice.</p>
-        </div>
-        <button onClick={() => createStudyRoom(activeProject)}><Users size={15} /> Create room</button>
-      </div>
-
-      <div className="social-grid">
-        <div className="profile-card wide">
-          <h2>Study rooms</h2>
-          {state.studyRooms.length ? (
-            <div className="room-list">
-              {state.studyRooms.map((room) => (
-                <article className="room-card" key={room.id}>
-                  <span><Users size={17} /></span>
-                  <div>
-                    <strong>{room.name}</strong>
-                    <small>{room.topic} - {room.members} member{room.members === 1 ? "" : "s"} - local room</small>
-                  </div>
-                  <button onClick={startTeachBack}>Teach back</button>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="empty-state compact">
-              <Users size={24} />
-              <strong>No rooms yet</strong>
-              <span>Create a local room for {subject}, then use teach-back or shared notes inside it.</span>
-            </div>
-          )}
-        </div>
-
-        <div className="profile-card wide">
-          <h2>AI-matched study buddies</h2>
-          <div className="buddy-grid">
-            {buddyMatches.map((buddy) => (
-              <article className="buddy-card" key={buddy.id}>
-                <div className="account-avatar">{buddy.initials}</div>
-                <strong>{buddy.name}</strong>
-                <p>{buddy.reason}</p>
-                <small>{buddy.fit}</small>
-              </article>
-            ))}
-          </div>
-        </div>
-
-        <div className="profile-card wide">
-          <h2>Shared notes and decks</h2>
-          <div className="shared-assets">
-            <div>
-              <strong>Notes</strong>
-              {state.notes.length ? state.notes.slice(0, 4).map((note) => (
-                <button key={note.id} onClick={() => toggleShareNote(note.id)}>
-                  <Share2 size={14} />
-                  {note.shared ? "Shared" : "Share"} - {note.title}
-                </button>
-              )) : <p>No notes to share yet.</p>}
-            </div>
-            <div>
-              <strong>Decks</strong>
-              {state.flashcards.length ? state.flashcards.slice(0, 4).map((deck) => (
-                <button key={deck.id} onClick={() => toggleShareDeck(deck.id)}>
-                  <BookOpen size={14} />
-                  {deck.shared ? "Shared" : "Share"} - {deck.chatName}
-                </button>
-              )) : <p>No decks to share yet.</p>}
-            </div>
-          </div>
-          {(sharedNotes.length > 0 || sharedDecks.length > 0) && (
-            <p className="shared-summary">{sharedNotes.length} shared note{sharedNotes.length === 1 ? "" : "s"} and {sharedDecks.length} shared deck{sharedDecks.length === 1 ? "" : "s"} ready for future cloud sync.</p>
-          )}
-        </div>
-
-        <div className="profile-card wide">
-          <h2>Explain to a peer</h2>
-          <div className="teachback-card">
-            <MessageSquare size={22} />
-            <div>
-              <strong>Teach it out loud or in chat</strong>
-              <p>Peer asks you to explain the topic, scores clarity, catches missing steps, and suggests one next improvement.</p>
-            </div>
-            <button className="primary-button" onClick={startTeachBack}>Start scored teach-back</button>
-          </div>
-        </div>
-
-        <div className="profile-card wide">
-          <h2>Community challenge sets</h2>
-          <div className="challenge-grid">
-            {COMMUNITY_CHALLENGES.map((challenge) => (
-              <article className="challenge-card" key={challenge.id}>
-                <span>{challenge.subject}</span>
-                <strong>{challenge.title}</strong>
-                <small>{challenge.level}</small>
-                <button onClick={() => startCommunityChallenge(challenge)}>Start</button>
-              </article>
-            ))}
-          </div>
-        </div>
-
-        <div className="profile-card wide">
-          <h2>Production account path</h2>
-          <div className="roadmap-grid">
-            <span><UserRound size={15} /> Supabase/Firebase/Auth0 login providers</span>
-            <span><Library size={15} /> Cloud projects, notes, decks, and rooms</span>
-            <span><Share2 size={15} /> Permissioned sharing and invite links</span>
-            <span><ClipboardCheck size={15} /> Audit-safe storage rules and deletion controls</span>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
 
 function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSync, signOut, confirmDeleteAccount }) {
   const [tab, setTab] = useState("appearance");
@@ -3968,35 +3834,6 @@ function inferNoteTags(content) {
   return tags.length ? tags.slice(0, 4) : ["study"];
 }
 
-function buildBuddyMatches(profile, activeProject) {
-  const subject = activeProject?.name || profile.subject || "your subject";
-  const visual = (profile.preferences?.visual || 0) + (profile.preferences?.exampleFirst || 0);
-  const technical = profile.preferences?.technical || 0;
-  const socratic = profile.preferences?.socratic || 0;
-  return [
-    {
-      id: "builder",
-      initials: "CB",
-      name: "Concept Builder",
-      reason: `Good match for building ${subject} from examples into rules.`,
-      fit: visual >= technical ? "High fit: examples and visuals" : "Medium fit: adds concrete examples",
-    },
-    {
-      id: "precision",
-      initials: "PP",
-      name: "Precision Partner",
-      reason: `Pairs well when you want exact terminology, edge cases, and rigorous feedback.`,
-      fit: technical > 1 ? "High fit: precision signals detected" : "Medium fit: sharpens detail-heavy topics",
-    },
-    {
-      id: "coach",
-      initials: "QC",
-      name: "Quiz Coach",
-      reason: `Best for recall, one-question-at-a-time practice, and teach-back scoring.`,
-      fit: socratic > 1 || profile.signals?.quiz > 0 ? "High fit: quiz signals detected" : "Medium fit: builds active recall",
-    },
-  ];
-}
 
 function seedPreferencesFromOnboarding(preferences, learningPreference) {
   const next = { ...(preferences || {}) };
