@@ -368,6 +368,21 @@ export default function App() {
     }
   }
 
+  async function openBillingPortal() {
+    try {
+      const response = await fetch("/api/portal", {
+        method: "POST",
+        headers: await aiRequestHeaders(),
+        body: JSON.stringify({ origin: window.location.origin }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "The billing portal is not available yet.");
+      window.location.href = data.url;
+    } catch (err) {
+      showToast(friendlyError(err, "The billing portal is not available yet."));
+    }
+  }
+
   // Background cloud sync (dormant until a session exists)
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -2036,7 +2051,7 @@ export default function App() {
           </div>
         </header>
 
-        {view === "settings" && <SettingsPanel state={state} updateState={updateState} resetData={confirmResetData} loadSampleData={loadSampleData} cloudSync={cloudSync} signOut={signOut} confirmDeleteAccount={confirmDeleteAccount} />}
+        {view === "settings" && <SettingsPanel state={state} updateState={updateState} resetData={confirmResetData} loadSampleData={loadSampleData} cloudSync={cloudSync} signOut={signOut} confirmDeleteAccount={confirmDeleteAccount} usage={usageInfo} startCheckout={startCheckout} openBillingPortal={openBillingPortal} />}
         {view === "profile" && <ProfilePanel profile={state.profile} activeProject={activeProject} activeChat={activeChat} insights={insights} activeMode={activeMode} updateState={updateState} recap={buildLearnerRecap(state)} badgeInfo={computeBadges(state)} showToast={showToast} pulse={studyPulse} onReviewNow={startReviewNow} personaInsights={buildPersonaInsights(state)} onDnaFeedback={handleDnaFeedback} />}
         {view === "brain" && (
           <React.Suspense fallback={<PanelLoading label="Waking up your brain…" />}>
@@ -3287,7 +3302,7 @@ function NotesPanel({ notes, projects, deleteNote, toggleShareNote, onPractice, 
 }
 
 
-function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSync, signOut, confirmDeleteAccount }) {
+function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSync, signOut, confirmDeleteAccount, usage, startCheckout, openBillingPortal }) {
   const [tab, setTab] = useState("appearance");
   const [legal, setLegal] = useState(null);
   const provider = AUTH_PROVIDERS.find((item) => item.id === state.account?.provider);
@@ -3305,6 +3320,7 @@ function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSyn
 
   const tabs = [
     { id: "appearance", icon: Sun, label: "Appearance" },
+    { id: "plan", icon: Trophy, label: "Plan" },
     { id: "account", icon: UserRound, label: "Account" },
     { id: "data", icon: Trash2, label: "Data" },
   ];
@@ -3395,6 +3411,73 @@ function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSyn
                   <input type="range" min="13" max="19" aria-label="Text size" value={state.textSize} onChange={(e) => updateState((c) => ({ ...c, textSize: Number(e.target.value) }))} />
                   <span style={{ fontSize: 18, fontWeight: 700 }}>A</span>
                   <strong className="settings-size-label">{state.textSize}px</strong>
+                </div>
+              </div>
+            </>
+          )}
+
+          {tab === "plan" && (
+            <>
+              <div className="settings-group">
+                <h2>Your plan</h2>
+                <div className="plan-current">
+                  <div>
+                    <strong className="plan-name">{usage?.plan === "pro" ? "Pro" : "Free"}</strong>
+                    {usage?.plan === "pro" && usage?.renewsAt && (
+                      <span className="plan-renews">Renews {new Date(usage.renewsAt).toLocaleDateString()}</span>
+                    )}
+                    {!state.account?.verified && <span className="plan-renews">Sign in to activate your free daily AI allowance.</span>}
+                  </div>
+                  {usage?.plan === "pro" && (
+                    <button type="button" onClick={openBillingPortal}>Manage billing</button>
+                  )}
+                </div>
+                {usage && (
+                  <div className="plan-usage">
+                    <div className="plan-usage-labels">
+                      <span>Today's AI usage</span>
+                      <span>{Math.round((usage.usedToday || 0) / 1000)}k / {Math.round((usage.allowance || 0) / 1000)}k tokens</span>
+                    </div>
+                    <div className="plan-meter" role="img" aria-label={`${Math.min(100, Math.round(((usage.usedToday || 0) / (usage.allowance || 1)) * 100))}% of today's allowance used`}>
+                      <div style={{ width: `${Math.min(100, Math.round(((usage.usedToday || 0) / (usage.allowance || 1)) * 100))}%` }} />
+                    </div>
+                    <p className="plan-usage-note">Resets at your local midnight.</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="settings-group">
+                <h2>Compare plans</h2>
+                <div className="plan-cards">
+                  <div className={`plan-card${usage?.plan !== "pro" ? " current" : ""}`}>
+                    <h3>Free</h3>
+                    <p className="plan-price">$0</p>
+                    <ul>
+                      <li>30k AI tokens every day</li>
+                      <li>Fast tutor model</li>
+                      <li>All study tools: brain, cards, notes, rooms</li>
+                      <li>Sync across devices</li>
+                    </ul>
+                    {usage?.plan !== "pro" && <span className="plan-badge">Current plan</span>}
+                  </div>
+                  <div className={`plan-card pro${usage?.plan === "pro" ? " current" : ""}`}>
+                    <h3>Pro</h3>
+                    <p className="plan-price">$8.99<span>/mo</span> <em>or $79/yr — 2 months free</em></p>
+                    <ul>
+                      <li>Much larger daily AI allowance (500k tokens)</li>
+                      <li>Smarter tutor model — deeper explanations</li>
+                      <li>Priority for upcoming features</li>
+                      <li>Everything in Free</li>
+                    </ul>
+                    {usage?.plan === "pro" ? (
+                      <span className="plan-badge">Current plan</span>
+                    ) : (
+                      <div className="plan-upgrade-row">
+                        <button type="button" className="primary-button" onClick={() => startCheckout("monthly")}>Go Pro — $8.99/mo</button>
+                        <button type="button" onClick={() => startCheckout("yearly")}>$79/yr</button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </>
