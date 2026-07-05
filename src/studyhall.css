@@ -321,3 +321,27 @@ code, pre, kbd, samp, .hljs, .term-body, .vscode-code, .room-code {
 .theme-light .persona-sub { color: rgba(42, 35, 24, 0.62); }
 .theme-light .dna-controls button { background: rgba(42, 35, 24, 0.04); border-color: rgba(42, 35, 24, 0.15); color: rgba(42, 35, 24, 0.55); }
 .theme-light .dna-controls button.active { color: #8a5a14; background: rgba(224, 160, 57, 0.2); }
+
+/* ---------- the one dropdown: skinned native select ---------- */
+.sh-select { position: relative; display: inline-flex; align-items: center; min-width: 0; }
+.sh-select select {
+  appearance: none !important; -webkit-appearance: none !important;
+  width: 100%;
+  background: rgba(244, 232, 213, 0.045) !important;
+  border: 1px solid rgba(244, 232, 213, 0.12) !important;
+  border-radius: 10px !important;
+  color: var(--text, #f4e8d5) !important;
+  padding: 8px 30px 8px 12px !important;
+  font: inherit; font-size: 13px;
+  cursor: pointer;
+  transition: border-color .2s ease, background .2s ease;
+}
+.sh-select select:hover { background: rgba(244, 232, 213, 0.075) !important; }
+.sh-select select:focus-visible { outline: 2px solid var(--sh-accent, #e0a039) !important; outline-offset: 2px; }
+.sh-select > svg { position: absolute; right: 10px; pointer-events: none; color: rgba(244, 232, 213, 0.55); flex: 0 0 auto; }
+.sh-select select option { background: #221d15; color: #f4e8d5; }
+.theme-light .sh-select select { background: rgba(42, 35, 24, 0.04) !important; border-color: rgba(42, 35, 24, 0.18) !important; color: #2a2318 !important; }
+.theme-light .sh-select > svg { color: rgba(42, 35, 24, 0.55); }
+.theme-light .sh-select select option { background: #fffdf8; color: #2a2318; }
+/* selects that live inside labeled form columns stretch to the label width */
+label > .sh-select { display: flex; width: 100%; }
