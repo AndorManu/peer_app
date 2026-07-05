@@ -190,3 +190,50 @@ code, pre, kbd, samp, .hljs, .term-body, .vscode-code, .room-code {
 .theme-light { --bg: #faf6ee; --panel: #fffdf8; --panel-2: #f3ecdd; --panel-3: #ece3d0; --text: #2a2318; --muted: #746a58; --border: #e5dcc9; }
 .peer-skin.theme-light.app { background: #faf6ee !important; color: #2a2318 !important; }
 .peer-skin.theme-light .main { background: #faf6ee !important; }
+
+/* ---------- legal dialog (privacy / terms) + settings + landing links ---------- */
+.legal-modal {
+  max-width: 640px !important;
+  width: min(92vw, 640px) !important;
+  max-height: 82vh;
+  display: flex; flex-direction: column;
+}
+.legal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 0 12px;
+  border-bottom: 1px solid rgba(244, 232, 213, 0.1);
+}
+.legal-head h2 { margin: 0; font-size: 20px; }
+.legal-body { overflow-y: auto; padding-top: 4px; }
+.legal-updated { font-size: 12px; color: rgba(244, 232, 213, 0.62); margin: 10px 0 4px; }
+.legal-section h3 {
+  font-size: 13px; letter-spacing: .4px; text-transform: uppercase;
+  color: var(--sh-accent-hi, #f0b354); margin: 18px 0 6px;
+}
+.legal-section ul { margin: 0; padding-left: 20px; }
+.legal-section li { font-size: 13.5px; line-height: 1.65; color: rgba(244, 232, 213, 0.85); margin: 6px 0; }
+.theme-light .legal-head { border-bottom-color: rgba(42, 35, 24, 0.12); }
+.theme-light .legal-updated { color: rgba(42, 35, 24, 0.6); }
+.theme-light .legal-section h3 { color: #8a5a14; }
+.theme-light .legal-section li { color: rgba(42, 35, 24, 0.85); }
+
+.legal-links { display: flex; gap: 10px; }
+.legal-links button {
+  font-size: 13px; padding: 8px 14px; border-radius: 10px;
+  background: rgba(244, 232, 213, 0.05); border: 1px solid rgba(244, 232, 213, 0.12);
+  color: rgba(244, 232, 213, 0.85); cursor: pointer;
+}
+.legal-links button:hover { background: rgba(244, 232, 213, 0.09); }
+.theme-light .legal-links button { background: rgba(42, 35, 24, 0.04); border-color: rgba(42, 35, 24, 0.15); color: rgba(42, 35, 24, 0.85); }
+
+.landing-footer {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  grid-column: 1 / -1; padding: 18px 0 6px;
+  color: rgba(244, 232, 213, 0.62); font-size: 12.5px;
+}
+.landing-footer button {
+  background: none; border: 0; padding: 4px 2px; cursor: pointer;
+  color: rgba(244, 232, 213, 0.72); font-size: 12.5px; text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.landing-footer button:hover { color: var(--sh-accent-hi, #f0b354); }
