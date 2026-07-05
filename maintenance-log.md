@@ -1,5 +1,37 @@
 # Maintenance log
 
+## 2026-07-05 — M9: Real peer-to-peer rooms
+
+**What changed**
+- **The local rooms prototype is gone** — replaced by real Supabase Realtime
+  multiplayer ([src/RoomsPanel.jsx](src/RoomsPanel.jsx), lazy-loaded, 12KB):
+  - Rooms live in Postgres (RLS: visible to members only). Create one and it
+    gets an unguessable **invite code**; partners join from any device via
+    `join_room_with_code` (SECURITY DEFINER RPC, migration 0004 — the code is
+    the capability, wrong codes rejected).
+  - **Presence**: live "here now" chips show who's actually in the room.
+  - **Room chat** over broadcast — which doubles as live teach-back with a real
+    partner: explain, get questioned, in any language.
+  - **Co-op quiz**: the host picks one of their flashcard decks and quizzes the
+    whole room with synchronized question → reveal → next; answers happen in
+    chat. Subject-aware: rooms carry a domain (auto-classified from the name)
+    with its icon + accent.
+  - Signed-out users get a clear sign-in prompt (rooms are inherently
+    multi-user). Command palette entry updated.
+
+**What I tested**
+- `tools/verify-rooms.mjs` live against the project — **9/9 PASS**: A creates a
+  room; an outsider can't see it (RLS) and a wrong invite code is rejected; B
+  joins via the code and gains visibility; two separate realtime clients
+  connect ("two devices"), presence shows both partners, A's chat message
+  reaches B live, and a co-op quiz question syncs to B. Cleanup cascades.
+- Browser smoke: Rooms tab renders the sign-in gate for guests, no console
+  errors. 59/59 tests; build clean (RoomsPanel is its own lazy chunk).
+
+**Notes**
+- Broadcast channels are unguessable-UUID topics; moving them to authorized
+  private channels is queued for the pre-launch security pass.
+
 ## 2026-07-05 — M8: Document intelligence (RAG)
 
 **What changed**
