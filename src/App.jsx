@@ -92,6 +92,7 @@ import {
 import { DOMAINS, GENERAL_DOMAIN, classifySubject, domainForProject, getDomain } from "./subjects.js";
 import { computeBadges, detectNewBadges, getBadgeDef } from "./badges.js";
 import { hapticTap } from "./native.js";
+import { LegalDialog, downloadDataExport } from "./legal.jsx";
 import PeerNavRail from "./components/PeerNavRail.jsx";
 
 // Heavy screens load on demand: the Brain pulls in Three.js (~600KB) and the
@@ -3046,11 +3047,12 @@ function NotesPanel({ notes, projects, deleteNote, toggleShareNote, onPractice }
 
 function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSync, signOut, confirmDeleteAccount }) {
   const [tab, setTab] = useState("appearance");
+  const [legal, setLegal] = useState(null);
   const provider = AUTH_PROVIDERS.find((item) => item.id === state.account?.provider);
 
   const syncDescriptions = {
     starting: "Checking cloud connection…",
-    "signed-out": "Your data lives safely on this device. Cloud accounts (Google, email) arrive in the next update — sign-in will back everything up and sync it across devices automatically.",
+    "signed-out": "Your data lives safely on this device. Sign in (Google or email) to back everything up and sync it across your devices automatically.",
     idle: cloudSync?.lastSyncAt
       ? `Everything is backed up and in sync. Last sync ${new Date(cloudSync.lastSyncAt).toLocaleTimeString()}.`
       : "Connected — waiting for the first sync.",
@@ -3176,12 +3178,11 @@ function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSyn
               </div>
 
               <div className="settings-group">
-                <h2>Coming soon</h2>
-                <div className="roadmap-grid">
-                  <span><UserRound size={15} /> Google, Facebook, and email sign-in</span>
-                  <span><ClipboardCheck size={15} /> Usage limits, AI cost tracking, and audit logs</span>
-                  <span><Languages size={15} /> OCR, multilingual parsing, and document search</span>
-                  <span><Library size={15} /> Live study rooms with real partners</span>
+                <h2>Privacy &amp; legal</h2>
+                <p className="settings-danger-desc">Peer stores your study content for you — never for ads. Read the plain-language versions here, and export or delete everything anytime.</p>
+                <div className="legal-links">
+                  <button onClick={() => setLegal("privacy")}>Privacy policy</button>
+                  <button onClick={() => setLegal("terms")}>Terms of use</button>
                 </div>
               </div>
             </>
@@ -3189,6 +3190,13 @@ function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSyn
 
           {tab === "data" && (
             <>
+              <div className="settings-group">
+                <h2>Export your data</h2>
+                <p className="settings-danger-desc">Download everything Peer knows — chats, projects, notes, decks, badges, profile — as one JSON file. Handy as a backup, and it's your GDPR right.</p>
+                <button className="primary-button" style={{ margin: 0, width: "fit-content" }} onClick={() => downloadDataExport(state)}>
+                  <Save size={15} /> Export your data
+                </button>
+              </div>
               <div className="settings-group">
                 <h2>Sample data</h2>
                 <p className="settings-danger-desc">Add two demo subjects (Neuroscience, Linear Algebra) fully populated with concepts, weak spots, notes, and flashcard decks — so the Brain, Notes, and Cards have something to show. Your existing data is untouched.</p>
@@ -3207,6 +3215,7 @@ function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSyn
           )}
         </div>
       </div>
+      {legal && <LegalDialog kind={legal} onClose={() => setLegal(null)} />}
     </section>
   );
 }
