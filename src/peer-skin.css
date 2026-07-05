@@ -437,19 +437,23 @@
 /* heading overlays the canvas, top-left */
 .peer-skin .brain-heading {
   position: absolute !important; top: 22px !important; left: 30px !important; z-index: 6 !important;
+  /* the right edge RESERVES the toolbar's lane (354px panel offset + toolbar
+     max width + gap) so heading and toolbar can never overlap at any width */
+  right: calc(378px + min(44%, 620px)) !important; max-width: none !important;
   background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important;
-  display: block !important; max-width: 60% !important; pointer-events: none !important;
+  display: block !important; pointer-events: none !important;
 }
 .peer-skin .brain-kicker { display: none !important; }
 .peer-skin .brain-heading h1 { font-family: 'Space Grotesk', sans-serif !important; font-size: 27px !important; letter-spacing: -.4px !important; color: #fff !important; margin: 0 !important; }
-.peer-skin .brain-heading p { font-size: 13px !important; color: rgba(244,232,213,0.66) !important; margin: 3px 0 0 !important; }
+.peer-skin .brain-heading h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.peer-skin .brain-heading p { font-size: 13px !important; color: rgba(244,232,213,0.66) !important; margin: 3px 0 0 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .peer-skin .brain-summary { display: none !important; } /* stats live in the right panel */
 
 /* toolbar (scope/project/search) overlays top-right as glass; filters as pills */
 .peer-skin .brain-toolbar {
   position: absolute !important; top: 20px !important; right: 354px !important; z-index: 6 !important;
   background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important;
-  display: flex !important; flex-direction: column !important; align-items: flex-end !important; gap: 10px !important; max-width: 44% !important;
+  display: flex !important; flex-direction: column !important; align-items: flex-end !important; gap: 10px !important; max-width: min(44%, 620px) !important;
 }
 .peer-skin .brain-toolbar-fields { gap: 8px !important; }
 .peer-skin .brain-toolbar-fields label { color: rgba(244,232,213,0.66) !important; font-size: 10px !important; }
@@ -474,7 +478,11 @@
 /* workspace: full-bleed canvas + glass right panel. The panel/workspace must be
    a positioned full-height container so the absolute canvas actually fills it. */
 .peer-skin .learning-brain-panel { position: absolute !important; inset: 0 !important; overflow: hidden !important; }
-.peer-skin .brain-workspace { position: absolute !important; inset: 0 !important; display: block !important; height: auto !important; padding: 0 !important; }
+/* width/margin explicitly reset: legacy grid-era rules in styles.css centered
+   the workspace at min(1480px,100%), which detached the detail panel from the
+   real right edge at wide viewports while heading/toolbar anchored full-bleed
+   — three different coordinate systems, hence the 1920px+ overlap. */
+.peer-skin .brain-workspace { position: absolute !important; inset: 0 !important; width: auto !important; margin: 0 !important; display: block !important; height: auto !important; padding: 0 !important; }
 .peer-skin .brain-map-card {
   position: absolute !important; inset: 0 330px 0 0 !important; min-height: 0 !important; border: none !important; border-radius: 0 !important;
   background: radial-gradient(120% 95% at 50% 26%, rgba(224,160,57,0.18), transparent 60%), #15120d !important;

@@ -2558,8 +2558,8 @@ textarea:focus {
   align-items: flex-end !important;
   justify-content: space-between !important;
   gap: 18px !important;
-  width: min(1220px, 100%) !important;
-  margin: 0 auto 18px !important;
+  /* legacy width: min(1220px,100%) + centering removed — over-constrained
+     the skin's absolute lane layout (width beats `right`) at wide viewports */
 }
 
 .brain-kicker {
@@ -2624,8 +2624,7 @@ textarea:focus {
   align-items: flex-end !important;
   justify-content: space-between !important;
   gap: 14px !important;
-  width: min(1220px, 100%) !important;
-  margin: 0 auto 14px !important;
+  /* legacy width/centering removed (see .brain-heading note above) */
 }
 
 .brain-toolbar label {
@@ -2679,8 +2678,10 @@ textarea:focus {
   display: grid !important;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 360px) !important;
   gap: 16px !important;
-  width: min(1220px, 100%) !important;
-  margin: 0 auto !important;
+  /* legacy centering (width: min(1220px,100%) + margin auto) removed — the
+     Study Hall skin lays this out as a full-bleed absolute workspace, and a
+     centered width detached the detail panel from the true right edge on
+     wide screens (the 1920px+ overlap bug) */
 }
 
 .brain-map-card,
@@ -3006,11 +3007,9 @@ textarea:focus {
   padding-top: 28px !important;
 }
 
-.brain-heading,
-.brain-toolbar,
-.brain-workspace {
-  width: min(1320px, 100%) !important;
-}
+/* legacy width: min(1320px,100%) on heading/toolbar/workspace removed — it
+   over-constrained the skin's absolute lane layout (width beats `right`),
+   recreating the wide-viewport overlap */
 
 .brain-heading {
   align-items: center !important;
@@ -3431,11 +3430,7 @@ textarea:focus {
     linear-gradient(180deg, rgba(2, 8, 13, 0.18), transparent 220px) !important;
 }
 
-.brain-heading,
-.brain-toolbar,
-.brain-workspace {
-  width: min(1480px, 100%) !important;
-}
+/* legacy width: min(1480px,100%) removed (same over-constraint as above) */
 
 .brain-heading {
   display: grid !important;
