@@ -88,7 +88,8 @@ Adaptive learner profile:
 - Successful teaching strategies: ${profile.successfulStrategies?.length ? profile.successfulStrategies.map((item) => item.text || item).join("; ") : "none yet"}
 - Teaching recipe for this response: ${recipe.length ? recipe.join(" ") : "Use a short explanation, one example, and one check question."}
 
-Use this profile quietly. If the pattern is strong, adapt. If it is weak, keep experimenting.`
+Use this profile quietly. If the pattern is strong, adapt. If it is weak, keep experimenting.
+The teaching recipe directives above are NOT optional style hints — they encode what demonstrably worked or failed for this specific learner. Follow every recipe directive in this response, especially any hard caps or "FOR THIS SUBJECT" overrides.`
     : "";
 
   const modeBlock = `
