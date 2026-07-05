@@ -6,6 +6,7 @@
 import React, { useEffect, useState } from "react";
 import { Loader2, Mail, Sparkles, FileText, CheckCircle2, Wand2 } from "lucide-react";
 import { getSupabase } from "./supabase.js";
+import { LegalDialog } from "./legal.jsx";
 
 // Which OAuth providers are actually switched on server-side. Buttons for
 // disabled providers hide entirely (no dead ends); the moment the owner
@@ -165,6 +166,7 @@ export function LandingAuthFlow({ continueAsGuest, PeerLogo }) {
   }
 
   const emailBusy = busy === "signin" || busy === "signup" || busy === "magic";
+  const [legal, setLegal] = useState(null);
 
   return (
     <main className="landing-shell">
@@ -289,6 +291,13 @@ export function LandingAuthFlow({ continueAsGuest, PeerLogo }) {
           </>
         )}
       </div>
+
+      <footer className="landing-footer">
+        <button type="button" onClick={() => setLegal("privacy")}>Privacy</button>
+        <span aria-hidden="true">·</span>
+        <button type="button" onClick={() => setLegal("terms")}>Terms</button>
+      </footer>
+      {legal && <LegalDialog kind={legal} onClose={() => setLegal(null)} />}
     </main>
   );
 }
