@@ -51,6 +51,8 @@ export function makeProfile() {
     observations: [],
     successfulStrategies: [],
     teachingRecipe: [],
+    // which one-line "Peer adapted to you" notices have already been shown
+    adaptationNotes: {},
     streak: {
       count: 0,
       lastStudyDate: "",
@@ -61,11 +63,23 @@ export function makeProfile() {
   };
 }
 
+// Per-project feedback tallies — this is what lets Peer pace one subject
+// differently from another (gentle in the one you find hard, fast in the
+// one you're strong in) instead of one global setting.
+const BASE_MASTERY_SIGNALS = {
+  understood: 0,
+  confused: 0,
+  tooAdvanced: 0,
+  tooLong: 0,
+  goodExample: 0,
+};
+
 export function makeMastery() {
   return {
     concepts: [],
     misconceptions: [],
     reflections: [],
+    signals: { ...BASE_MASTERY_SIGNALS },
     updatedAt: Date.now(),
   };
 }
@@ -99,6 +113,7 @@ export function normalizeMastery(mastery) {
     concepts: Array.isArray(mastery?.concepts) ? mastery.concepts.slice(0, 40) : [],
     misconceptions: Array.isArray(mastery?.misconceptions) ? mastery.misconceptions.slice(0, 20) : [],
     reflections: Array.isArray(mastery?.reflections) ? mastery.reflections.slice(0, 12) : [],
+    signals: { ...base.signals, ...(mastery?.signals || {}) },
   };
 }
 
@@ -264,21 +279,126 @@ export function applyReflection(profile, summary = "Learner requested a session 
   });
 }
 
+// Thresholds where a pattern stops being noise and starts being a rule.
+// Escalation is the whole point: one click nudges, repeated clicks BIND.
+export const ADAPT = {
+  conciseHard: 3,   // global "too long" clicks -> hard length cap
+  exampleLead: 2,   // example-affinity signals -> open with an example
+  easierHere: 2,    // per-subject "too hard" -> auto-drop depth for that subject
+  strongHere: 0.7,  // avg confidence past this (4+ concepts) -> faster pace
+};
+
+function projectSignals(project) {
+  return normalizeMastery(project?.mastery).signals;
+}
+
+// Average concept confidence for a project (null with too little history).
+function projectStrength(project) {
+  const concepts = project?.mastery?.concepts || [];
+  if (concepts.length < 4) return null;
+  return concepts.reduce((sum, c) => sum + (c.confidence || 0), 0) / concepts.length;
+}
+
 export function buildTeachingRecipe(profile, project, mode) {
   const p = normalizeProfile(profile);
+  const ps = projectSignals(project);
   const recipe = [];
+
+  // Escalated, quantitative directives first — these are the closed loop.
+  if (p.signals.tooLong >= ADAPT.conciseHard || ps.tooLong >= 2) {
+    recipe.push("HARD LENGTH CAP: this learner has repeatedly flagged answers as too long. Keep this answer under 120 words — one tight explanation, one check question, nothing else. Do not pad.");
+  } else if (p.preferences.concise > 0 || p.signals.tooLong > 0) {
+    recipe.push("Keep the first answer concise; expand only if asked.");
+  }
+  if (p.preferences.exampleFirst >= ADAPT.exampleLead || p.signals.goodExample >= ADAPT.exampleLead || ps.goodExample >= ADAPT.exampleLead) {
+    recipe.push("OPEN with a concrete worked example BEFORE any abstract statement — examples are proven to land for this learner. Name the general idea only after the example has done the work.");
+  } else if (p.preferences.exampleFirst > 0 || p.preferences.visual > 0) {
+    recipe.push("Use a concrete example or analogy before abstraction.");
+  }
+  // Per-subject pacing: this project's history wins over the global setting.
+  if (ps.tooAdvanced >= ADAPT.easierHere && p.explanationDepth !== "simple") {
+    recipe.push("FOR THIS SUBJECT ONLY: recent answers here were too hard for this learner. Teach at simple depth — tiny steps, define every term, no assumed background — regardless of the global depth setting.");
+  }
+  const strength = projectStrength(project);
+  if (strength !== null && strength >= ADAPT.strongHere && ps.confused + ps.tooAdvanced === 0) {
+    recipe.push("The learner has high mastery in this subject — skip the basics, use precise terminology, and move at a faster, denser pace than you would by default.");
+  }
+
   if (p.explanationDepth === "simple") recipe.push("Use simple depth: tiny steps, low jargon, one concrete analogy.");
   if (p.explanationDepth === "expert") recipe.push("Use expert depth: precise terminology, edge cases, and tradeoffs.");
   if (p.explanationDepth === "exam") recipe.push("Use exam depth: recall prompts, common traps, and a short practice check.");
-  if (p.preferences.concise > 0 || p.signals.tooLong > 0) recipe.push("Keep the first answer concise; expand only if asked.");
   if (p.preferences.simple >= p.preferences.technical || p.signals.tooAdvanced > 0) recipe.push("Start with plain language and define key terms.");
-  if (p.preferences.exampleFirst > 0 || p.preferences.visual > 0) recipe.push("Use a concrete example or analogy before abstraction.");
   if (p.preferences.technical > p.preferences.simple) recipe.push("Include precise terminology and small code-shaped examples when relevant.");
   if (p.preferences.socratic > 0 || mode === "quiz" || mode === "duck") recipe.push("Ask one focused check question instead of multiple questions.");
   if (p.traits.frustrationPhrases > 0 || p.traits.confusionPhrases > 1) recipe.push("Reduce cognitive load and avoid long theory blocks.");
   if (project?.mastery?.concepts?.some((concept) => concept.status === "weak")) recipe.push("Reinforce weak concepts before introducing new ones.");
   if (!recipe.length) recipe.push("Use a short explanation, one example, and one check question.");
-  return recipe.slice(0, 6);
+  return recipe.slice(0, 7);
+}
+
+// The one-line "Peer just adapted to you" moments. Each fires ONCE, exactly
+// when a threshold is crossed, so the learner notices the adaptation without
+// it becoming a badge parade. Returns { kind, text } or null.
+export function adaptationNotice(profile, project) {
+  const p = normalizeProfile(profile);
+  const ps = projectSignals(project);
+  const shown = p.adaptationNotes || {};
+  if (!shown.concise && p.signals.tooLong >= ADAPT.conciseHard) {
+    return { kind: "concise", text: "Keeping answers shorter from now on — you've preferred that." };
+  }
+  if (!shown.exampleFirst && (p.preferences.exampleFirst >= ADAPT.exampleLead || p.signals.goodExample >= ADAPT.exampleLead)) {
+    return { kind: "exampleFirst", text: "Starting with examples first — they seem to click for you." };
+  }
+  if (!shown.easierHere && ps.tooAdvanced >= ADAPT.easierHere && p.explanationDepth !== "simple") {
+    return { kind: "easierHere", text: `Taking ${project?.name ? `"${project.name}"` : "this subject"} in smaller steps — recent answers ran too hard.` };
+  }
+  return null;
+}
+
+export function markAdaptationNoticeShown(profile, kind) {
+  const next = normalizeProfile(profile);
+  return { ...next, adaptationNotes: { ...(next.adaptationNotes || {}), [kind]: true }, updatedAt: Date.now() };
+}
+
+// Specific, human sentences about how this learner actually learns — shown on
+// the Profile recap card. Everything derives from real accumulated signals;
+// with no history it says so instead of pretending.
+export function buildPersonaInsights(state) {
+  const p = normalizeProfile(state?.profile);
+  const projects = Array.isArray(state?.projects) ? state.projects : [];
+  const insights = [];
+
+  if (p.preferences.exampleFirst >= 2 && p.preferences.exampleFirst >= p.preferences.technical) {
+    insights.push("You learn best from worked examples before theory — Peer now opens with one.");
+  } else if (p.preferences.technical > p.preferences.simple && p.preferences.technical >= 2) {
+    insights.push("You like precise, technical depth — Peer skips the hand-holding.");
+  } else if (p.preferences.analogyFirst >= 2 || p.preferences.visual >= 3) {
+    insights.push("Analogies and visual models are what make ideas stick for you.");
+  }
+
+  if (p.signals.tooLong >= ADAPT.conciseHard) {
+    insights.push("Short beats thorough for you — answers stay under a hard length cap now.");
+  } else if (p.signals.confused >= 3) {
+    insights.push("When something's unclear you say so — Peer restarts smaller instead of repeating itself.");
+  }
+
+  const rated = projects
+    .map((project) => ({ name: project.name, strength: projectStrength(project), weak: (project.mastery?.concepts || []).filter((c) => c.status === "weak").length }))
+    .filter((entry) => entry.strength !== null || entry.weak >= 2);
+  const strongest = rated.filter((e) => e.strength !== null && e.strength >= 0.6).sort((a, b) => b.strength - a.strength)[0];
+  const weakest = rated.filter((e) => e.weak >= 2 && e.name !== strongest?.name).sort((a, b) => b.weak - a.weak)[0];
+  if (strongest && weakest) {
+    insights.push(`You're moving fast through ${strongest.name}, but ${weakest.name} wants more repetition.`);
+  } else if (strongest) {
+    insights.push(`You're moving quickly through ${strongest.name} — Peer paces it faster than your other subjects.`);
+  } else if (weakest) {
+    insights.push(`${weakest.name} is the one asking for more repetition right now.`);
+  }
+
+  if (!insights.length) {
+    insights.push("Still learning how you learn — tap the feedback chips when an answer lands (or doesn't) and this gets specific.");
+  }
+  return insights.slice(0, 3);
 }
 
 // Universal skill tree: concepts group by how solid they are, which is
@@ -372,6 +492,7 @@ export function updateMasteryFromMessage(mastery, content, domainHints = []) {
 
 export function updateMasteryFromFeedback(mastery, feedback, activeText = "", domainHints = []) {
   const next = normalizeMastery(mastery);
+  if (feedback in next.signals) next.signals[feedback] += 1;
   const concepts = extractConcepts(activeText, domainHints);
   for (const label of concepts) {
     const positive = feedback === "understood" || feedback === "goodExample";

@@ -54,9 +54,11 @@ import { extractStudyMaterial } from "./materials.js";
 import { buildSystemPrompt, shouldUseRetrieval } from "./peerPrompt.js";
 import { loadState, saveState, setSaveErrorHandler } from "./storage.js";
 import {
+  adaptationNotice,
   addReflection,
   applyFeedback,
   applyReflection,
+  buildPersonaInsights,
   buildSessionRecap,
   buildSkillTree,
   buildLearnerRecap,
@@ -64,6 +66,7 @@ import {
   getWeakSpots,
   inferProfileFromMessage,
   makeMastery,
+  markAdaptationNoticeShown,
   recordStudyActivity,
   setExplanationDepth,
   updateMasteryFromFeedback,
@@ -181,6 +184,8 @@ export default function App() {
   // Study pulse: dashboard numbers + the once-per-open reminder banner.
   const [autoReview, setAutoReview] = useState(false);
   const [reminder, setReminder] = useState(null);
+  // One-line "Peer just adapted to you" note, shown with the next answer.
+  const [adaptationNote, setAdaptationNote] = useState(null);
   const [voiceMode, setVoiceMode] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [listening, setListening] = useState(false);
@@ -854,14 +859,25 @@ export default function App() {
 
   function handleFeedback(message, type) {
     setMessageFeedback(message.id, type);
+    // Compute the learned profile/mastery synchronously so the follow-up send
+    // can build on them — otherwise its own profile write (from the stale
+    // render snapshot) silently clobbers this feedback signal.
+    let nextProfile = applyFeedback(state.profile, type);
+    const currentProject = state.projects.find((project) => project.id === activeChat.projectId) || null;
+    const nextProject = currentProject
+      ? { ...currentProject, mastery: updateMasteryFromFeedback(currentProject.mastery, type, message.content, domainForProject(currentProject).conceptHints) }
+      : null;
+    // If this click just crossed an adaptation threshold, surface it once
+    // as a quiet one-liner in the chat — the learner should FEEL Peer adapt.
+    const notice = adaptationNotice(nextProfile, nextProject);
+    if (notice) {
+      nextProfile = markAdaptationNoticeShown(nextProfile, notice.kind);
+      setAdaptationNote(notice);
+    }
     updateState((current) => ({
       ...current,
-      profile: applyFeedback(current.profile, type),
-      projects: current.projects.map((project) => (
-        project.id === activeChat.projectId
-          ? { ...project, mastery: updateMasteryFromFeedback(project.mastery, type, message.content, domainForProject(project).conceptHints) }
-          : project
-      )),
+      profile: nextProfile,
+      projects: current.projects.map((project) => (nextProject && project.id === nextProject.id ? nextProject : project)),
     }));
 
     const followups = {
@@ -878,7 +894,7 @@ export default function App() {
 
     if (followups[type]) {
       const [prompt, mode] = followups[type];
-      sendMessage(prompt, { mode });
+      sendMessage(prompt, { mode, fromFeedback: true, profileOverride: nextProfile, projectOverride: nextProject });
     } else {
       showToast("Learning profile updated");
     }
@@ -1025,8 +1041,13 @@ export default function App() {
       ? `\n\nAttached study material in this chat: ${pendingFiles.map((file) => `${file.name} (${file.kind})`).join(", ")}. Use the project library context when relevant.`
       : "";
     const visibleContent = content || `I attached ${pendingFiles.length} study material${pendingFiles.length === 1 ? "" : "s"}. Help me understand it.`;
-    const learnedProfile = recordStudyActivity(inferProfileFromMessage(state.profile, visibleContent));
-    const currentProject = state.projects.find((item) => item.id === activeChat.projectId);
+    // Feedback follow-ups pass the just-updated profile/project so this send
+    // builds ON the new signal instead of clobbering it with the stale
+    // render-time snapshot (and so THIS request already obeys any directive
+    // the feedback just triggered, e.g. the hard length cap).
+    const baseProfile = options.profileOverride || state.profile;
+    const learnedProfile = recordStudyActivity(inferProfileFromMessage(baseProfile, visibleContent));
+    const currentProject = options.projectOverride || state.projects.find((item) => item.id === activeChat.projectId);
     const learnedProject = currentProject
       ? { ...currentProject, mastery: updateMasteryFromMessage(currentProject.mastery, visibleContent, domainForProject(currentProject).conceptHints) }
       : null;
@@ -1045,6 +1066,8 @@ export default function App() {
     setPendingFiles([]);
     setError("");
     setLoading(true);
+    // the adaptation one-liner accompanies the response it applies to, then leaves
+    if (!options.fromFeedback) setAdaptationNote(null);
     // fresh voice turn: cut off any answer still being spoken (barge-in)
     stopSpeaking();
     spokenOffsetRef.current = 0;
@@ -1972,7 +1995,7 @@ export default function App() {
         </header>
 
         {view === "settings" && <SettingsPanel state={state} updateState={updateState} resetData={confirmResetData} loadSampleData={loadSampleData} cloudSync={cloudSync} signOut={signOut} confirmDeleteAccount={confirmDeleteAccount} />}
-        {view === "profile" && <ProfilePanel profile={state.profile} activeProject={activeProject} activeChat={activeChat} insights={insights} activeMode={activeMode} updateState={updateState} recap={buildLearnerRecap(state)} badgeInfo={computeBadges(state)} showToast={showToast} pulse={studyPulse} onReviewNow={startReviewNow} />}
+        {view === "profile" && <ProfilePanel profile={state.profile} activeProject={activeProject} activeChat={activeChat} insights={insights} activeMode={activeMode} updateState={updateState} recap={buildLearnerRecap(state)} badgeInfo={computeBadges(state)} showToast={showToast} pulse={studyPulse} onReviewNow={startReviewNow} personaInsights={buildPersonaInsights(state)} />}
         {view === "brain" && (
           <React.Suspense fallback={<PanelLoading label="Waking up your brain…" />}>
             <LearningBrainPanel state={state} activeProject={activeProject} setView={setView} updateState={updateState} setManagedProjectId={setManagedProjectId} setSelectedDocId={setSelectedDocId} onPractice={generatePractice} onExplain={explainConcept} />
@@ -2028,6 +2051,7 @@ export default function App() {
             makeFlashcards={makeFlashcards}
             generateImage={generateImage}
             requestVisualBlueprint={requestVisualBlueprint}
+            adaptationNote={adaptationNote}
           />
         )}
 
@@ -2405,7 +2429,7 @@ function ChatRow({ chat, active, editing, editingName, setEditingName, renameCha
   );
 }
 
-function ChatArea({ activeChat, activeProject, activeMode, loading, error, sendMessage, bottomRef, handleFeedback, saveNote, regenerateFrom, startTeachBack, reflectSession, makeFlashcards, generateImage, requestVisualBlueprint }) {
+function ChatArea({ activeChat, activeProject, activeMode, loading, error, sendMessage, bottomRef, handleFeedback, saveNote, regenerateFrom, startTeachBack, reflectSession, makeFlashcards, generateImage, requestVisualBlueprint, adaptationNote }) {
   if (!activeChat?.messages.length) {
     return (
       <section className="welcome">
@@ -2486,6 +2510,11 @@ function ChatArea({ activeChat, activeProject, activeMode, loading, error, sendM
           </div>
         </article>
       ))}
+      {adaptationNote && (
+        <div className="adaptation-note" role="status">
+          <Sparkles size={13} aria-hidden="true" /> {adaptationNote.text}
+        </div>
+      )}
       {loading && (
         <article className="message assistant">
           <div className="avatar" aria-hidden="true"><Brain size={17} /></div>
@@ -2762,7 +2791,7 @@ function BadgeMedallion({ def, earned, progress = 0, current = 0, onShare }) {
   );
 }
 
-function ProfilePanel({ profile, activeProject, activeChat, insights, activeMode, updateState, recap, badgeInfo, showToast, pulse, onReviewNow }) {
+function ProfilePanel({ profile, activeProject, activeChat, insights, activeMode, updateState, recap, badgeInfo, showToast, pulse, onReviewNow, personaInsights }) {
   const [showAllBadges, setShowAllBadges] = useState(false);
   function shareBadge(def) {
     const text = `I just earned "${def.title}" on Peer — ${def.description}`;
@@ -2831,6 +2860,16 @@ function ProfilePanel({ profile, activeProject, activeChat, insights, activeMode
                 <BookOpen size={15} /> Review {pulse.dueNow} due card{pulse.dueNow === 1 ? "" : "s"} now
               </button>
             )}
+          </div>
+        )}
+        {personaInsights && personaInsights.length > 0 && (
+          <div className="profile-card wide persona-card">
+            <h2>How you learn</h2>
+            <ul className="persona-list">
+              {personaInsights.map((line) => (
+                <li key={line.slice(0, 30)}><Sparkles size={14} aria-hidden="true" /> {line}</li>
+              ))}
+            </ul>
           </div>
         )}
         {recap && recap.totalConcepts > 0 && (
