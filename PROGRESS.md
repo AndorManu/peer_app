@@ -192,6 +192,48 @@ layer has before/after tests plus at least one live proof.
   reaches the model only as aggregates + max 9 one-line directives —
   never raw history dumps.
 
+## Fifth pass: exhaustive color audit — every literal fixed or blessed (2026-07-06)
+
+- **The recurring "blue controls" bug is dead, with the real root cause found**
+  (this commit). Two mechanisms, not one:
+  1. `styles.css` still had `.theme-light { --accent: #0099cc }` — a legacy
+     LIGHT-MODE override that hijacked the whole `--accent` token with blue
+     whenever Settings → Theme = Light, regardless of the active palette.
+     Light mode now derives `--accent/--accent-2/--accent-rgb` from the
+     `--sh-*` contract like dark mode always did (verified live: light+
+     studyhall → `--accent` #e0a039, light+indigo → #8b7cf7).
+  2. `.segmented button.active` hardcoded `linear-gradient(…, #5b7cf5)` +
+     `color:#061116` — the Rooms Public/Private toggle, the Dark/Light
+     toggle, and every other segmented control rendered indigo-blue in all
+     themes. Now `var(--sh-accent) → var(--sh-accent-hi)` + `var(--sh-accent-ink)`.
+- **Systematic, not spot-check**: a scanner (now a repo tool,
+  `tools/color-audit.cjs`) walks every `.css/.js/.jsx` in src/, flags every
+  hex/rgb/rgba literal that isn't a `var()` reference or a documented
+  intentional color. First run: **363 offenders**. After this pass: **0**.
+  ~290 conversions by family: old-indigo `rgba(139,124,246,…)` accents →
+  `rgba(var(--sh-accent-rgb),…)`; cool blue-white text ramps → `rgba(var(--sh-text-rgb),…)`;
+  old navy surfaces → `color-mix(… var(--sh-bg-deep) …)`; neon pink danger →
+  the design system's warm danger family; light-mode COOL ink/paper
+  (#1d2233/#f5f6fb/#4c3fd4-indigo) → the warm paper family studyhall.css
+  established (#2a2318/#faf6ee/theme accent). Send-button cyan hovers,
+  vscode-editor bg, Code-lab inline glow, sync.js default project color
+  (old indigo → warm taupe #9c8b74) all converted.
+- **Brain legend/2D-fallback re-aligned to the real data-viz palette**: the
+  legend dots and SVG-fallback node strokes still used the OLD violet/blue
+  node colors; they now mirror `BRAIN_PALETTE` (brainGraph.js) — hubs wear
+  the theme accent, type colors are the warm fixed set.
+- **Intentionally fixed (blessed, in the audit tool's list)**: subject-domain
+  accents, brain node-type colors, per-project identity colors, badge tints,
+  hljs syntax palette, danger red / success green status tones, Google &
+  Facebook logo brand colors, the mono palette-picker swatch, terminal
+  prompt green, and the light-mode warm paper family. Everything else must
+  reference the theme contract — `node tools/color-audit.cjs` enforces it.
+- **Verified live** (running app, real controls): segmented active state +
+  StyledSelect popover selected/highlighted + send button + Rooms visibility
+  toggle computed styles under studyhall/indigo/mono, palette switching in
+  light mode, screenshots of Settings appearance under all three palettes;
+  98/98 tests, clean build.
+
 ## Fourth pass: code libraries, brain navigation, the Stone mark (2026-07-05)
 
 - **Code lab libraries** (`8dadfc2`): Python now runs IN the browser via
