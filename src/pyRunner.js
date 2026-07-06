@@ -58,7 +58,9 @@ async function getPyodide(onStatus) {
 // Run Python with real package support. Returns { lines, code, ms, where }.
 // Throws only if the RUNTIME can't load (caller falls back to the server
 // runner); Python errors come back as terminal lines like any other output.
-export async function runPython(code, { onStatus } = {}) {
+// `packages`: Pyodide package names from enabled library packs — preloaded
+// so the pack's imports are guaranteed available (imports auto-load too).
+export async function runPython(code, { onStatus, packages = [] } = {}) {
   const graphical = detectGraphicalLib(code);
   if (graphical) {
     return { lines: graphicalLibMessage(graphical), code: 1, ms: 0, where: "browser" };
@@ -73,6 +75,12 @@ export async function runPython(code, { onStatus } = {}) {
 
   let exitCode = 0;
   try {
+    if (packages.length) {
+      onStatus?.("Loading library packs…");
+      // non-fatal: a pack that fails to fetch shouldn't kill the run —
+      // loadPackagesFromImports below still resolves what the code uses
+      try { await pyodide.loadPackage(packages); } catch { /* keep going */ }
+    }
     // fetch exactly the packages the code imports (numpy, pandas, ...)
     onStatus?.("Resolving imports…");
     await pyodide.loadPackagesFromImports(code);
