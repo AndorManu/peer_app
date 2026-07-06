@@ -192,6 +192,33 @@ layer has before/after tests plus at least one live proof.
   reaches the model only as aggregates + max 9 one-line directives —
   never raw history dumps.
 
+## Rooms: intentionally DEFERRED post-launch behind a Coming Soon gate (2026-07-06)
+
+- **Decision (owner-directed)**: real-time peer rooms will NOT ship at
+  launch. The Rooms nav entry stays (the feature exists and is planned) but
+  now opens an on-brand "Study rooms are coming" placeholder instead of the
+  live feature.
+- **Why**: opening real-time chat between strangers — including minors —
+  to the public requires a proper moderation/legal review first: minor
+  safety, mandatory-reporting obligations, and Terms of Service coverage
+  for user-to-user content. Gating is the responsible order of operations.
+- **Nothing was deleted — this is a temporary gate, not a rollback.**
+  RoomsPanel.jsx, migrations 0004/0006 (rooms tables, RLS,
+  join_room_with_code), realtime wiring, presence, co-op quiz, and the
+  discovery feed are all intact and still pass tests. The gate is ONE flag:
+  `ROOMS_LIVE = false` in App.jsx — flip to true to restore the live
+  feature exactly as verified in M9/`81feecb`.
+- **The plan when the review clears** (previously specced, still the plan,
+  NOT abandoned): self-explanatory room UI (what a room is, who can see it,
+  what the code does), room lifecycle/expiration so stale rooms don't
+  accumulate, and safety rails (report/block, profanity guard, join-rate
+  limits) before public exposure.
+- **Verified**: placeholder renders under studyhall/indigo/mono
+  (screenshots), Rooms rail entry still navigates to it, RoomsPanel no
+  longer mounts, and nothing downstream broke — badge engine (incl. the
+  room-session badge in the catalog) and Brain node types render normally;
+  98/98 tests, clean build.
+
 ## Fifth pass: bare buttons — one ghost style for every secondary action (2026-07-06)
 
 - **Audit method**: scripted scan of every `<button` in every .jsx for missing

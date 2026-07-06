@@ -115,6 +115,35 @@ const LearningBrainPanel = React.lazy(() =>
 const CodingPanel = React.lazy(() => import("./CodingPanel.jsx"));
 const RoomsPanel = React.lazy(() => import("./RoomsPanel.jsx"));
 
+// TEMPORARY GATE — Rooms ships post-launch. The live feature (RoomsPanel,
+// Supabase tables/RLS, realtime, discovery) is complete and preserved; it
+// stays un-routed until the moderation/legal review (minor safety, mandatory
+// reporting, ToS) clears opening real-time peer chat to the public.
+// Flip to true to restore the live feature. See PROGRESS.md "Rooms deferred".
+const ROOMS_LIVE = false;
+
+function RoomsComingSoon() {
+  return (
+    <section className="rooms-soon" aria-labelledby="rooms-soon-title">
+      <div className="rooms-soon-card">
+        <span className="rooms-soon-mark" aria-hidden="true"><Users size={26} /></span>
+        <h1 id="rooms-soon-title">Study rooms are coming</h1>
+        <p>
+          Learn live with real people — join a room for your subject, quiz each
+          other, and keep one another honest. We're finishing the safety and
+          moderation groundwork so rooms are a good place to be from day one.
+        </p>
+        <ul className="rooms-soon-list">
+          <li><Users size={15} aria-hidden="true" /> Live rooms with presence — see who's studying with you</li>
+          <li><MessageSquare size={15} aria-hidden="true" /> Room chat built for focus, not noise</li>
+          <li><Target size={15} aria-hidden="true" /> Co-op quizzes from your own flashcard decks</li>
+        </ul>
+        <span className="rooms-soon-badge">Coming soon</span>
+      </div>
+    </section>
+  );
+}
+
 function PanelLoading({ label }) {
   return (
     <div className="panel-loading" role="status">
@@ -2037,7 +2066,8 @@ export default function App() {
         )}
         {view === "notes" && <NotesPanel notes={state.notes} projects={state.projects} deleteNote={confirmDeleteNote} toggleShareNote={toggleShareNote} onPractice={generatePractice} setView={setView} />}
         {view === "flashcards" && <FlashcardsPanel flashcards={state.flashcards} projects={state.projects} setView={setView} deleteFlashcardDeck={confirmDeleteDeck} gradeFlashcard={gradeFlashcard} autoStartReview={autoReview} onAutoStartConsumed={() => setAutoReview(false)} />}
-        {view === "community" && (
+        {view === "community" && !ROOMS_LIVE && <RoomsComingSoon />}
+        {view === "community" && ROOMS_LIVE && (
           <React.Suspense fallback={<PanelLoading label="Opening peer rooms…" />}>
             <RoomsPanel
               account={state.account}
