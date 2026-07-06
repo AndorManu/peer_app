@@ -457,8 +457,8 @@ ${code || "(empty)"}
         <div className="code-lab-tutor" style={{ ...panel, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
           <div style={{ padding: "14px 16px 10px", borderBottom: "1px solid rgba(var(--sh-text-rgb), 0.06)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 11 }}>
-              <span style={{ width: 22, height: 22, borderRadius: 7, background: GRADIENTS.accent, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Sparkles size={13} color="#0a0a14" />
+              <span style={{ width: 22, height: 22, borderRadius: 7, background: GRADIENTS.accent, color: "var(--sh-accent-ink)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Sparkles size={13} />
               </span>
               <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 600, fontSize: 14 }}>Peer · coding tutor</span>
               {project && <span style={{ marginLeft: "auto", fontSize: 11, color: COLORS.text40 }}>knows your {project.name} brain</span>}
@@ -505,7 +505,7 @@ function btn(primary) {
     fontSize: 12.5, fontWeight: 500, border: primary ? "none" : "1px solid rgba(var(--sh-text-rgb), 0.1)",
     background: primary ? "linear-gradient(135deg,var(--sh-accent),var(--sh-accent-hi))" : "rgba(var(--sh-text-rgb), 0.04)",
     color: primary ? "var(--sh-accent-ink, #1c1509)" : "rgba(var(--sh-text-rgb), 0.8)",
-    boxShadow: primary ? "0 0 18px -6px rgba(139,92,246,0.7)" : "none",
+    boxShadow: primary ? "0 0 18px -6px rgba(var(--sh-accent-rgb), 0.7)" : "none",
     transition: `transform .2s ${EASE}, background .2s ease`,
   };
 }

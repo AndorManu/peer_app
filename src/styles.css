@@ -90,7 +90,7 @@ body { background: var(--sh-bg, var(--sh-bg)); }
 
 /* ── Sidebar ── */
 .sidebar {
-  background: rgba(6, 6, 11, 0.97) !important;
+  background: color-mix(in srgb, var(--sh-bg-deep) 97%, transparent) !important;
   border-right: 1px solid rgba(var(--sh-accent-rgb), 0.09) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -244,7 +244,7 @@ body { background: var(--sh-bg, var(--sh-bg)); }
 
 /* ── Topbar ── */
 .topbar {
-  background: rgba(6, 6, 11, 0.92) !important;
+  background: color-mix(in srgb, var(--sh-bg-deep) 92%, transparent) !important;
   border-bottom: 1px solid rgba(var(--sh-accent-rgb), 0.08) !important;
   backdrop-filter: blur(12px) !important;
   -webkit-backdrop-filter: blur(12px) !important;
@@ -297,7 +297,7 @@ body { background: var(--sh-bg, var(--sh-bg)); }
   box-shadow: none !important;
 }
 .message.user .bubble {
-  background: linear-gradient(135deg, rgba(var(--sh-accent-rgb), 0.13), rgba(139, 124, 246, 0.07)) !important;
+  background: linear-gradient(135deg, rgba(var(--sh-accent-rgb), 0.13), rgba(var(--sh-accent-rgb), 0.07)) !important;
   border: 1px solid rgba(var(--sh-accent-rgb), 0.22) !important;
   border-radius: 10px !important;
   box-shadow: 0 0 20px rgba(var(--sh-accent-rgb), 0.07) !important;
@@ -307,7 +307,7 @@ body { background: var(--sh-bg, var(--sh-bg)); }
 
 /* ── Composer ── */
 .composer-wrap {
-  background: rgba(6, 6, 11, 0.93) !important;
+  background: color-mix(in srgb, var(--sh-bg-deep) 93%, transparent) !important;
   border-top: 1px solid rgba(var(--sh-accent-rgb), 0.08) !important;
   backdrop-filter: blur(12px) !important;
   -webkit-backdrop-filter: blur(12px) !important;
@@ -345,13 +345,13 @@ body { background: var(--sh-bg, var(--sh-bg)); }
 /* ── Send button ── */
 .send-button {
   background: var(--accent) !important;
-  color: #000 !important;
+  color: var(--sh-accent-ink) !important;
   border-radius: 8px !important;
   box-shadow: 0 0 16px rgba(var(--sh-accent-rgb), 0.32) !important;
   font-weight: 700 !important;
 }
 .send-button:hover:not(:disabled) {
-  background: #33e5ff !important;
+  background: var(--sh-accent-hi) !important;
   box-shadow: 0 0 28px rgba(var(--sh-accent-rgb), 0.5) !important;
 }
 
@@ -401,7 +401,7 @@ body { background: var(--sh-bg, var(--sh-bg)); }
 .modal,
 .onboarding-modal,
 .command-palette {
-  background: rgba(7, 7, 12, 0.98) !important;
+  background: color-mix(in srgb, var(--sh-bg-deep) 98%, transparent) !important;
   border: 1px solid rgba(var(--sh-accent-rgb), 0.16) !important;
   backdrop-filter: blur(40px) !important;
   -webkit-backdrop-filter: blur(40px) !important;
@@ -522,9 +522,9 @@ textarea:focus {
   gap: 8px;
   padding: 10px 18px;
   border-radius: 7px;
-  background: rgba(255, 60, 60, 0.08);
-  border: 1px solid rgba(255, 60, 60, 0.24);
-  color: #ff6060;
+  background: rgba(201, 106, 90, 0.08);
+  border: 1px solid rgba(201, 106, 90, 0.24);
+  color: #d98a7c;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -532,28 +532,36 @@ textarea:focus {
   transition: background 0.15s, border-color 0.15s;
 }
 .danger-btn:hover {
-  background: rgba(255, 60, 60, 0.16);
-  border-color: rgba(255, 60, 60, 0.4);
+  background: rgba(201, 106, 90, 0.16);
+  border-color: rgba(201, 106, 90, 0.4);
 }
 
 /* ── Light theme ── */
-.theme-light { --accent: #0099cc; --accent-2: #00aa66; }
-.theme-light body { background: #f0f2f6; }
+/* Light mode keeps the ACTIVE palette's accent — the old hardcoded blue/green
+   pair here was the "blue controls regardless of theme" bug. */
+.theme-light {
+  --accent: var(--sh-accent);
+  --accent-2: var(--sh-accent-hi);
+  --accent-rgb: var(--sh-accent-rgb);
+  --glow: rgba(var(--sh-accent-rgb), 0.14);
+  --bubble: rgba(var(--sh-accent-rgb), 0.05);
+  --faint: rgba(var(--sh-accent-rgb), 0.04);
+}
 .theme-light .bg-canvas {
-  background-image: radial-gradient(circle, rgba(0, 130, 200, 0.06) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(var(--sh-accent-rgb), 0.06) 1px, transparent 1px);
   background-size: 28px 28px;
 }
 .theme-light .sidebar {
-  background: rgba(244, 246, 252, 0.97) !important;
-  border-right: 1px solid rgba(0, 120, 200, 0.1) !important;
+  background: rgba(255, 253, 248, 0.97) !important;
+  border-right: 1px solid rgba(42, 35, 24, 0.1) !important;
 }
 .theme-light .topbar {
-  background: rgba(244, 246, 252, 0.94) !important;
-  border-bottom: 1px solid rgba(0, 120, 200, 0.1) !important;
+  background: rgba(255, 253, 248, 0.94) !important;
+  border-bottom: 1px solid rgba(42, 35, 24, 0.1) !important;
 }
 .theme-light .composer-wrap {
-  background: rgba(244, 246, 252, 0.94) !important;
-  border-top: 1px solid rgba(0, 120, 200, 0.1) !important;
+  background: rgba(255, 253, 248, 0.94) !important;
+  border-top: 1px solid rgba(42, 35, 24, 0.1) !important;
 }
 .theme-light .brand strong { color: var(--accent) !important; }
 .theme-light .side-heading span { color: #7a5a1e !important; }
@@ -855,7 +863,7 @@ textarea:focus {
 .flashcard-back {
   transform: rotateY(180deg) !important;
   background:
-    linear-gradient(135deg, rgba(139, 124, 246, 0.08), rgba(var(--sh-accent-rgb), 0.018)),
+    linear-gradient(135deg, rgba(var(--sh-accent-rgb), 0.08), rgba(var(--sh-accent-rgb), 0.018)),
     var(--sh-bg) !important;
 }
 
@@ -881,9 +889,9 @@ textarea:focus {
 }
 
 .fc-label-answer {
-  border-color: rgba(139, 124, 246, 0.24) !important;
+  border-color: rgba(var(--sh-accent-rgb), 0.24) !important;
   color: var(--accent-2) !important;
-  background: rgba(139, 124, 246, 0.055) !important;
+  background: rgba(var(--sh-accent-rgb), 0.055) !important;
 }
 
 .fc-content p {
@@ -1083,22 +1091,22 @@ textarea:focus {
 }
 
 .composer .mic-button.recording {
-  border-color: rgba(255, 88, 120, 0.45) !important;
-  background: rgba(255, 88, 120, 0.12) !important;
-  color: #ff6f8f !important;
-  box-shadow: 0 0 18px rgba(255, 88, 120, 0.16) !important;
+  border-color: rgba(201, 106, 90, 0.45) !important;
+  background: rgba(201, 106, 90, 0.12) !important;
+  color: #d98a7c !important;
+  box-shadow: 0 0 18px rgba(201, 106, 90, 0.16) !important;
 }
 
 .composer .send-button {
   background: var(--accent) !important;
-  color: #000 !important;
+  color: var(--sh-accent-ink) !important;
   border-color: rgba(var(--sh-accent-rgb), 0.34) !important;
   box-shadow: 0 0 16px rgba(var(--sh-accent-rgb), 0.32) !important;
 }
 
 .composer .send-button:hover:not(:disabled) {
   transform: translateY(-1px) !important;
-  background: #33e5ff !important;
+  background: var(--sh-accent-hi) !important;
   box-shadow: 0 0 28px rgba(var(--sh-accent-rgb), 0.5) !important;
 }
 
@@ -1274,13 +1282,13 @@ textarea:focus {
 }
 
 .skill-node.weak {
-  border-color: rgba(255, 111, 143, 0.28) !important;
-  background: rgba(255, 111, 143, 0.08) !important;
+  border-color: rgba(201, 106, 90, 0.28) !important;
+  background: rgba(201, 106, 90, 0.08) !important;
 }
 
 .skill-node.strong {
-  border-color: rgba(139, 124, 246, 0.24) !important;
-  background: rgba(139, 124, 246, 0.06) !important;
+  border-color: rgba(var(--sh-accent-rgb), 0.24) !important;
+  background: rgba(var(--sh-accent-rgb), 0.06) !important;
 }
 
 .weakspot-list span {
@@ -1289,15 +1297,15 @@ textarea:focus {
   align-items: center !important;
   gap: 8px !important;
   min-height: 40px !important;
-  border: 1px solid rgba(255, 111, 143, 0.2) !important;
+  border: 1px solid rgba(201, 106, 90, 0.2) !important;
   border-radius: 8px !important;
-  background: rgba(255, 111, 143, 0.055) !important;
+  background: rgba(201, 106, 90, 0.055) !important;
   color: var(--text) !important;
   padding: 8px 10px !important;
 }
 
 .weakspot-list svg {
-  color: #ff6f8f !important;
+  color: #d98a7c !important;
 }
 
 .weakspot-list strong {
@@ -1641,11 +1649,11 @@ textarea:focus {
   --surface-0: var(--sh-bg);
   --surface-1: color-mix(in srgb, var(--sh-bg-2) 92%, transparent);
   --surface-2: color-mix(in srgb, var(--sh-bg-3) 86%, transparent);
-  --line-soft: rgba(118, 226, 255, 0.1);
+  --line-soft: rgba(var(--sh-accent-rgb), 0.1);
   --line-strong: rgba(var(--sh-accent-rgb), 0.32);
   --cyan-soft: rgba(var(--sh-accent-rgb), 0.085);
   --cyan-mid: rgba(var(--sh-accent-rgb), 0.16);
-  --green-soft: rgba(139, 124, 246, 0.08);
+  --green-soft: rgba(var(--sh-accent-rgb), 0.08);
 }
 
 .app,
@@ -1676,7 +1684,7 @@ textarea:focus {
 
 .font-list button.active {
   background:
-    linear-gradient(135deg, rgba(var(--sh-accent-rgb), 0.18), rgba(139, 124, 246, 0.075)),
+    linear-gradient(135deg, rgba(var(--sh-accent-rgb), 0.18), rgba(var(--sh-accent-rgb), 0.075)),
     rgba(var(--sh-accent-rgb), 0.08) !important;
   border-color: rgba(var(--sh-accent-rgb), 0.48) !important;
   color: var(--text) !important;
@@ -1691,7 +1699,7 @@ textarea:focus {
 }
 
 .font-title small {
-  background: rgba(139, 124, 246, 0.08) !important;
+  background: rgba(var(--sh-accent-rgb), 0.08) !important;
   color: var(--accent-2) !important;
 }
 
@@ -1733,7 +1741,7 @@ textarea:focus {
   display: flex !important;
   align-items: center !important;
   background:
-    linear-gradient(135deg, rgba(var(--sh-accent-rgb), 0.16), rgba(139, 124, 246, 0.075)),
+    linear-gradient(135deg, rgba(var(--sh-accent-rgb), 0.16), rgba(var(--sh-accent-rgb), 0.075)),
     rgba(var(--sh-accent-rgb), 0.08) !important;
   border: 1px solid rgba(var(--sh-accent-rgb), 0.28) !important;
   box-shadow:
@@ -1754,8 +1762,8 @@ textarea:focus {
   gap: 8px !important;
   padding: 10px clamp(12px, 3.6vw, 42px) 14px !important;
   background:
-    linear-gradient(180deg, rgba(4, 7, 12, 0.42), rgba(4, 7, 12, 0.96) 18%),
-    rgba(4, 7, 12, 0.94) !important;
+    linear-gradient(180deg, color-mix(in srgb, var(--sh-bg-deep) 42%, transparent), color-mix(in srgb, var(--sh-bg-deep) 96%, transparent) 18%),
+    color-mix(in srgb, var(--sh-bg-deep) 94%, transparent) !important;
   border-top: 1px solid rgba(var(--sh-accent-rgb), 0.12) !important;
   box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.35) !important;
 }
@@ -1783,7 +1791,7 @@ textarea:focus {
   border-radius: 9px !important;
   background: color-mix(in srgb, var(--sh-bg-3) 72%, transparent) !important;
   border: 1px solid rgba(var(--sh-accent-rgb), 0.1) !important;
-  color: rgba(231, 244, 255, 0.72) !important;
+  color: rgba(var(--sh-text-rgb), 0.72) !important;
   font-size: 12px !important;
   font-weight: 650 !important;
   padding: 0 11px !important;
@@ -1811,7 +1819,7 @@ textarea:focus {
 }
 
 .depth-strip > span {
-  color: rgba(231, 244, 255, 0.48) !important;
+  color: rgba(var(--sh-text-rgb), 0.48) !important;
   font-size: 12px !important;
   font-weight: 700 !important;
 }
@@ -1863,7 +1871,7 @@ textarea:focus {
 }
 
 .composer textarea::placeholder {
-  color: rgba(231, 244, 255, 0.42) !important;
+  color: rgba(var(--sh-text-rgb), 0.42) !important;
 }
 
 .composer .attach-button,
@@ -1887,29 +1895,29 @@ textarea:focus {
 .composer .voice-toggle {
   background: rgba(var(--sh-accent-rgb), 0.055) !important;
   border-color: rgba(var(--sh-accent-rgb), 0.14) !important;
-  color: rgba(231, 244, 255, 0.62) !important;
+  color: rgba(var(--sh-text-rgb), 0.62) !important;
 }
 
 .composer .send-button {
   width: 50px !important;
   min-width: 50px !important;
   background: linear-gradient(135deg, var(--sh-accent), var(--sh-accent-hi)) !important;
-  border-color: rgba(0, 255, 210, 0.4) !important;
-  color: #021116 !important;
+  border-color: rgba(var(--sh-accent-rgb), 0.4) !important;
+  color: var(--sh-accent-ink) !important;
   box-shadow:
     inset 0 1px 0 rgba(var(--sh-text-rgb), 0.34),
     0 0 24px rgba(var(--sh-accent-rgb), 0.38) !important;
 }
 
 .composer .send-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, #4ce6ff, #45ffbc) !important;
+  background: linear-gradient(135deg, var(--sh-accent-hi), var(--sh-accent)) !important;
   box-shadow:
     inset 0 1px 0 rgba(var(--sh-text-rgb), 0.4),
     0 0 34px rgba(var(--sh-accent-rgb), 0.52) !important;
 }
 
 .composer-hint {
-  color: rgba(231, 244, 255, 0.36) !important;
+  color: rgba(var(--sh-text-rgb), 0.36) !important;
   font-size: 12px !important;
   padding: 0 4px !important;
 }
@@ -1952,7 +1960,7 @@ textarea:focus {
 .settings-sidenav-btn {
   min-height: 42px !important;
   border-radius: 11px !important;
-  color: rgba(231, 244, 255, 0.62) !important;
+  color: rgba(var(--sh-text-rgb), 0.62) !important;
   font-weight: 700 !important;
 }
 
@@ -2003,8 +2011,8 @@ textarea:focus {
 }
 
 .segmented button.active {
-  background: linear-gradient(135deg, var(--sh-accent), #5b7cf5) !important;
-  color: #061116 !important;
+  background: linear-gradient(135deg, var(--sh-accent), var(--sh-accent-hi)) !important;
+  color: var(--sh-accent-ink) !important;
 }
 
 .font-list {
@@ -2024,7 +2032,7 @@ textarea:focus {
 }
 
 .font-list button > span:last-child {
-  color: rgba(231, 244, 255, 0.64) !important;
+  color: rgba(var(--sh-text-rgb), 0.64) !important;
   line-height: 1.5 !important;
 }
 
@@ -2199,7 +2207,7 @@ textarea:focus {
   background:
     linear-gradient(45deg, transparent 50%, var(--accent) 50%) calc(100% - 18px) 19px / 6px 6px no-repeat,
     linear-gradient(135deg, var(--accent) 50%, transparent 50%) calc(100% - 13px) 19px / 6px 6px no-repeat,
-    rgba(7, 13, 19, 0.94) !important;
+    color-mix(in srgb, var(--sh-bg-deep) 94%, transparent) !important;
   color: var(--text) !important;
   padding: 0 38px 0 12px !important;
 }
@@ -2215,7 +2223,7 @@ textarea:focus {
 .profile-form option,
 .onboarding-modal option,
 .notebook-tools option {
-  background: #070b12 !important;
+  background: var(--sh-bg-deep) !important;
   color: var(--text) !important;
 }
 
@@ -2229,7 +2237,7 @@ textarea:focus {
 }
 
 .skill-branch > strong {
-  color: rgba(231, 244, 255, 0.86) !important;
+  color: rgba(var(--sh-text-rgb), 0.86) !important;
   font-size: 14px !important;
 }
 
@@ -2244,7 +2252,7 @@ textarea:focus {
   align-content: start !important;
   background:
     linear-gradient(180deg, rgba(var(--sh-accent-rgb), 0.055), rgba(var(--sh-accent-rgb), 0.018)),
-    rgba(7, 13, 19, 0.86) !important;
+    color-mix(in srgb, var(--sh-bg-deep) 86%, transparent) !important;
 }
 
 .challenge-card strong {
@@ -2258,7 +2266,7 @@ textarea:focus {
   bottom: 18px !important;
   border-radius: 14px !important;
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--sh-bg-3) 96%, transparent), rgba(6, 10, 16, 0.96)) !important;
+    linear-gradient(180deg, color-mix(in srgb, var(--sh-bg-3) 96%, transparent), color-mix(in srgb, var(--sh-bg-deep) 96%, transparent)) !important;
   border-color: rgba(var(--sh-accent-rgb), 0.18) !important;
   color: var(--text) !important;
   line-height: 1.35 !important;
@@ -2295,7 +2303,7 @@ textarea:focus {
   border-radius: 18px !important;
   border: 1px solid rgba(var(--sh-accent-rgb), 0.22) !important;
   background:
-    linear-gradient(180deg, rgba(12, 19, 28, 0.98), rgba(5, 9, 15, 0.98)),
+    linear-gradient(180deg, color-mix(in srgb, var(--sh-bg-deep) 98%, transparent), color-mix(in srgb, var(--sh-bg-deep) 98%, transparent)),
     var(--bg) !important;
   box-shadow: 0 28px 90px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(var(--sh-text-rgb), 0.025) inset !important;
 }
@@ -2305,7 +2313,7 @@ textarea:focus {
   gap: 12px !important;
   padding: 12px 16px !important;
   border-bottom: 1px solid rgba(var(--sh-accent-rgb), 0.14) !important;
-  color: rgba(231, 244, 255, 0.58) !important;
+  color: rgba(var(--sh-text-rgb), 0.58) !important;
 }
 
 .command-input input {
@@ -2313,7 +2321,7 @@ textarea:focus {
   height: 40px !important;
   border: 1px solid rgba(var(--sh-accent-rgb), 0.16) !important;
   border-radius: 12px !important;
-  background: rgba(2, 8, 13, 0.72) !important;
+  background: color-mix(in srgb, var(--sh-bg-deep) 72%, transparent) !important;
   color: var(--text) !important;
   padding: 0 12px !important;
   font-size: 14px !important;
@@ -2360,14 +2368,14 @@ textarea:focus {
 
 .command-list button strong {
   max-width: 100% !important;
-  color: rgba(239, 246, 255, 0.92) !important;
+  color: rgba(var(--sh-text-rgb), 0.92) !important;
   font-size: 14px !important;
   line-height: 1.25 !important;
 }
 
 .command-list button small {
   max-width: 100% !important;
-  color: rgba(179, 194, 214, 0.58) !important;
+  color: rgba(var(--sh-text-rgb), 0.58) !important;
   font-size: 12px !important;
 }
 
@@ -2381,7 +2389,7 @@ textarea:focus {
   justify-items: center !important;
   gap: 8px !important;
   padding: 36px 18px !important;
-  color: rgba(179, 194, 214, 0.7) !important;
+  color: rgba(var(--sh-text-rgb), 0.7) !important;
   text-align: center !important;
 }
 
@@ -2456,7 +2464,7 @@ textarea:focus {
   padding: 76px 16px 24px !important;
   background:
     radial-gradient(circle at 50% 0%, rgba(var(--sh-accent-rgb), 0.12), transparent 34%),
-    rgba(1, 4, 8, 0.78) !important;
+    color-mix(in srgb, var(--sh-bg-deep) 78%, transparent) !important;
   backdrop-filter: blur(8px) saturate(115%) !important;
   -webkit-backdrop-filter: blur(8px) saturate(115%) !important;
   overflow: auto !important;
@@ -2479,7 +2487,7 @@ textarea:focus {
   min-height: 44px !important;
   padding: 0 12px 0 16px !important;
   border-bottom: 1px solid rgba(var(--sh-accent-rgb), 0.1) !important;
-  color: rgba(231, 244, 255, 0.52) !important;
+  color: rgba(var(--sh-text-rgb), 0.52) !important;
   font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 11px !important;
   font-weight: 800 !important;
@@ -2494,7 +2502,7 @@ textarea:focus {
   height: 32px !important;
   border-radius: 10px !important;
   background: transparent !important;
-  color: rgba(231, 244, 255, 0.58) !important;
+  color: rgba(var(--sh-text-rgb), 0.58) !important;
   cursor: pointer !important;
 }
 
@@ -2600,7 +2608,7 @@ textarea:focus {
 .brain-heading p {
   max-width: 720px !important;
   margin: 0 !important;
-  color: rgba(224, 224, 238, 0.55) !important;
+  color: rgba(var(--sh-text-rgb), 0.55) !important;
   line-height: 1.55 !important;
 }
 
@@ -2619,7 +2627,7 @@ textarea:focus {
   border: 1px solid rgba(var(--sh-accent-rgb), 0.13) !important;
   border-radius: 14px !important;
   background: rgba(var(--sh-accent-rgb), 0.035) !important;
-  color: rgba(224, 224, 238, 0.48) !important;
+  color: rgba(var(--sh-text-rgb), 0.48) !important;
   font-size: 12px !important;
 }
 
@@ -2640,7 +2648,7 @@ textarea:focus {
 .brain-toolbar label {
   display: grid !important;
   gap: 7px !important;
-  color: rgba(224, 224, 238, 0.5) !important;
+  color: rgba(var(--sh-text-rgb), 0.5) !important;
   font-size: 12px !important;
   font-weight: 800 !important;
 }
@@ -2655,7 +2663,7 @@ textarea:focus {
   background:
     linear-gradient(45deg, transparent 50%, var(--accent) 50%) calc(100% - 18px) 18px / 6px 6px no-repeat,
     linear-gradient(135deg, var(--accent) 50%, transparent 50%) calc(100% - 13px) 18px / 6px 6px no-repeat,
-    rgba(7, 13, 19, 0.94) !important;
+    color-mix(in srgb, var(--sh-bg-deep) 94%, transparent) !important;
   color: var(--text) !important;
   padding: 0 38px 0 12px !important;
 }
@@ -2672,7 +2680,7 @@ textarea:focus {
   border: 1px solid rgba(var(--sh-accent-rgb), 0.12) !important;
   border-radius: 999px !important;
   background: color-mix(in srgb, var(--sh-bg-2) 72%, transparent) !important;
-  color: rgba(224, 224, 238, 0.5) !important;
+  color: rgba(var(--sh-text-rgb), 0.5) !important;
   padding: 0 12px !important;
   cursor: pointer !important;
   font-weight: 750 !important;
@@ -2717,7 +2725,7 @@ textarea:focus {
 }
 
 .brain-link {
-  stroke: rgba(159, 166, 196, 0.26) !important;
+  stroke: rgba(var(--sh-text-rgb), 0.26) !important;
   stroke-width: 1.1 !important;
 }
 
@@ -2732,7 +2740,7 @@ textarea:focus {
 }
 
 .brain-node circle {
-  fill: rgba(10, 18, 26, 0.96) !important;
+  fill: color-mix(in srgb, var(--sh-bg-deep) 96%, transparent) !important;
   stroke: rgba(var(--sh-accent-rgb), 0.38) !important;
   stroke-width: 2 !important;
   filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.42)) !important;
@@ -2745,30 +2753,33 @@ textarea:focus {
   filter: drop-shadow(0 0 18px rgba(var(--sh-accent-rgb), 0.38)) !important;
 }
 
+/* 2D-fallback node types wear the SAME data-viz colors as the 3D brain
+   (BRAIN_PALETTE in brainGraph.js): projects follow the theme accent; the
+   other types are fixed semantic coding — deliberately theme-stable. */
 .brain-node-project circle {
   fill: rgba(var(--sh-accent-rgb), 0.13) !important;
-  stroke: rgba(139, 124, 246, 0.72) !important;
+  stroke: rgba(var(--sh-accent-rgb), 0.72) !important;
 }
 
 .brain-node-weak circle {
-  fill: rgba(255, 69, 116, 0.12) !important;
-  stroke: rgba(255, 91, 128, 0.74) !important;
+  fill: rgba(201, 106, 90, 0.12) !important;
+  stroke: rgba(201, 106, 90, 0.74) !important;
 }
 
 .brain-node-file circle {
-  stroke: rgba(79, 174, 255, 0.62) !important;
+  stroke: rgba(201, 168, 117, 0.62) !important;
 }
 
 .brain-node-note circle {
-  stroke: rgba(220, 169, 255, 0.64) !important;
+  stroke: rgba(63, 143, 116, 0.64) !important;
 }
 
 .brain-node-chat circle {
-  stroke: rgba(255, 213, 128, 0.64) !important;
+  stroke: rgba(185, 138, 99, 0.64) !important;
 }
 
 .brain-node-quiz circle {
-  stroke: rgba(139, 124, 246, 0.64) !important;
+  stroke: rgba(181, 123, 166, 0.64) !important;
 }
 
 .brain-node-icon,
@@ -2792,13 +2803,13 @@ textarea:focus {
 }
 
 .brain-node-label {
-  fill: rgba(232, 240, 255, 0.84) !important;
+  fill: rgba(var(--sh-text-rgb), 0.84) !important;
   font-size: 12px !important;
   font-weight: 750 !important;
 }
 
 .brain-node-score {
-  fill: rgba(179, 194, 214, 0.6) !important;
+  fill: rgba(var(--sh-text-rgb), 0.6) !important;
   font-size: 10px !important;
 }
 
@@ -2821,9 +2832,9 @@ textarea:focus {
 }
 
 .brain-detail-type.weak {
-  border-color: rgba(255, 91, 128, 0.36) !important;
-  color: #ff6f91 !important;
-  background: rgba(255, 91, 128, 0.08) !important;
+  border-color: rgba(201, 106, 90, 0.36) !important;
+  color: #d98a7c !important;
+  background: rgba(201, 106, 90, 0.08) !important;
 }
 
 .brain-detail h2 {
@@ -2836,7 +2847,7 @@ textarea:focus {
 
 .brain-detail p {
   margin: 0 !important;
-  color: rgba(224, 224, 238, 0.58) !important;
+  color: rgba(var(--sh-text-rgb), 0.58) !important;
   line-height: 1.55 !important;
 }
 
@@ -2855,7 +2866,7 @@ textarea:focus {
   border-radius: 13px !important;
   background: rgba(var(--sh-accent-rgb), 0.035) !important;
   padding: 10px !important;
-  color: rgba(224, 224, 238, 0.64) !important;
+  color: rgba(var(--sh-text-rgb), 0.64) !important;
   font-size: 11px !important;
 }
 
@@ -2874,7 +2885,7 @@ textarea:focus {
 
 .brain-evidence strong,
 .brain-related strong {
-  color: rgba(224, 224, 238, 0.76) !important;
+  color: rgba(var(--sh-text-rgb), 0.76) !important;
   font-size: 13px !important;
 }
 
@@ -2892,8 +2903,8 @@ textarea:focus {
   min-height: 34px !important;
   border: 1px solid rgba(var(--sh-accent-rgb), 0.1) !important;
   border-radius: 10px !important;
-  background: rgba(2, 8, 13, 0.58) !important;
-  color: rgba(232, 240, 255, 0.76) !important;
+  background: color-mix(in srgb, var(--sh-bg-deep) 58%, transparent) !important;
+  color: rgba(var(--sh-text-rgb), 0.76) !important;
   padding: 0 10px !important;
   text-align: left !important;
   cursor: pointer !important;
@@ -2915,15 +2926,17 @@ textarea:focus {
   background: var(--accent) !important;
 }
 
-.brain-dot.brain { background: #d6d0ff !important; }
-.brain-dot.project { background: #b9a8ff !important; }
-.brain-dot.concept { background: #9f8eff !important; }
-.brain-dot.weak { background: #ff8aa3 !important; }
-.brain-dot.file { background: #8fb0ff !important; }
-.brain-dot.note { background: #ffcd86 !important; }
-.brain-dot.chat { background: #66e9c9 !important; }
-.brain-dot.quiz { background: #a6e981 !important; }
-.brain-dot.code { background: #bef264 !important; }
+/* Legend dots mirror BRAIN_PALETTE cores (brainGraph.js): hubs follow the
+   theme accent; type colors are fixed semantic data-viz coding. */
+.brain-dot.brain { background: var(--sh-accent-hi) !important; }
+.brain-dot.project { background: var(--sh-accent) !important; }
+.brain-dot.concept { background: #b3d4ea !important; }
+.brain-dot.weak { background: #e8ab9e !important; }
+.brain-dot.file { background: #e3d2b3 !important; }
+.brain-dot.note { background: #9ccfb8 !important; }
+.brain-dot.chat { background: #dbbc9e !important; }
+.brain-dot.quiz { background: #d9b3cc !important; }
+.brain-dot.code { background: #c2ccd6 !important; }
 
 .brain-open-btn {
   width: 100% !important;
@@ -3035,7 +3048,7 @@ textarea:focus {
   margin-bottom: 12px !important;
   border: 1px solid rgba(var(--sh-accent-rgb), 0.1) !important;
   border-radius: 16px !important;
-  background: rgba(2, 8, 13, 0.46) !important;
+  background: color-mix(in srgb, var(--sh-bg-deep) 46%, transparent) !important;
   padding: 10px !important;
 }
 
@@ -3064,7 +3077,7 @@ textarea:focus {
   background:
     radial-gradient(circle at 50% 50%, rgba(var(--sh-accent-rgb), 0.09), transparent 42%),
     linear-gradient(180deg, rgba(var(--sh-accent-rgb), 0.04), rgba(0, 0, 0, 0.16)),
-    rgba(2, 8, 13, 0.88) !important;
+    color-mix(in srgb, var(--sh-bg-deep) 88%, transparent) !important;
 }
 
 .brain-map-card::before {
@@ -3099,8 +3112,8 @@ textarea:focus {
   min-height: 27px !important;
   border: 1px solid rgba(var(--sh-accent-rgb), 0.11) !important;
   border-radius: 999px !important;
-  background: rgba(2, 8, 13, 0.72) !important;
-  color: rgba(224, 224, 238, 0.54) !important;
+  background: color-mix(in srgb, var(--sh-bg-deep) 72%, transparent) !important;
+  color: rgba(var(--sh-text-rgb), 0.54) !important;
   padding: 0 9px !important;
   font-size: 11px !important;
   font-weight: 800 !important;
@@ -3119,11 +3132,11 @@ textarea:focus {
 }
 
 .orbit-two {
-  stroke: rgba(139, 124, 246, 0.075) !important;
+  stroke: rgba(var(--sh-accent-rgb), 0.075) !important;
 }
 
 .brain-cluster-label {
-  fill: rgba(224, 224, 238, 0.32) !important;
+  fill: rgba(var(--sh-text-rgb), 0.32) !important;
   font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 11px !important;
   font-weight: 850 !important;
@@ -3132,7 +3145,7 @@ textarea:focus {
 }
 
 .brain-link {
-  stroke: rgba(104, 126, 150, 0.3) !important;
+  stroke: rgba(var(--sh-text-rgb), 0.3) !important;
   stroke-width: 1 !important;
 }
 
@@ -3141,7 +3154,7 @@ textarea:focus {
 }
 
 .brain-link.related {
-  stroke: rgba(139, 124, 246, 0.34) !important;
+  stroke: rgba(var(--sh-accent-rgb), 0.34) !important;
   stroke-width: 1.4 !important;
 }
 
@@ -3161,16 +3174,16 @@ textarea:focus {
 }
 
 .brain-node-project circle:not(.brain-node-halo) {
-  fill: rgba(139, 124, 246, 0.08) !important;
-  stroke: rgba(139, 124, 246, 0.86) !important;
+  fill: rgba(var(--sh-accent-rgb), 0.08) !important;
+  stroke: rgba(var(--sh-accent-rgb), 0.86) !important;
 }
 
 .brain-node-project .brain-node-icon {
-  fill: rgba(139, 124, 246, 0.96) !important;
+  fill: rgba(var(--sh-accent-rgb), 0.96) !important;
 }
 
 .brain-label-bg {
-  fill: rgba(2, 8, 13, 0.78) !important;
+  fill: color-mix(in srgb, var(--sh-bg-deep) 78%, transparent) !important;
   stroke: rgba(var(--sh-accent-rgb), 0.08) !important;
   stroke-width: 1 !important;
 }
@@ -3180,13 +3193,13 @@ textarea:focus {
 }
 
 .brain-node-label {
-  fill: rgba(236, 244, 255, 0.82) !important;
+  fill: rgba(var(--sh-text-rgb), 0.82) !important;
   font-size: 11px !important;
   font-weight: 850 !important;
 }
 
 .brain-node-score {
-  fill: rgba(148, 164, 184, 0.7) !important;
+  fill: rgba(var(--sh-text-rgb), 0.7) !important;
   font-size: 9.5px !important;
 }
 
@@ -3198,7 +3211,7 @@ textarea:focus {
   overflow-y: auto !important;
   background:
     linear-gradient(180deg, rgba(var(--sh-accent-rgb), 0.055), rgba(var(--sh-accent-rgb), 0.015)),
-    rgba(2, 8, 13, 0.92) !important;
+    color-mix(in srgb, var(--sh-bg-deep) 92%, transparent) !important;
 }
 
 .brain-detail h2 {
@@ -3280,7 +3293,7 @@ textarea:focus {
   border-radius: inherit !important;
   background:
     radial-gradient(circle at 50% 46%, rgba(var(--sh-accent-rgb), 0.14), transparent 42%),
-    radial-gradient(circle at 72% 28%, rgba(139, 124, 246, 0.08), transparent 24%),
+    radial-gradient(circle at 72% 28%, rgba(var(--sh-accent-rgb), 0.08), transparent 24%),
     radial-gradient(circle at 23% 67%, rgba(201, 106, 90, 0.05), transparent 25%),
     var(--sh-bg) !important;
 }
@@ -3332,8 +3345,8 @@ textarea:focus {
   white-space: nowrap !important;
   border: 1px solid rgba(var(--sh-accent-rgb), 0.14) !important;
   border-radius: 999px !important;
-  background: rgba(2, 8, 13, 0.76) !important;
-  color: rgba(239, 246, 255, 0.78) !important;
+  background: color-mix(in srgb, var(--sh-bg-deep) 76%, transparent) !important;
+  color: rgba(var(--sh-text-rgb), 0.78) !important;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.26) !important;
   padding: 4px 8px !important;
   font-family: 'Inter', system-ui, sans-serif !important;
@@ -3349,11 +3362,11 @@ textarea:focus {
 }
 
 .brain-3d-label.weak {
-  border-color: rgba(255, 91, 128, 0.36) !important;
+  border-color: rgba(201, 106, 90, 0.36) !important;
 }
 
 .brain-3d-label.project {
-  border-color: rgba(139, 124, 246, 0.46) !important;
+  border-color: rgba(var(--sh-accent-rgb), 0.46) !important;
 }
 
 .brain-3d-help {
@@ -3373,8 +3386,8 @@ textarea:focus {
   align-items: center !important;
   border: 1px solid rgba(var(--sh-accent-rgb), 0.12) !important;
   border-radius: 999px !important;
-  background: rgba(2, 8, 13, 0.68) !important;
-  color: rgba(224, 224, 238, 0.54) !important;
+  background: color-mix(in srgb, var(--sh-bg-deep) 68%, transparent) !important;
+  color: rgba(var(--sh-text-rgb), 0.54) !important;
   padding: 0 9px !important;
   font-size: 11px !important;
   font-weight: 800 !important;
@@ -3437,7 +3450,7 @@ textarea:focus {
   padding: 24px clamp(14px, 3vw, 34px) 34px !important;
   background:
     radial-gradient(circle at 52% 0%, rgba(var(--sh-accent-rgb), 0.06), transparent 34%),
-    linear-gradient(180deg, rgba(2, 8, 13, 0.18), transparent 220px) !important;
+    linear-gradient(180deg, color-mix(in srgb, var(--sh-bg-deep) 18%, transparent), transparent 220px) !important;
 }
 
 /* legacy width: min(1480px,100%) removed (same over-constraint as above) */
@@ -3459,13 +3472,13 @@ textarea:focus {
 
 .brain-heading p {
   max-width: 760px !important;
-  color: rgba(224, 235, 246, 0.56) !important;
+  color: rgba(var(--sh-text-rgb), 0.56) !important;
   font-size: 14px !important;
 }
 
 .brain-kicker {
   border-radius: 7px !important;
-  background: rgba(8, 17, 26, 0.82) !important;
+  background: color-mix(in srgb, var(--sh-bg-deep) 82%, transparent) !important;
   color: rgba(var(--sh-accent-rgb), 0.86) !important;
   box-shadow: none !important;
 }
@@ -3478,12 +3491,12 @@ textarea:focus {
 .brain-summary span {
   min-height: 58px !important;
   border-radius: 10px !important;
-  background: rgba(7, 14, 22, 0.74) !important;
-  border-color: rgba(96, 128, 156, 0.18) !important;
+  background: color-mix(in srgb, var(--sh-bg-deep) 74%, transparent) !important;
+  border-color: rgba(var(--sh-text-rgb), 0.18) !important;
 }
 
 .brain-summary strong {
-  color: rgba(239, 246, 255, 0.94) !important;
+  color: rgba(var(--sh-text-rgb), 0.94) !important;
   font-size: 21px !important;
 }
 
@@ -3492,9 +3505,9 @@ textarea:focus {
   grid-template-columns: minmax(0, 1fr) auto !important;
   align-items: end !important;
   gap: 12px !important;
-  border: 1px solid rgba(96, 128, 156, 0.16) !important;
+  border: 1px solid rgba(var(--sh-text-rgb), 0.16) !important;
   border-radius: 14px !important;
-  background: rgba(4, 10, 16, 0.78) !important;
+  background: color-mix(in srgb, var(--sh-bg-deep) 78%, transparent) !important;
   padding: 10px !important;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22) !important;
 }
@@ -3508,7 +3521,7 @@ textarea:focus {
 
 .brain-toolbar label {
   min-width: 0 !important;
-  color: rgba(180, 196, 214, 0.62) !important;
+  color: rgba(var(--sh-text-rgb), 0.62) !important;
   letter-spacing: 0 !important;
 }
 
@@ -3518,8 +3531,8 @@ textarea:focus {
   min-width: 0 !important;
   min-height: 40px !important;
   border-radius: 10px !important;
-  border-color: rgba(96, 128, 156, 0.2) !important;
-  background-color: rgba(2, 8, 13, 0.92) !important;
+  border-color: rgba(var(--sh-text-rgb), 0.2) !important;
+  background-color: color-mix(in srgb, var(--sh-bg-deep) 92%, transparent) !important;
 }
 
 .brain-toolbar select:disabled {
@@ -3531,7 +3544,7 @@ textarea:focus {
   display: flex !important;
   align-items: center !important;
   gap: 8px !important;
-  color: rgba(180, 196, 214, 0.55) !important;
+  color: rgba(var(--sh-text-rgb), 0.55) !important;
   padding: 0 10px !important;
 }
 
@@ -3553,9 +3566,9 @@ textarea:focus {
 .brain-filter-row button {
   min-height: 34px !important;
   border-radius: 10px !important;
-  background: rgba(2, 8, 13, 0.78) !important;
-  border-color: rgba(96, 128, 156, 0.18) !important;
-  color: rgba(203, 215, 230, 0.58) !important;
+  background: color-mix(in srgb, var(--sh-bg-deep) 78%, transparent) !important;
+  border-color: rgba(var(--sh-text-rgb), 0.18) !important;
+  color: rgba(var(--sh-text-rgb), 0.58) !important;
 }
 
 .brain-filter-row button.active {
@@ -3583,8 +3596,8 @@ textarea:focus {
 .brain-map-card,
 .brain-detail {
   border-radius: 16px !important;
-  border-color: rgba(96, 128, 156, 0.18) !important;
-  background: rgba(3, 9, 15, 0.88) !important;
+  border-color: rgba(var(--sh-text-rgb), 0.18) !important;
+  background: color-mix(in srgb, var(--sh-bg-deep) 88%, transparent) !important;
   box-shadow:
     0 28px 80px rgba(0, 0, 0, 0.36),
     inset 0 1px 0 rgba(var(--sh-text-rgb), 0.026) !important;
@@ -3606,9 +3619,9 @@ textarea:focus {
 .brain-map-legend span {
   min-height: 25px !important;
   border-radius: 7px !important;
-  border-color: rgba(96, 128, 156, 0.18) !important;
-  background: rgba(2, 8, 13, 0.72) !important;
-  color: rgba(203, 215, 230, 0.6) !important;
+  border-color: rgba(var(--sh-text-rgb), 0.18) !important;
+  background: color-mix(in srgb, var(--sh-bg-deep) 72%, transparent) !important;
+  color: rgba(var(--sh-text-rgb), 0.6) !important;
   backdrop-filter: blur(10px) !important;
   -webkit-backdrop-filter: blur(10px) !important;
 }
@@ -3621,8 +3634,8 @@ textarea:focus {
   min-height: 740px !important;
   background:
     radial-gradient(circle at 50% 45%, rgba(var(--sh-accent-rgb), 0.11), transparent 36%),
-    radial-gradient(circle at 64% 42%, rgba(139, 124, 246, 0.055), transparent 28%),
-    linear-gradient(180deg, rgba(6, 13, 21, 0.98), rgba(1, 5, 9, 0.98)) !important;
+    radial-gradient(circle at 64% 42%, rgba(var(--sh-accent-rgb), 0.055), transparent 28%),
+    linear-gradient(180deg, color-mix(in srgb, var(--sh-bg-deep) 98%, transparent), color-mix(in srgb, var(--sh-bg-deep) 98%, transparent)) !important;
 }
 
 .brain-3d-shell::before {
@@ -3637,9 +3650,9 @@ textarea:focus {
 .brain-3d-label {
   max-width: 174px !important;
   border-radius: 7px !important;
-  border-color: rgba(96, 128, 156, 0.24) !important;
-  background: rgba(2, 8, 13, 0.78) !important;
-  color: rgba(239, 246, 255, 0.82) !important;
+  border-color: rgba(var(--sh-text-rgb), 0.24) !important;
+  background: color-mix(in srgb, var(--sh-bg-deep) 78%, transparent) !important;
+  color: rgba(var(--sh-text-rgb), 0.82) !important;
   font-size: 10px !important;
   letter-spacing: 0 !important;
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.24) !important;
@@ -3649,13 +3662,13 @@ textarea:focus {
 
 .brain-3d-label.brain,
 .brain-3d-label.project {
-  color: rgba(239, 246, 255, 0.94) !important;
-  border-color: rgba(139, 124, 246, 0.34) !important;
+  color: rgba(var(--sh-text-rgb), 0.94) !important;
+  border-color: rgba(var(--sh-accent-rgb), 0.34) !important;
 }
 
 .brain-3d-label.selected {
   border-color: rgba(var(--sh-accent-rgb), 0.72) !important;
-  background: rgba(0, 30, 42, 0.82) !important;
+  background: color-mix(in srgb, var(--sh-bg-deep) 82%, transparent) !important;
 }
 
 .brain-cluster-overlay {
@@ -3667,7 +3680,7 @@ textarea:focus {
 .brain-cluster-overlay span {
   position: absolute !important;
   transform: translate(-50%, -50%) !important;
-  color: rgba(169, 186, 205, 0.26) !important;
+  color: rgba(var(--sh-text-rgb), 0.26) !important;
   font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 10px !important;
   font-weight: 900 !important;
@@ -3684,15 +3697,15 @@ textarea:focus {
 .brain-3d-help span {
   min-height: 26px !important;
   border-radius: 7px !important;
-  border-color: rgba(96, 128, 156, 0.18) !important;
-  color: rgba(203, 215, 230, 0.58) !important;
+  border-color: rgba(var(--sh-text-rgb), 0.18) !important;
+  color: rgba(var(--sh-text-rgb), 0.58) !important;
 }
 
 .brain-detail {
   min-height: 740px !important;
   padding: 18px !important;
   background:
-    linear-gradient(180deg, rgba(11, 20, 30, 0.96), rgba(3, 9, 15, 0.96)) !important;
+    linear-gradient(180deg, color-mix(in srgb, var(--sh-bg-deep) 96%, transparent), color-mix(in srgb, var(--sh-bg-deep) 96%, transparent)) !important;
 }
 
 .brain-detail-type {
@@ -3713,8 +3726,8 @@ textarea:focus {
 .brain-evidence,
 .brain-related button {
   border-radius: 10px !important;
-  background: rgba(2, 8, 13, 0.58) !important;
-  border-color: rgba(96, 128, 156, 0.16) !important;
+  background: color-mix(in srgb, var(--sh-bg-deep) 58%, transparent) !important;
+  border-color: rgba(var(--sh-text-rgb), 0.16) !important;
 }
 
 .brain-open-btn {
@@ -3835,14 +3848,14 @@ textarea:focus {
 .brain-3d-shell {
   background:
     radial-gradient(120% 95% at 50% 26%, rgba(var(--sh-accent-rgb), 0.22), transparent 60%),
-    radial-gradient(90% 80% at 50% 55%, rgba(22, 19, 44, 0.5), transparent 72%),
-    linear-gradient(180deg, #1a1610 0%, #050509 100%) !important;
+    radial-gradient(90% 80% at 50% 55%, color-mix(in srgb, var(--sh-bg-4) 50%, transparent), transparent 72%),
+    linear-gradient(180deg, var(--sh-bg-2) 0%, var(--sh-bg-deep) 100%) !important;
 }
 
 .brain-3d-shell::before {
   background-image:
-    linear-gradient(rgba(96, 154, 204, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(96, 154, 204, 0.05) 1px, transparent 1px) !important;
+    linear-gradient(rgba(var(--sh-text-rgb), 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--sh-text-rgb), 0.05) 1px, transparent 1px) !important;
   background-size: 48px 48px !important;
   opacity: 0.65 !important;
   mask-image: radial-gradient(circle at 50% 46%, black 0 42%, transparent 80%) !important;
@@ -3860,11 +3873,11 @@ textarea:focus {
   white-space: nowrap !important;
   padding: 3px 10px 3px 7px !important;
   border-radius: 999px !important;
-  border: 1px solid rgba(150, 180, 210, 0.13) !important;
-  background: rgba(7, 12, 20, 0.58) !important;
+  border: 1px solid rgba(var(--sh-text-rgb), 0.13) !important;
+  background: color-mix(in srgb, var(--sh-bg-deep) 58%, transparent) !important;
   -webkit-backdrop-filter: blur(9px) !important;
   backdrop-filter: blur(9px) !important;
-  color: rgba(214, 228, 244, 0.68) !important;
+  color: rgba(var(--sh-text-rgb), 0.68) !important;
   font-family: "JetBrains Mono", ui-monospace, monospace !important;
   font-size: 11px !important;
   font-weight: 600 !important;
@@ -3886,25 +3899,27 @@ textarea:focus {
   height: 7px !important;
   border-radius: 50% !important;
   flex: 0 0 auto !important;
-  color: #9f8eff;
+  color: var(--sh-accent);
   background: currentColor !important;
   box-shadow: 0 0 9px currentColor !important;
 }
 
-.brain-node-label.brain .brain-node-dot { color: #d6d0ff; }
-.brain-node-label.project .brain-node-dot { color: #b9a8ff; }
-.brain-node-label.concept .brain-node-dot { color: #9f8eff; }
-.brain-node-label.weak .brain-node-dot { color: #ff8aa3; }
-.brain-node-label.file .brain-node-dot { color: #8fb0ff; }
-.brain-node-label.note .brain-node-dot { color: #ffcd86; }
-.brain-node-label.chat .brain-node-dot { color: #66e9c9; }
-.brain-node-label.quiz .brain-node-dot { color: #a6e981; }
+/* Hover-label dots mirror BRAIN_PALETTE cores (brainGraph.js): hubs follow
+   the theme accent; type colors are fixed semantic data-viz coding. */
+.brain-node-label.brain .brain-node-dot { color: var(--sh-accent-hi); }
+.brain-node-label.project .brain-node-dot { color: var(--sh-accent); }
+.brain-node-label.concept .brain-node-dot { color: #b3d4ea; }
+.brain-node-label.weak .brain-node-dot { color: #e8ab9e; }
+.brain-node-label.file .brain-node-dot { color: #e3d2b3; }
+.brain-node-label.note .brain-node-dot { color: #9ccfb8; }
+.brain-node-label.chat .brain-node-dot { color: #dbbc9e; }
+.brain-node-label.quiz .brain-node-dot { color: #d9b3cc; }
 
 .brain-node-label.strong {
-  color: #f4f9ff !important;
+  color: var(--sh-text) !important;
   font-weight: 700 !important;
-  border-color: rgba(150, 200, 240, 0.4) !important;
-  background: rgba(10, 18, 30, 0.8) !important;
+  border-color: rgba(var(--sh-accent-rgb), 0.4) !important;
+  background: color-mix(in srgb, var(--sh-bg-deep) 80%, transparent) !important;
   box-shadow: 0 8px 26px rgba(0, 0, 0, 0.5) !important;
   z-index: 2 !important;
 }
@@ -3912,16 +3927,16 @@ textarea:focus {
 .brain-node-label.brain {
   font-size: 12.5px !important;
   font-weight: 700 !important;
-  color: #eaf6ff !important;
+  color: var(--sh-text) !important;
   padding: 4px 12px 4px 9px !important;
-  border-color: rgba(120, 200, 255, 0.42) !important;
-  background: rgba(9, 20, 34, 0.82) !important;
+  border-color: rgba(var(--sh-accent-rgb), 0.42) !important;
+  background: color-mix(in srgb, var(--sh-bg-deep) 82%, transparent) !important;
 }
 
 .brain-3d-help span {
-  border: 1px solid rgba(120, 170, 210, 0.1) !important;
-  background: rgba(7, 12, 20, 0.46) !important;
-  color: rgba(200, 215, 235, 0.42) !important;
+  border: 1px solid rgba(var(--sh-text-rgb), 0.1) !important;
+  background: color-mix(in srgb, var(--sh-bg-deep) 46%, transparent) !important;
+  color: rgba(var(--sh-text-rgb), 0.42) !important;
   font-weight: 600 !important;
   letter-spacing: 0.01em !important;
   -webkit-backdrop-filter: blur(8px) !important;
@@ -4228,8 +4243,8 @@ code, pre, kbd, samp, .hljs, .code-block, .code-block code, .markdown code, .mar
 .auth-providers button:disabled { opacity: 0.6; cursor: wait; }
 .theme-light .auth-providers button {
   background: #ffffff;
-  border-color: rgba(29, 34, 51, 0.14);
-  color: #1d2233;
+  border-color: rgba(42, 35, 24, 0.14);
+  color: #2a2318;
 }
 .auth-divider {
   display: flex;
