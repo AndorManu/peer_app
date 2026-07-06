@@ -308,6 +308,10 @@
 .peer-skin .ext-switch i { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 99px; background: #fff; transition: left .2s ease; }
 .peer-skin .ext-switch.on { background: linear-gradient(135deg,var(--sh-accent),var(--sh-accent-hi)); }
 .peer-skin .ext-switch.on i { left: 16px; }
+/* the Libraries popover reuses the same shell; .ext-note is its honest
+   footer (how packs load) or the whole body for pack-less languages */
+.peer-skin .ext-note { margin: 4px 0 2px; padding: 6px 8px; font-size: 11.5px; line-height: 1.55; color: rgba(var(--sh-text-rgb),0.62); }
+.peer-skin .ext-note code, .peer-skin .ext-desc code { font-size: 10.5px; color: var(--sh-accent-hi); background: transparent; padding: 0; }
 
 /* apply Peer's suggested code to the editor */
 .peer-skin .apply-bar { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 10px 12px 0; padding: 11px; border: 0; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--sh-accent-ink); background: linear-gradient(135deg,var(--sh-accent),var(--sh-accent-hi)); box-shadow: 0 0 20px -6px rgba(var(--sh-accent-rgb),0.7); transition: transform .15s ease; }

@@ -192,6 +192,30 @@ layer has before/after tests plus at least one live proof.
   reaches the model only as aggregates + max 9 one-line directives —
   never raw history dumps.
 
+## Code lab library packs: toggleable GROUPS, honest per language (2026-07-06)
+
+- **The UX**: a "Libraries" popover next to "Extensions" (same pattern —
+  PLUGIN_LIST-style rows with switches). Each language gets a short list of
+  curated PACKS the learner flips on/off as a whole, persisted like the
+  coding assists (`peer-code-libpacks`). The terminal meta line shows the
+  active packs for each run. Pack data + helpers live in
+  `src/libraryPacks.js` (unit-tested, 7 new tests).
+- **What's genuinely real, per language — the honesty table:**
+  | Language | Package support | How |
+  |---|---|---|
+  | Python | ✅ REAL | Pyodide (WASM CPython) prebuilt wheels. Packs: **Data science** (numpy·pandas·matplotlib·scipy), **Math & symbols** (sympy), **Machine learning** (scikit-learn). Enabled packs preload via `pyodide.loadPackage`; imports auto-resolve regardless. |
+  | JavaScript | ✅ REAL | Pinned UMD builds `importScripts()`-ed from cdn.jsdelivr.net INTO the sandbox Worker. Packs: **Utilities** (lodash `_`, dayjs), **Data & math** (mathjs `math`, PapaParse `Papa`). CSP already allowlists jsdelivr; `worker-src blob:` was already in place. |
+  | TypeScript | ❌ not yet | Runs on the server runner (Wandbox), so the JS CDN packs can't reach it. In-browser TS (transpile + same sandbox + same packs) is the documented follow-up. The Libraries popover says exactly this. |
+  | C, C++, Java, Go, Rust, C#, Ruby, PHP, SQL, Bash | ❌ not feasible this pass | No mature in-browser runtime with a package ecosystem (the reason Python COULD be fixed is Pyodide's wheel ecosystem — nothing equivalent exists for these). Server runner = standard library only. The popover shows an honest note per language instead of fake toggles. |
+- **Verified with real programs in the running app** (not code reads):
+  JS Utilities → lodash `_.chunk`/`_.camelCase` + dayjs date math printed
+  real results (exit 0, 124ms, sandbox); JS Data & math → mathjs
+  `sqrt(3^2+4^2)`=5, matrix det=6, PapaParse parsed CSV rows (438ms);
+  Python Math & symbols → sympy solved x²−5x+6 → [2, 3] and integrated
+  sin(x) → −cos(x) (6.0s incl. wheel load); Python Data science → numpy
+  sum/shape + pandas describe() mean=91.5 (6.5s); Go/TypeScript show the
+  honest no-packs note with zero fake toggles. 105/105 tests, clean build.
+
 ## Rooms: intentionally DEFERRED post-launch behind a Coming Soon gate (2026-07-06)
 
 - **Decision (owner-directed)**: real-time peer rooms will NOT ship at

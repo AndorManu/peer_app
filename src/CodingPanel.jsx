@@ -10,12 +10,13 @@
 //    concepts + weak spots) and can EDIT your code on request — its suggestions get
 //    an "Apply to editor" button, and "Improve my code" rewrites the file for you.
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Play, RotateCcw, Sparkles, Bug, Lightbulb, ClipboardCheck, Send, Loader2, Trophy, BrainCircuit, Puzzle, Wand2, Check } from "lucide-react";
+import { Play, RotateCcw, Sparkles, Bug, Lightbulb, ClipboardCheck, Send, Loader2, Trophy, BrainCircuit, Puzzle, Wand2, Check, Package } from "lucide-react";
 import hljs from "highlight.js/lib/core";
 import { Markdown } from "./markdown.jsx";
 import { streamChat } from "./peerChat.js";
 import StyledSelect from "./components/StyledSelect.jsx";
 import { COLORS, GRADIENTS, EASE } from "./peerTheme.js";
+import { packsFor, scriptUrlsFor, pyPackagesFor, enabledPackLabels, NO_PACKS_NOTE } from "./libraryPacks.js";
 
 const LANGUAGES = [
   { id: "javascript", label: "JavaScript", ext: "main.js", local: true },
@@ -68,6 +69,12 @@ function loadPlugins() {
   catch { return { ...DEFAULT_PLUGINS }; }
 }
 
+// Enabled library packs, keyed by language then pack id (persisted like plugins).
+function loadLibPacks() {
+  try { return JSON.parse(localStorage.getItem("peer-code-libpacks") || "{}") || {}; }
+  catch { return {}; }
+}
+
 function escapeHtml(s) {
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -84,7 +91,10 @@ function firstCodeBlock(text, language) {
   return firstAny != null ? firstAny.replace(/\n$/, "") : null;
 }
 
-function runJavaScript(code, onResult) {
+// scriptUrls: pinned CDN UMD builds from enabled library packs — loaded INTO
+// the sandbox worker via importScripts, so the pack's globals (_, dayjs, …)
+// are real inside the learner's code.
+function runJavaScript(code, onResult, scriptUrls = []) {
   const workerSrc = `
     const logs = [];
     function fmt(x){ try { return typeof x === 'object' ? JSON.stringify(x) : String(x); } catch(e){ return String(x); } }
@@ -95,7 +105,11 @@ function runJavaScript(code, onResult) {
       info:(...a)=>logs.push({k:'out',t:a.map(fmt).join(' ')}),
     };
     self.onmessage = (e) => {
-      try { (0, eval)(e.data); }
+      for (const url of e.data.libs) {
+        try { importScripts(url); }
+        catch (err) { logs.push({k:'err',t:'Could not load library ' + url.split('/npm/')[1] + ' (offline?)'}); }
+      }
+      try { (0, eval)(e.data.code); }
       catch (err) { logs.push({k:'err',t:(err && err.message ? err.message : String(err))}); }
       self.postMessage(logs);
     };
@@ -107,10 +121,12 @@ function runJavaScript(code, onResult) {
     onResult([{ k: "err", t: "Could not start the sandbox in this browser." }], 1);
     return;
   }
-  const timer = setTimeout(() => { worker.terminate(); onResult([{ k: "err", t: "Execution timed out (possible infinite loop)." }], 124); }, 3000);
+  // library packs fetch from the CDN on first use — allow for that
+  const timeoutMs = scriptUrls.length ? 15000 : 3000;
+  const timer = setTimeout(() => { worker.terminate(); onResult([{ k: "err", t: "Execution timed out (possible infinite loop)." }], 124); }, timeoutMs);
   worker.onmessage = (e) => { clearTimeout(timer); worker.terminate(); onResult(e.data.length ? e.data : [{ k: "muted", t: "(no output — nothing was logged)" }], 0); };
   worker.onerror = (e) => { clearTimeout(timer); worker.terminate(); onResult([{ k: "err", t: e.message || "Runtime error" }], 1); };
-  worker.postMessage(code);
+  worker.postMessage({ code, libs: scriptUrls });
 }
 
 // ── syntax-highlighted editor: transparent textarea over an aligned highlight layer ──
@@ -222,6 +238,8 @@ export default function CodingPanel({ profile, projects = [], onSaveToBrain }) {
   const [projectId, setProjectId] = useState(projects[0]?.id || "");
   const [plugins, setPlugins] = useState(loadPlugins);
   const [showExt, setShowExt] = useState(false);
+  const [libPacks, setLibPacks] = useState(loadLibPacks);
+  const [showLibs, setShowLibs] = useState(false);
   const [aiResponse, setAiResponse] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
   const [aiTitle, setAiTitle] = useState("");
@@ -232,12 +250,21 @@ export default function CodingPanel({ profile, projects = [], onSaveToBrain }) {
 
   useEffect(() => { if (!projectId && projects[0]) setProjectId(projects[0].id); }, [projects, projectId]);
   useEffect(() => { localStorage.setItem("peer-code-plugins", JSON.stringify(plugins)); }, [plugins]);
+  useEffect(() => { localStorage.setItem("peer-code-libpacks", JSON.stringify(libPacks)); }, [libPacks]);
 
   const lang = useMemo(() => LANGUAGES.find((l) => l.id === language) || LANGUAGES[0], [language]);
   const project = useMemo(() => projects.find((p) => p.id === projectId), [projects, projectId]);
   const suggestedCode = useMemo(() => firstCodeBlock(aiResponse, language), [aiResponse, language]);
 
   function togglePlugin(id) { setPlugins((p) => ({ ...p, [id]: !p[id] })); }
+
+  const langPacks = useMemo(() => packsFor(language), [language]);
+  const enabledForLang = libPacks[language] || {};
+  const activePackLabels = useMemo(() => enabledPackLabels(language, enabledForLang), [language, enabledForLang]);
+
+  function togglePack(id) {
+    setLibPacks((all) => ({ ...all, [language]: { ...(all[language] || {}), [id]: !(all[language] || {})[id] } }));
+  }
 
   function changeLanguage(id) {
     setLanguage(id);
@@ -263,7 +290,7 @@ export default function CodingPanel({ profile, projects = [], onSaveToBrain }) {
         setOutput(logs);
         setExit({ code: codeNum, ms: Math.round(performance.now() - started), where: "sandbox" });
         setRunning(false);
-      });
+      }, scriptUrlsFor(language, enabledForLang));
       return;
     }
     // Python runs IN the browser via Pyodide so real libraries (numpy,
@@ -274,6 +301,7 @@ export default function CodingPanel({ profile, projects = [], onSaveToBrain }) {
         const { runPython } = await import("./pyRunner.js");
         const result = await runPython(code, {
           onStatus: (text) => setOutput(text ? [{ k: "muted", t: text }] : []),
+          packages: pyPackagesFor(language, enabledForLang),
         });
         setOutput(result.lines);
         setExit({ code: result.code, ms: result.ms, where: "browser · pyodide" });
@@ -403,7 +431,39 @@ ${code || "(empty)"}
                 <span>{lang.ext}</span>
               </div>
               <div style={{ marginLeft: "auto", display: "flex", gap: 8, position: "relative" }}>
-                <button onClick={() => setShowExt((v) => !v)} style={btn(false)} title="Extensions — toggle coding assists"><Puzzle size={14} /> Extensions</button>
+                <button onClick={() => { setShowLibs((v) => !v); setShowExt(false); }} style={btn(false)} title="Libraries — real packages for this language">
+                  <Package size={14} /> Libraries{activePackLabels.length > 0 ? ` (${activePackLabels.length})` : ""}
+                </button>
+                <button onClick={() => { setShowExt((v) => !v); setShowLibs(false); }} style={btn(false)} title="Extensions — toggle coding assists"><Puzzle size={14} /> Extensions</button>
+                {showLibs && (
+                  <>
+                    <div onClick={() => setShowLibs(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+                    <div className="ext-popover">
+                      <div className="ext-title">{lang.label} library packs</div>
+                      {langPacks.length === 0 ? (
+                        <p className="ext-note">{NO_PACKS_NOTE[language] || NO_PACKS_NOTE.default(lang.label)}</p>
+                      ) : (
+                        <>
+                          {langPacks.map((pack) => (
+                            <button key={pack.id} className="ext-row" onClick={() => togglePack(pack.id)}>
+                              <span className={`ext-switch${enabledForLang[pack.id] ? " on" : ""}`}><i /></span>
+                              <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+                                <span className="ext-label">{pack.label}</span>
+                                <span className="ext-desc">{pack.desc}</span>
+                                <span className="ext-desc" style={{ opacity: 0.75 }}>e.g. <code>{pack.example}</code></span>
+                              </span>
+                            </button>
+                          ))}
+                          <p className="ext-note">
+                            {language === "python"
+                              ? "Runs in-browser (Pyodide) — enabled packs preload so imports just work."
+                              : "Loaded into the sandbox from cdn.jsdelivr.net — the pack's globals are live in your code."}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </>
+                )}
                 {showExt && (
                   <>
                     <div onClick={() => setShowExt(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
@@ -441,7 +501,7 @@ ${code || "(empty)"}
               </span>
             </div>
             <div className="term-body" tabIndex={0} role="log" aria-label="Terminal output">
-              <div className="term-cmd">$ run {lang.ext}{lang.local ? "" : language === "python" ? "  →  browser (pyodide)" : "  →  server"}</div>
+              <div className="term-cmd">$ run {lang.ext}{lang.local ? "" : language === "python" ? "  →  browser (pyodide)" : "  →  server"}{activePackLabels.length > 0 ? `  ·  packs: ${activePackLabels.join(", ")}` : ""}</div>
               {running ? (
                 <div className="term-line muted">running…<span className="term-caret" /></div>
               ) : output.length === 0 ? (
