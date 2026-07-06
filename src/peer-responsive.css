@@ -959,3 +959,21 @@
 .theme-light .badge-coin { color: #ffffff; }
 .theme-light .badge-share { color: #2a2318; }
 .theme-light .badge-progress { background: rgba(42, 35, 24, 0.08); }
+
+/* ---- final QA sweep (2026-07-06): phone-width reflow fixes ---- */
+/* Profile skill tree: the two-column branch grid left concept pills a
+   too-narrow track on phones — long pills were clipped by the card edge.
+   Stack the branch label above its nodes and let pills wrap instead. */
+@media (max-width: 520px) {
+  .skill-branch {
+    grid-template-columns: 1fr !important;
+    margin-left: 6px !important;
+    padding-left: 10px !important;
+  }
+  .skill-node {
+    max-width: 100% !important;
+    height: auto !important;
+    white-space: normal !important;
+    padding: 5px 10px !important;
+  }
+}

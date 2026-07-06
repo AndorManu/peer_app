@@ -104,6 +104,11 @@
   border-radius: 14px !important; padding: 6px !important;
   -webkit-backdrop-filter: blur(30px) !important; backdrop-filter: blur(30px) !important;
   box-shadow: 0 12px 40px -22px rgba(0,0,0,0.9), inset 0 1px 0 rgba(var(--sh-text-rgb),0.05) !important;
+  /* as a grid/flex item it must be ALLOWED to shrink, or its own
+     overflow-x:auto never engages and the last mode buttons get clipped
+     off-screen at phone widths (they were unreachable at 375px) */
+  min-width: 0 !important;
+  max-width: 100% !important;
 }
 .peer-skin .mode-strip-indicator {
   background: linear-gradient(135deg,var(--sh-accent),var(--sh-accent-hi)) !important;

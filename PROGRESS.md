@@ -192,6 +192,43 @@ layer has before/after tests plus at least one live proof.
   reaches the model only as aggregates + max 9 one-line directives —
   never raw history dumps.
 
+## Final QA sweep: 48 screen×theme×width combos, zero known rough edges (2026-07-06)
+
+- **Method** (stricter than earlier passes — automated, not "what someone
+  noticed"): an in-page audit ran on EVERY screen (Chat, Brain, Code, Notes,
+  Cards, Rooms placeholder, Settings incl. all 4 tabs, Profile) under all
+  THREE palettes at desktop (1280px) AND phone (375px) width — 48 combos —
+  checking: browser-default (bare) buttons, visible native selects,
+  genuinely clipped content (element rects past the viewport with no
+  scrollable ancestor — smarter than raw scrollWidth, which false-positived
+  on the decorative `.main::before/::after` glow blobs that are clipped by
+  design), and amber accent leakage under indigo/mono.
+- **Real bugs found and fixed:**
+  1. **Chat mode strip unreachable at phone width** — `.mode-strip` has
+     `overflow-x: auto` but as a grid item it refused to shrink
+     (`min-width: auto` default), so it forced itself content-wide and
+     `.main`'s overflow clip made "Teach back / Challenge / Visual /
+     Exam prep / Code review" physically unreachable at 375px. Fixed with
+     `min-width: 0; max-width: 100%` — verified all 8 mode buttons now
+     reachable by scrolling the strip.
+  2. **Profile skill tree clipped on phones** — the two-column
+     `.skill-branch` grid kept a 150px label column at 375px, so long
+     concept pills were cut off by the card edge. Branches now stack
+     (label above nodes) below 520px and pills wrap. Verified: zero nodes
+     past the edge.
+- **Checked and PASSING with no changes**: light mode across all screens at
+  both widths post-§1 (warm paper + palette accent, zero cool-navy
+  remnants — screenshot proof), confirm dialog (opens themed, Cancel +
+  danger button styled, closes), Rooms Coming Soon in the matrix, zero
+  console errors across the entire navigation session, zero bare buttons,
+  zero visible native selects, zero amber leaks under indigo/mono.
+- **Accepted as designed** (documented, not silently ignored): brain
+  node-labels clip at the 3D canvas edge (they track projected node
+  positions — panning brings them into view, standard for any map);
+  `.main`'s decorative gradient pseudo-elements extend off-canvas behind
+  `overflow: hidden`.
+- 105/105 tests, clean build.
+
 ## Code lab library packs: toggleable GROUPS, honest per language (2026-07-06)
 
 - **The UX**: a "Libraries" popover next to "Extensions" (same pattern —
