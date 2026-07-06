@@ -4092,13 +4092,13 @@ function FlashcardsPanel({ flashcards, projects, setView, deleteFlashcardDeck, g
         <div><h1>Flashcards</h1><p>{reviewMode ? "Review mode — grade each card so Peer can reschedule it" : "Flip to reveal, then grade to schedule your next review"}</p></div>
         <div style={{ display: "flex", gap: 8 }}>
           {reviewMode ? (
-            <button onClick={exitReview}>Exit review</button>
+            <button className="ghost-button" onClick={exitReview}>Exit review</button>
           ) : (
-            <button className={due ? "fc-review-btn" : ""} onClick={startReview} disabled={!due}>
+            <button className={due ? "fc-review-btn" : "ghost-button"} onClick={startReview} disabled={!due}>
               {due ? `Review due (${due})` : "Nothing due"}
             </button>
           )}
-          <button onClick={() => setView("chat")}>Back to chat</button>
+          <button className="ghost-button" onClick={() => setView("chat")}>Back to chat</button>
         </div>
       </div>
       <div className="flashcards-layout">
