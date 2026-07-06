@@ -209,6 +209,12 @@ layer has before/after tests plus at least one live proof.
   `.legal-links`/`.plan-upgrade-row`, promoted to a named class with hover/
   disabled/light-mode states. Applied to every bare button; verified live
   (Rooms Cancel computed style = text-tinted ghost, 10px radius).
+- **Flashcards header** (§3, own commit): "Exit review", "Back to chat", AND
+  the easy-to-miss disabled "Nothing due" state (its className was `""` when
+  no cards were due) all wear `.ghost-button` now. Screenshot-verified in
+  review mode under studyhall/indigo/mono — the remaining colors on that
+  screen (sand "Still learning" / pine "I know this" grade tints, per-deck
+  identity dots) are the documented intentional set.
 
 ## Fifth pass: exhaustive color audit — every literal fixed or blessed (2026-07-06)
 
