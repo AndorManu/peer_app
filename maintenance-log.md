@@ -4,6 +4,36 @@ Persistent memory for the daily maintenance agent. Newest entry on top. Never de
 
 ---
 
+## 2026-07-06 · Run 3
+
+Codebase unchanged since Run 2 (`git diff d636af7 HEAD` empty; all src/ files same content). Both prior SSE and mutation issues remain resolved. Verified baseline green, deep-checked the highest-risk file (learningModel.js mutation boundary) again, and applied one long-standing, 100%-safe improvement.
+
+### Fixed
+- (no bugs found — code was clean; one improvement applied below)
+
+### Improvements applied
+- LOW/perf · src/markdown.jsx · Markdown · lines 40-91 — block parsing ran on every render. Wrapped the parse loop in `useMemo(() => {...}, [text])` (added `useMemo` to the existing React import); output is unchanged, now recomputed only when `text` changes. This actions the improvement noted (and carried) across Run 1 and Run 2. Behavior-preserving: pure function of `text`, hook called unconditionally at the top of the component. Verified build/test/server all green; only call site is `<Markdown text={...} />` in App.jsx (API unchanged).
+
+### Flagged
+- (none)
+
+### Improvements still open (noted, not auto-fixed)
+- peerPrompt.js aggregate doc token cap — prompt content is off-limits per run rules · moderate.
+- Code-split LearningBrain (Three.js) + pdf.js via React.lazy — build still emits one 1.33MB JS chunk + 2.2MB pdf worker · moderate.
+- App.jsx FlashcardsPanel keydown effect missing dep array — intentional (handlers close over deck); low value · simple.
+
+### Clean (skip deep read next run unless changed)
+- learningModel.js — re-audited the mutation boundary: `upsertConcept` is always fed a fresh `normalizeMastery` copy (new `concepts` array via `.slice`), `applyFeedback`/`inferProfileFromMessage`/`updateProfileFromAttachments` mutate only the fresh nested objects `normalizeProfile` spreads. No input mutation leaks. All object factories use makeMastery/makeProfile.
+- markdown.jsx — now clean; parse memoized, CodeBlock highlight already gated on `[code, lang]`.
+- All files confirmed CLEAN in Runs 1-2 remain unchanged (same content): storage.js, stateModel.js, LearningBrain.jsx, handleChat.js, handleImage.js, dev.js, constants.js, PeerNavRail.jsx, peer-theme.css, main.jsx, materials.js, App.jsx, .env.example.
+
+### Notes
+- Verification: `npm run build` ✅ (vite 6, built in 3.85s), `npm test` ✅ 17/17, `node server/dev.js` ✅ (HTTP 200 at 127.0.0.1:5173). Fresh clone needed `npm install` first.
+- No console noise (both `console.*` are intentional: LearningBrain setGraph error handler + dev.js startup log), no key leakage in src/, no TODO/FIXME markers.
+- Recurring pattern: none active. Prior reliability gaps (SSE error events, mastery mutation) stay closed. Quiet, healthy codebase; remaining open items are all moderate-effort perf/token improvements the human can prioritize.
+
+---
+
 ## 2026-07-04 · Run 2
 
 Codebase unchanged since Run 1 (all files same mtime, branch fresh off main). Focused on the open FLAGGED SSE issue from Run 1; skimmed the files marked CLEAN — no new changes.
