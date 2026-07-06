@@ -3401,7 +3401,7 @@ function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSyn
                     {!state.account?.verified && <span className="plan-renews">Sign in to activate your free daily AI allowance.</span>}
                   </div>
                   {usage?.plan === "pro" && (
-                    <button type="button" onClick={openBillingPortal}>Manage billing</button>
+                    <button type="button" className="ghost-button" onClick={openBillingPortal}>Manage billing</button>
                   )}
                 </div>
                 {usage && (

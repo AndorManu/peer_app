@@ -448,6 +448,34 @@ input[type="range"] { accent-color: var(--sh-accent); }
 }
 .theme-light .plan-card ul { color: rgba(42, 35, 24, 0.85); }
 
+/* ---------- ghost button: THE secondary action (Cancel, Back, Exit…) ----------
+   Same quiet text-tinted pattern as .legal-links / .plan-upgrade-row buttons,
+   promoted to a reusable class so no secondary button ships bare again. */
+.ghost-button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 8px 14px; min-height: 36px; border-radius: 10px; cursor: pointer;
+  background: rgba(var(--sh-text-rgb), 0.05);
+  border: 1px solid rgba(var(--sh-text-rgb), 0.14);
+  color: rgba(var(--sh-text-rgb), 0.85);
+  font-size: 13px; font-weight: 600;
+  transition: background .2s ease, border-color .2s ease, color .2s ease;
+}
+.ghost-button:hover:not(:disabled) {
+  background: rgba(var(--sh-text-rgb), 0.09);
+  border-color: rgba(var(--sh-text-rgb), 0.24);
+  color: var(--sh-text);
+}
+.ghost-button:disabled { opacity: 0.55; cursor: default; }
+.theme-light .ghost-button {
+  background: rgba(42, 35, 24, 0.04);
+  border-color: rgba(42, 35, 24, 0.16);
+  color: rgba(42, 35, 24, 0.85);
+}
+.theme-light .ghost-button:hover:not(:disabled) {
+  background: rgba(42, 35, 24, 0.08);
+  color: #2a2318;
+}
+
 /* ---------- room discovery ---------- */
 .room-visibility { margin-top: 10px; flex-wrap: wrap; }
 .room-visibility button { font-size: 12.5px; }

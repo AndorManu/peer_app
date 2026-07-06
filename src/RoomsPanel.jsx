@@ -190,7 +190,7 @@ export default function RoomsPanel({ account, decks, projects, showToast, onSign
               <button className="primary-button" type="submit" disabled={busy === "create" || !newName.trim()}>
                 {busy === "create" ? <Loader2 size={15} className="spin" /> : <Plus size={15} />} Create
               </button>
-              <button type="button" onClick={() => setCreating(false)}>Cancel</button>
+              <button type="button" className="ghost-button" onClick={() => setCreating(false)}>Cancel</button>
             </form>
             <div className="segmented room-visibility" role="radiogroup" aria-label="Who can find this room">
               <button
