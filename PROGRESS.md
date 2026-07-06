@@ -192,6 +192,24 @@ layer has before/after tests plus at least one live proof.
   reaches the model only as aggregates + max 9 one-line directives —
   never raw history dumps.
 
+## Fifth pass: bare buttons — one ghost style for every secondary action (2026-07-06)
+
+- **Audit method**: scripted scan of every `<button` in every .jsx for missing
+  className, then cross-checked which of those are actually covered by
+  contextual CSS (`.confirm-actions button`, `.note-card header button`,
+  `.account-summary button`, `.sync-status button`, `.brain-related button`,
+  `.attachment-tray button`, `.auth-switch button`, doc/plan/onboarding
+  groups — all styled) vs. truly browser-default. Verified in the RUNNING
+  app with a computed-style detector (default ButtonFace background).
+- **Truly bare**: Rooms create-form "Cancel", Settings→Plan "Manage billing"
+  (pro-only), and the Flashcards header trio ("Exit review", "Back to chat",
+  and the disabled "Nothing due" state — fixed in the §3 commit).
+- **The fix**: a reusable `.ghost-button` class in studyhall.css — the same
+  quiet text-tinted secondary pattern the design system already used in
+  `.legal-links`/`.plan-upgrade-row`, promoted to a named class with hover/
+  disabled/light-mode states. Applied to every bare button; verified live
+  (Rooms Cancel computed style = text-tinted ghost, 10px radius).
+
 ## Fifth pass: exhaustive color audit — every literal fixed or blessed (2026-07-06)
 
 - **The recurring "blue controls" bug is dead, with the real root cause found**
