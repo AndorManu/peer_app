@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import hljs from "highlight.js/lib/core";
 import c from "highlight.js/lib/languages/c";
 import cpp from "highlight.js/lib/languages/cpp";
@@ -37,54 +37,59 @@ hljs.registerLanguage("go", go);
 hljs.registerLanguage("java", java);
 
 export function Markdown({ text }) {
-  const lines = String(text || "").split("\n");
-  const blocks = [];
-  let i = 0;
+  // Parse blocks only when the message text changes — pure function of text.
+  const blocks = useMemo(() => {
+    const lines = String(text || "").split("\n");
+    const out = [];
+    let i = 0;
 
-  while (i < lines.length) {
-    const line = lines[i];
+    while (i < lines.length) {
+      const line = lines[i];
 
-    if (line.startsWith("```")) {
-      const lang = line.slice(3).trim();
-      const code = [];
+      if (line.startsWith("```")) {
+        const lang = line.slice(3).trim();
+        const code = [];
+        i += 1;
+        while (i < lines.length && !lines[i].startsWith("```")) {
+          code.push(lines[i]);
+          i += 1;
+        }
+        out.push({ type: "code", lang, text: code.join("\n") });
+        i += 1;
+        continue;
+      }
+
+      if (/^[-*] /.test(line)) {
+        const items = [];
+        while (i < lines.length && /^[-*] /.test(lines[i])) {
+          items.push(lines[i].slice(2));
+          i += 1;
+        }
+        out.push({ type: "ul", items });
+        continue;
+      }
+
+      if (/^\d+\. /.test(line)) {
+        const items = [];
+        while (i < lines.length && /^\d+\. /.test(lines[i])) {
+          items.push(lines[i].replace(/^\d+\. /, ""));
+          i += 1;
+        }
+        out.push({ type: "ol", items });
+        continue;
+      }
+
+      if (line.startsWith("### ")) out.push({ type: "h3", text: line.slice(4) });
+      else if (line.startsWith("## ")) out.push({ type: "h2", text: line.slice(3) });
+      else if (line.startsWith("# ")) out.push({ type: "h1", text: line.slice(2) });
+      else if (/^-{3,}$/.test(line.trim())) out.push({ type: "hr" });
+      else if (line.trim() === "") out.push({ type: "space" });
+      else out.push({ type: "p", text: line });
       i += 1;
-      while (i < lines.length && !lines[i].startsWith("```")) {
-        code.push(lines[i]);
-        i += 1;
-      }
-      blocks.push({ type: "code", lang, text: code.join("\n") });
-      i += 1;
-      continue;
     }
 
-    if (/^[-*] /.test(line)) {
-      const items = [];
-      while (i < lines.length && /^[-*] /.test(lines[i])) {
-        items.push(lines[i].slice(2));
-        i += 1;
-      }
-      blocks.push({ type: "ul", items });
-      continue;
-    }
-
-    if (/^\d+\. /.test(line)) {
-      const items = [];
-      while (i < lines.length && /^\d+\. /.test(lines[i])) {
-        items.push(lines[i].replace(/^\d+\. /, ""));
-        i += 1;
-      }
-      blocks.push({ type: "ol", items });
-      continue;
-    }
-
-    if (line.startsWith("### ")) blocks.push({ type: "h3", text: line.slice(4) });
-    else if (line.startsWith("## ")) blocks.push({ type: "h2", text: line.slice(3) });
-    else if (line.startsWith("# ")) blocks.push({ type: "h1", text: line.slice(2) });
-    else if (/^-{3,}$/.test(line.trim())) blocks.push({ type: "hr" });
-    else if (line.trim() === "") blocks.push({ type: "space" });
-    else blocks.push({ type: "p", text: line });
-    i += 1;
-  }
+    return out;
+  }, [text]);
 
   return (
     <div className="markdown">

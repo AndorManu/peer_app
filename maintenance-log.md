@@ -4,6 +4,37 @@ Persistent memory for the daily maintenance agent. Newest entry on top. Never de
 
 ---
 
+## 2026-07-07 · Run 3
+
+Codebase byte-identical to Run 2's merged-clean state (`HEAD == origin/main == d20ed00`, which includes the Run 2 SSE fix merged via PR #11). All `src/` files mtime Jun 30; `server/handleChat.js` carries the merged Run 2 fix. Light run: re-verified the green baseline, re-audited the two historically risky files, and actioned the single 100%-safe improvement that had been noted across every prior run.
+
+### Fixed
+- (none — no defects found; the two historical reliability gaps remain closed)
+
+### Improvements applied
+- LOW/perf · src/markdown.jsx · Markdown · lines 39–93 — the block-parsing loop ran on every render. Wrapped it in `useMemo(() => {...}, [text])` (added `useMemo` to the existing React import; renamed the local accumulator `blocks` → `out` inside the memo, returning it as `blocks`). Behavior-preserving: pure function of `text`, hook called unconditionally at the top of the component; the render body's `blocks.map(...)`, `inline`, and `CodeBlock` are untouched. Only call site is `<Markdown text={...} />` in App.jsx (props unchanged). Verified: build ✅, 17/17 tests ✅, server HTTP 200 ✅.
+
+### Flagged
+- (none)
+
+### Improvements still open (noted, not auto-fixed)
+- peerPrompt.js · buildSystemPrompt — no aggregate doc token cap (bounded per-doc at ingestion) · prompt content off-limits per run rules · moderate
+- Code-split LearningBrain (Three.js) + pdf.js via React.lazy — build still emits one 1.33 MB JS chunk (gzip 375.78 kB) + 2.2 MB pdf worker · moderate
+- App.jsx · FlashcardsPanel keydown effect missing dep array · intentional (handlers close over `deck`) · simple
+
+### Clean (skip deep read next run unless changed)
+- server/handleChat.js — re-read end to end: both provider paths surface mid-stream `error` events (parse in own try/catch, throw outside it → outer catch emits `{error}` + `res.end()`); request-size guarded (413); no key leakage. `readJson` rejects before the SSE try/catch, but dev.js wraps `handleChatRequest` in its own try/catch → sends 500 JSON, no hang/leak.
+- server/dev.js — unchanged; wraps both API handlers, tolerant loadDotEnv.
+- learningModel.js — re-audited the mutation boundary: `upsertConcept` existing-concept path replaces immutably via `.map` (Run 1 fix); new-concept path `unshift`/`slice` only touch the fresh `next.concepts` array from `normalizeMastery`. No input-mutation leaks.
+- All other files unchanged since Run 2's CLEAN assessment: storage.js, stateModel.js, LearningBrain.jsx, handleImage.js, constants.js, PeerNavRail.jsx, peer-theme.css/peerTheme.js, main.jsx, materials.js, App.jsx, .env.example.
+
+### Notes
+- Verification: `npm run build` ✅ (vite 6, built in 4.4s), `npm test` ✅ 17/17, `node server/dev.js` ✅ HTTP 200. `npm install` needed first (fresh clone).
+- No console noise in src/ (only intentional error handler at LearningBrain.jsx:462), no API-key references in src/.
+- Recurring pattern: none outstanding. Both historical reliability gaps (learningModel mutation, SSE error events) are closed. The remaining levers are perf-only (eager bundle) and off-limits (prompt content). markdown useMemo — noted since Run 1 — is now applied.
+
+---
+
 ## 2026-07-04 · Run 2
 
 Codebase unchanged since Run 1 (all files same mtime, branch fresh off main). Focused on the open FLAGGED SSE issue from Run 1; skimmed the files marked CLEAN — no new changes.
