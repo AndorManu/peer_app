@@ -33,20 +33,19 @@ _(empty — planner fills this in at the start of the next round)_
 
 ## Next
 
-- **Harden `getDocPreviewUrl`'s path guard + add a server-side RLS
-  regression probe** — *(surfaced by peer-reviewer + peer-security
-  during part B, 2026-07-14, both explicitly non-blocking)* The
-  client-side `previewPath.startsWith(userId + "/")` check in
-  `src/materials.js` doesn't reject `..`/`//` segments; traced live and
-  confirmed NOT exploitable (URL normalization forwards the smuggled
-  path as the victim's real object key, and migration 0008's RLS fails
-  closed on it) — but the guard's own comment claims stronger
-  protection than it provides, a latent footgun if ever reused
-  elsewhere. Add: (1) reject any path containing `..` or `//` in the
-  guard; (2) a direct `tools/verify-roundtrip.mjs` probe that bypasses
-  the client helper and calls `createSignedUrl` straight against a real
-  foreign-owned object, so the RLS backstop is regression-tested going
-  forward rather than proven once. Small, low risk. No UI change.
+- **(Low priority, explicitly deferrable) Direct-to-Storage traversal
+  probe** — *(surfaced by peer-reviewer + peer-security during the
+  path-guard hardening task, 2026-07-14, both explicitly said safe to
+  defer)* The committed RLS probe in `tools/verify-roundtrip.mjs` fires
+  a literal foreign path straight at `createSignedUrl` (bypassing the
+  client guard) and a traversal-shaped path through the guard (which
+  blocks it client-side). No probe fires a traversal-*shaped* path
+  straight at Storage bypassing the guard — the only gap that would
+  catch is a hypothetical future Supabase platform-level regression in
+  how RLS evaluates vs. normalizes storage keys, not anything this repo
+  itself could regress into. ~4 lines reusing the existing
+  `foreignPreviewPath` fixture if picked up. No UI change.
+
 - **Storage orphan cleanup: deleteProject and account deletion** —
   *(surfaced by peer-coder + peer-tester during part A, 2026-07-14)*
   `deleteProject()` (`src/App.jsx` ~line 597) tombstones a project's
@@ -178,6 +177,14 @@ to "Next", 1 declined below)_
 
 ## Done
 
+- Harden `getDocPreviewUrl` path guard + server-side RLS regression
+  probe — 3462640 (2026-07-14). Guard now rejects `..`/`//`, doc
+  comment corrected to state RLS is the real boundary. Tester
+  adversarially probed 10 path shapes live (URL-encoded,
+  double-encoded, unicode lookalikes, backslash traversal, double-slash
+  smuggling) bypassing the guard entirely — all failed closed via RLS.
+  Security audit: APPROVE, one remaining item (platform-level probe)
+  correctly deferred as non-actionable risk, queued in Next anyway.
 - Image documents: sync previews cross-device, part B (pull + hydrate)
   — f87bcf1 (2026-07-14). `getDocPreviewUrl()` signed-URL helper +
   `hydrateDocPreviewInBackground()`, in-memory-only cache (never synced
