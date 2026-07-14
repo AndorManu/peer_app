@@ -1,13 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { DOC_PREVIEW_BUCKET, dataUrlToBlob, deleteDocPreview, uploadDocPreview } from "./materials.js";
+import { DOC_PREVIEW_BUCKET, dataUrlToBlob, deleteDocPreview, getDocPreviewUrl, uploadDocPreview } from "./materials.js";
 
 // Fake Supabase Storage client — records what would have hit the network so
 // these guard clauses / path-construction rules (which storage RLS depends
 // on) are covered without needing a live project.
-function makeFakeClient({ uploadError = null, removeError = null } = {}) {
-  const calls = { uploadPaths: [], uploadOptions: [], removePaths: [] };
+function makeFakeClient({ uploadError = null, removeError = null, signError = null, signedUrl = "https://storage.example/signed" } = {}) {
+  const calls = { uploadPaths: [], uploadOptions: [], removePaths: [], signPaths: [], signExpiresIn: [] };
   return {
     calls,
     storage: {
@@ -22,6 +22,11 @@ function makeFakeClient({ uploadError = null, removeError = null } = {}) {
           async remove(paths) {
             calls.removePaths.push(...paths);
             return { data: removeError ? null : paths.map((p) => ({ name: p })), error: removeError };
+          },
+          async createSignedUrl(path, expiresIn) {
+            calls.signPaths.push(path);
+            calls.signExpiresIn.push(expiresIn);
+            return { data: signError ? null : { signedUrl }, error: signError };
           },
         };
       },
@@ -85,4 +90,49 @@ test("deleteDocPreview is a no-op without a client or path (best-effort cleanup 
 test("deleteDocPreview throws on Storage error so callers choosing to surface it still can", async () => {
   const client = makeFakeClient({ removeError: new Error("network down") });
   await assert.rejects(() => deleteDocPreview(client, "user-1/doc-1"), /network down/);
+});
+
+test("getDocPreviewUrl signs an owner-prefixed path", async () => {
+  const client = makeFakeClient({ signedUrl: "https://storage.example/user-1/doc-1?token=abc" });
+  const url = await getDocPreviewUrl(client, "user-1", "user-1/doc-1");
+  assert.equal(url, "https://storage.example/user-1/doc-1?token=abc");
+  assert.deepEqual(client.calls.signPaths, ["user-1/doc-1"]);
+  assert.equal(client.calls.signExpiresIn[0], 300, "short-lived by default");
+});
+
+test("getDocPreviewUrl refuses a foreign-prefixed path without hitting the network", async () => {
+  const client = makeFakeClient();
+  const url = await getDocPreviewUrl(client, "user-1", "user-2/doc-1");
+  assert.equal(url, null);
+  assert.deepEqual(client.calls.signPaths, [], "must not sign a path outside the caller's own prefix");
+});
+
+test("getDocPreviewUrl returns null for missing inputs without hitting the network", async () => {
+  const client = makeFakeClient();
+  assert.equal(await getDocPreviewUrl(null, "user-1", "user-1/doc-1"), null);
+  assert.equal(await getDocPreviewUrl(client, "", "user-1/doc-1"), null);
+  assert.equal(await getDocPreviewUrl(client, "user-1", ""), null);
+  assert.deepEqual(client.calls.signPaths, []);
+});
+
+test("getDocPreviewUrl resolves to null (not throw) on a Storage signing error", async () => {
+  const client = makeFakeClient({ signError: new Error("object not found") });
+  const url = await getDocPreviewUrl(client, "user-1", "user-1/doc-1");
+  assert.equal(url, null);
+});
+
+test("getDocPreviewUrl resolves to null (not throw) when the client itself throws", async () => {
+  const client = {
+    storage: {
+      from() {
+        return {
+          async createSignedUrl() {
+            throw new Error("offline");
+          },
+        };
+      },
+    },
+  };
+  const url = await getDocPreviewUrl(client, "user-1", "user-1/doc-1");
+  assert.equal(url, null);
 });
