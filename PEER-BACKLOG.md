@@ -33,6 +33,36 @@ _(empty — planner fills this in at the start of the next round)_
 
 ## Next
 
+- **⚠️ Code lab has no reachable nav entry point** — *(surfaced by
+  peer-tester during CSP-readiness verification, 2026-07-14; real,
+  pre-existing, unrelated to CSP — likely higher priority than most
+  of this queue)* `grep -n 'setView("code")' src/App.jsx` returns
+  nothing — no sidebar nav item, command-palette entry, or other UI
+  path currently opens the Code lab panel. The feature (editor,
+  sandboxed JS/Pyodide runner, library packs, AI tutor integration —
+  substantial existing functionality per PROGRESS.md) is fully built
+  but invisible to users. Needs: find/restore the missing nav wiring
+  (check `src/components/PeerNavRail.jsx` and the command palette for
+  what should call `setView("code")`), confirm it's not an
+  intentional gate (unlike Rooms, which has a deliberate Coming Soon
+  gate — this looks like an accidental regression, not a design
+  choice, but verify against maintenance-log.md before assuming).
+  Touches UI: YES — designer round.
+- **Sandbox-runner refactor to drop `'unsafe-eval'`** — *(follow-up
+  from CSP-readiness task, 2026-07-14)* The Code lab's blob-Worker JS
+  runner (`src/CodingPanel.jsx:112`, `(0, eval)(code)`) forced
+  `'unsafe-eval'` to stay in the production CSP (`public/_headers`).
+  Security audit's real flag for this refactor to address: the bigger
+  residual weakness is `https://cdn.jsdelivr.net` as a full-host
+  `script-src`/`connect-src` entry (serves arbitrary npm packages,
+  known CSP-bypass gadgets exist there) — if this gets refactored to
+  a restricted interpreter or isolated iframe, path-scope the
+  jsdelivr entries too (pin to `/pyodide/` and the exact versioned
+  library-pack URLs already enforced in `src/libraryPacks.test.js`).
+  Not urgent — current posture is measured and documented, not an
+  active vulnerability. Larger task, may need scoping/splitting when
+  picked up.
+
 - **(Low priority, explicitly deferrable) Direct-to-Storage traversal
   probe** — *(surfaced by peer-reviewer + peer-security during the
   path-guard hardening task, 2026-07-14, both explicitly said safe to
@@ -46,14 +76,6 @@ _(empty — planner fills this in at the start of the next round)_
   itself could regress into. ~4 lines reusing the existing
   `foreignPreviewPath` fixture if picked up. No UI change.
 
-- **Production strict-CSP readiness** — PROGRESS §3 notes script-src
-  keeps 'unsafe-inline'/'unsafe-eval' only for Vite dev tooling and the
-  production host must drop them. Verify the built `dist/` actually runs
-  under `script-src 'self'` (fix any inline scripts in `index.html` if
-  not), and ship a hosting headers artifact (e.g. `public/_headers` or
-  equivalent) mirroring server/security.js minus the dev exceptions,
-  plus a short README note. Host choice remains the owner's; this makes
-  the flip zero-work.
 - **Subject-universal misconception capture (AI-tagged)** — *(promoted
   from ideator 2026-07-14)* Goal: replace the five hardcoded regexes in
   `detectMisconception()` (`src/learningModel.js:824`) with
@@ -165,6 +187,17 @@ to "Next", 1 declined below)_
 
 ## Done
 
+- Production strict-CSP readiness — 0b18c81 (2026-07-14). Ships
+  `public/_headers` + `tools/serve-dist.mjs`. Eval story settled by
+  measurement: the Code lab's blob-Worker eval sink genuinely
+  requires `'unsafe-eval'` (tried and disproved two narrower
+  alternatives — worker-src carve-out, nonce-scoping); Pyodide only
+  needs `'wasm-unsafe-eval'`. connect-src drops the dev-only bare
+  `ws:`/`wss:` wildcard. One fix round (false doc citation, caught by
+  reviewer). Security audit: APPROVE — flagged `cdn.jsdelivr.net` as
+  the real residual weakness for the eventual sandbox refactor, not
+  `unsafe-eval` itself. Tester also surfaced a real, unrelated bug
+  (Code lab has no nav entry point) — queued in Next.
 - Storage orphan cleanup: deleteProject and account deletion —
   a801dd8 (2026-07-14). Client-side (deleteProject) and both
   service-role handlers now purge `doc-previews/<user_id>/*`, scoped
