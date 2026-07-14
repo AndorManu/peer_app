@@ -33,20 +33,20 @@ _(empty — planner fills this in at the start of the next round)_
 
 ## Next
 
-- **Image documents: sync previews cross-device, part B (pull +
-  hydrate)** — `src/sync.js` pull side resolves the stored path to a
-  signed URL and hydrates `previewUrl` on other devices (today lines
-  236/336 strip or pin it); extend `tools/verify-roundtrip.mjs` with an
-  image-doc round trip. Depends on part A (done, `5254459`). No UI
-  change. **Security notes from part A's audit, fold into acceptance
-  criteria**: validate `preview_path.startsWith(account.id + "/")`
-  before requesting a signed URL (a user can write arbitrary strings to
-  their own row via raw REST; signing a foreign path fails RLS but
-  should also fail validation client-side); render only via
-  `<img src={signedUrl}>`, never iframe/innerHTML; don't persist signed
-  URLs into synced state (they're bearer tokens until expiry) — mint
-  short-lived ones on demand; keep `image/svg+xml` out of the bucket
-  mime allowlist.
+- **Harden `getDocPreviewUrl`'s path guard + add a server-side RLS
+  regression probe** — *(surfaced by peer-reviewer + peer-security
+  during part B, 2026-07-14, both explicitly non-blocking)* The
+  client-side `previewPath.startsWith(userId + "/")` check in
+  `src/materials.js` doesn't reject `..`/`//` segments; traced live and
+  confirmed NOT exploitable (URL normalization forwards the smuggled
+  path as the victim's real object key, and migration 0008's RLS fails
+  closed on it) — but the guard's own comment claims stronger
+  protection than it provides, a latent footgun if ever reused
+  elsewhere. Add: (1) reject any path containing `..` or `//` in the
+  guard; (2) a direct `tools/verify-roundtrip.mjs` probe that bypasses
+  the client helper and calls `createSignedUrl` straight against a real
+  foreign-owned object, so the RLS backstop is regression-tested going
+  forward rather than proven once. Small, low risk. No UI change.
 - **Storage orphan cleanup: deleteProject and account deletion** —
   *(surfaced by peer-coder + peer-tester during part A, 2026-07-14)*
   `deleteProject()` (`src/App.jsx` ~line 597) tombstones a project's
@@ -178,6 +178,15 @@ to "Next", 1 declined below)_
 
 ## Done
 
+- Image documents: sync previews cross-device, part B (pull + hydrate)
+  — f87bcf1 (2026-07-14). `getDocPreviewUrl()` signed-URL helper +
+  `hydrateDocPreviewInBackground()`, in-memory-only cache (never synced
+  or persisted). Also fixed a real gap found mid-task: `img-src` CSP
+  never allow-listed the Supabase host, so the feature would have
+  shipped as a silent no-op. Security audit: APPROVE — traced the
+  `..`-traversal question raised in review to ground truth (not
+  exploitable, RLS backstops it); two non-blocking hardening follow-ups
+  queued in "Next".
 - Image documents: sync previews cross-device, part A (Storage +
   upload path) — 5254459 (2026-07-14). Private `doc-previews` bucket +
   owner-scoped RLS (migration 0008, applied live with owner approval),
