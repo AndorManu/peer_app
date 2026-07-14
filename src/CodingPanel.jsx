@@ -407,9 +407,11 @@ ${code || "(empty)"}
   return (
     <section className="peer-skin" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", background: "var(--sh-bg-deep, #0c0a07)", color: COLORS.text }}>
       <div className="code-lab-head" style={{ display: "flex", alignItems: "center", gap: 12, padding: "20px 30px 12px", flexWrap: "wrap" }}>
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 23, fontWeight: 600, letterSpacing: "-.4px" }}>Code lab</div>
-          <div style={{ fontSize: 13, color: COLORS.text45, marginTop: 2 }}>Write, run any language, and learn with a tutor that sees your code and your brain.</div>
+        <div className="page-heading" style={{ flex: 1, minWidth: 200 }}>
+          <div>
+            <h1>Code lab</h1>
+            <p>Write, run any language, and learn with a tutor that sees your code and your brain.</p>
+          </div>
         </div>
         {projects.length > 0 && (
           <StyledSelect value={projectId} onChange={(e) => setProjectId(e.target.value)} style={selStyle} title="Which subject this connects to in your brain" aria-label="Subject to connect in your brain">

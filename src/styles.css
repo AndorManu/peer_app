@@ -620,6 +620,11 @@ textarea:focus {
   margin-bottom: 24px !important;
 }
 
+.code-lab-head .page-heading {
+  max-width: none !important;
+  margin-bottom: 0 !important;
+}
+
 .page-heading > button {
   min-height: 36px !important;
   border: 1px solid rgba(var(--sh-accent-rgb), 0.18) !important;
