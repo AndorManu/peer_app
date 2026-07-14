@@ -50,7 +50,7 @@ import {
   X,
 } from "lucide-react";
 import { Markdown } from "./markdown.jsx";
-import { extractStudyMaterial } from "./materials.js";
+import { deleteDocPreview, extractStudyMaterial, uploadDocPreview } from "./materials.js";
 import { buildSystemPrompt, shouldUseRetrieval } from "./peerPrompt.js";
 import { loadState, saveState, setSaveErrorHandler } from "./storage.js";
 import {
@@ -697,6 +697,36 @@ export default function App() {
     } catch { /* orphaned chunks are harmless; retried on re-embed */ }
   }
 
+  // Upload an image doc's local preview to Storage so other devices can
+  // eventually see it (hydration is a separate task). Non-fatal: the doc
+  // already attached and synced from local state, so a failure here only
+  // surfaces as a toast, never blocks or crashes the attach flow.
+  async function uploadDocPreviewInBackground(doc, projectId) {
+    if (doc.kind !== "image" || !doc.previewUrl || !state.account?.verified) return;
+    try {
+      const client = await getSupabase();
+      if (!client) return;
+      const previewPath = await uploadDocPreview(client, state.account.id, doc.id, doc.previewUrl);
+      if (!previewPath) return;
+      updateState((current) => ({
+        ...current,
+        projects: current.projects.map((project) => (project.id === projectId
+          ? { ...project, docs: project.docs.map((entry) => (entry.id === doc.id ? { ...entry, previewPath } : entry)) }
+          : project)),
+      }));
+    } catch (err) {
+      showToast(friendlyError(err, "Couldn't sync this image to the cloud — it still works on this device"));
+    }
+  }
+
+  async function removeDocPreview(previewPath) {
+    if (!previewPath) return;
+    try {
+      const client = await getSupabase();
+      await deleteDocPreview(client, previewPath);
+    } catch { /* best-effort cleanup; an orphaned object is harmless */ }
+  }
+
   // OCR: turn an uploaded image into searchable, embeddable text.
   async function ocrDoc(projectId, docId) {
     const project = state.projects.find((item) => item.id === projectId);
@@ -759,6 +789,7 @@ export default function App() {
           chars: extracted.chars,
           text: extracted.text.slice(0, 40_000),
           previewUrl: extracted.previewUrl,
+          previewPath: null,
           note: extracted.note,
           addedAt: Date.now(),
         });
@@ -772,6 +803,7 @@ export default function App() {
       }));
       setSelectedDocId(docs[0]?.id || null);
       docs.forEach((doc) => embedDocInBackground(doc, projectId));
+      docs.filter((doc) => doc.kind === "image").forEach((doc) => uploadDocPreviewInBackground(doc, projectId));
       showToast(`${docs.length} material${docs.length === 1 ? "" : "s"} added`);
     } catch (err) {
       setError(err.message || "Failed to read this material.");
@@ -834,6 +866,7 @@ export default function App() {
           chars: extracted.chars,
           text: extracted.text.slice(0, 40_000),
           previewUrl: extracted.previewUrl,
+          previewPath: null,
           note: extracted.note,
           addedAt: Date.now(),
         });
@@ -849,6 +882,7 @@ export default function App() {
       }));
       setPendingFiles((current) => [...current, ...docs.map((doc) => ({ id: doc.id, name: doc.name, kind: doc.kind, chars: doc.chars, previewUrl: doc.kind === "image" ? doc.previewUrl : null }))]);
       docs.forEach((doc) => embedDocInBackground(doc, projectId));
+      docs.filter((doc) => doc.kind === "image").forEach((doc) => uploadDocPreviewInBackground(doc, projectId));
       showToast(`${docs.length} file${docs.length === 1 ? "" : "s"} attached`);
     } catch (err) {
       setError(err.message || "Failed to attach file.");
@@ -867,6 +901,9 @@ export default function App() {
   }
 
   function removeDoc(projectId, docId) {
+    const previewPath = state.projects
+      .find((project) => project.id === projectId)?.docs
+      .find((doc) => doc.id === docId)?.previewPath;
     updateState((current) => ({
       ...current,
       tombstones: withTombstones(current, [{ table: "documents", id: docId, parentId: projectId }]),
@@ -875,6 +912,7 @@ export default function App() {
       )),
     }));
     removeDocChunks(docId);
+    if (previewPath) removeDocPreview(previewPath);
     setSelectedDocId(null);
     showToast("Document removed");
   }

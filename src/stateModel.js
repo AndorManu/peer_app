@@ -67,6 +67,7 @@ export function normalizeState(stored) {
               chars: doc?.chars || String(doc?.text || "").length,
               text: String(doc?.text || ""),
               previewUrl: doc?.previewUrl || null,
+              previewPath: doc?.previewPath || null,
               note: doc?.note || "",
               addedAt: doc?.addedAt || Date.now(),
             }))
