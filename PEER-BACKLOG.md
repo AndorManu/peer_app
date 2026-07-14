@@ -46,18 +46,6 @@ _(empty — planner fills this in at the start of the next round)_
   itself could regress into. ~4 lines reusing the existing
   `foreignPreviewPath` fixture if picked up. No UI change.
 
-- **Storage orphan cleanup: deleteProject and account deletion** —
-  *(surfaced by peer-coder + peer-tester during part A, 2026-07-14)*
-  `deleteProject()` (`src/App.jsx` ~line 597) tombstones a project's
-  docs but never calls `removeDocPreview()` per doc (mirrors the
-  pre-existing gap where it also skips `removeDocChunks()`) — deleting
-  a whole project leaks its docs' Storage preview objects. Separately,
-  account deletion (`/api/delete-account`) cascades the `documents`
-  rows via FK but Supabase Storage objects aren't FK-linked, so a
-  deleted account's `doc-previews/<user_id>/*` objects won't
-  auto-purge — needs the server-side handler to also clear that
-  user's Storage folder (service-role key). Small, low risk. No UI
-  change.
 - **Production strict-CSP readiness** — PROGRESS §3 notes script-src
   keeps 'unsafe-inline'/'unsafe-eval' only for Vite dev tooling and the
   production host must drop them. Verify the built `dist/` actually runs
@@ -177,6 +165,19 @@ to "Next", 1 declined below)_
 
 ## Done
 
+- Storage orphan cleanup: deleteProject and account deletion —
+  a801dd8 (2026-07-14). Client-side (deleteProject) and both
+  service-role handlers now purge `doc-previews/<user_id>/*`, scoped
+  strictly to the JWT-verified user id. Two real bugs found and fixed
+  mid-task: an unbounded-loop hang (virtual folder entries in
+  Storage's `list()` treated as removable, page never shrinks) caught
+  by security audit; the first fix's termination guard then silently
+  left real objects unpurged when they sorted after a folder-dominated
+  page, caught by the tester with a live adversarial probe. Final fix
+  uses offset-based pagination, proven correct by invariant. Also
+  fixed: `npm test`'s glob excluded `server/` entirely, so this task's
+  own safety tests would have silently never run. Two fix rounds (the
+  cap) — both real, both caught by the team.
 - Harden `getDocPreviewUrl` path guard + server-side RLS regression
   probe — 3462640 (2026-07-14). Guard now rejects `..`/`//`, doc
   comment corrected to state RLS is the real boundary. Tester
@@ -211,6 +212,14 @@ to "Next", 1 declined below)_
 
 ## Blocked / external
 
+- **⚠️ Owner action needed: deploy the prod `delete-account` edge
+  function** — `a801dd8` (2026-07-14) fixed a Storage-orphan bug in
+  `supabase/functions/delete-account/index.ts`, but edge functions
+  don't auto-deploy from a commit. Until `supabase functions deploy
+  delete-account` is run, production account deletions still leak
+  Storage objects (the dev path, `server/handleAccount.js`, is
+  unaffected — already live). Not loop-actionable; needs Supabase CLI
+  access.
 - **Facebook login** — implemented, waiting on Supabase dashboard flip (owner action).
 - **Stripe** — implemented, waiting on STRIPE_* keys (owner action).
 - **Sandbox/code-runner rate limiting** — flagged incomplete in PROGRESS.md §3; confirm still open before picking up.
