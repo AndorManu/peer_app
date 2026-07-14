@@ -79,6 +79,27 @@ test("diffAgainstSnapshot pushes only changed rows", () => {
   assert.equal(changed.notes.length, 1);
 });
 
+test("stateToRows carries preview_path for image docs, and applyPull round-trips it", () => {
+  const state = makeLocalState();
+  state.projects[0].docs.push({
+    id: "d2", name: "diagram.png", kind: "image", pages: 0, chars: 0,
+    text: "[Image: diagram.png]", previewUrl: "data:image/png;base64,AAAA",
+    previewPath: `${USER}/d2`, note: "", addedAt: 60,
+  });
+
+  const rows = stateToRows(state, USER);
+  const imageRow = rows.documents.find((row) => row.id === "d2");
+  assert.equal(imageRow.preview_path, `${USER}/d2`);
+  assert.ok(!("previewUrl" in imageRow), "the data URL itself never leaves the device");
+
+  const emptyProjects = state.projects.map((project) => ({ ...project, docs: [] }));
+  const pulled = { documents: [{ ...imageRow, updated_at: new Date().toISOString() }] };
+  const merged = applyPull({ ...state, projects: emptyProjects }, pulled);
+  const mergedDoc = merged.projects[0].docs.find((doc) => doc.id === "d2");
+  assert.equal(mergedDoc.previewPath, `${USER}/d2`, "storage path survives the round-trip");
+  assert.equal(mergedDoc.previewUrl, null, "other devices get the path, not a rehydrated data URL");
+});
+
 test("hashRow is stable across key order", () => {
   assert.equal(hashRow({ a: 1, b: [1, 2] }), hashRow({ b: [1, 2], a: 1 }));
   assert.notEqual(hashRow({ a: 1 }), hashRow({ a: 2 }));
