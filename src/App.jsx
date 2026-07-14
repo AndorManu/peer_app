@@ -614,17 +614,22 @@ export default function App() {
   }
 
   function deleteProject(id) {
+    const dying = state.projects.find((project) => project.id === id);
     updateState((current) => {
-      const dying = current.projects.find((project) => project.id === id);
+      const dyingNow = current.projects.find((project) => project.id === id);
       return {
         ...current,
         tombstones: withTombstones(current, [
           { table: "projects", id },
-          ...(dying?.docs || []).map((doc) => ({ table: "documents", id: doc.id, parentId: id })),
+          ...(dyingNow?.docs || []).map((doc) => ({ table: "documents", id: doc.id, parentId: id })),
         ]),
         projects: current.projects.filter((project) => project.id !== id),
         chats: current.chats.map((chat) => chat.projectId === id ? { ...chat, projectId: null } : chat),
       };
+    });
+    (dying?.docs || []).forEach((doc) => {
+      removeDocChunks(doc.id);
+      if (doc.previewPath) removeDocPreview(doc.previewPath);
     });
     setManagedProjectId(null);
     showToast("Project deleted");
