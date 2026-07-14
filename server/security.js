@@ -14,9 +14,19 @@ export function isAllowedOrigin(origin) {
 
 export function applySecurityHeaders(res, { supabaseUrl = "" } = {}) {
   const supabaseHost = supabaseUrl.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
-  // 'unsafe-inline'/'unsafe-eval' in script-src are required by Vite DEV
-  // tooling (HMR preamble) — a production host should drop them; everything
-  // else is the real policy.
+  // DEV-ONLY relaxations vs. the production policy (see `public/_headers`,
+  // the shipped prod mirror, and its "why" note above the CSP line there):
+  //  - 'unsafe-inline' in script-src: Vite's HMR preamble needs it in dev;
+  //    the production build has no inline scripts, so prod drops it.
+  //  - bare `ws:`/`wss:` in connect-src: Vite's HMR websocket can land on
+  //    any local port; prod only needs the specific `wss://<supabase-host>`.
+  // 'unsafe-eval' stays in BOTH dev and prod — proven by measurement, not
+  // assumption, that it can't be narrowed to 'wasm-unsafe-eval': the Code
+  // lab's JS runner (`src/CodingPanel.jsx`) calls `(0, eval)(code)` inside a
+  // blob: Worker, which inherits this CSP, and a strict-CSP build of the
+  // Worker's eval() throws (caught, but the run fails); 'wasm-unsafe-eval'
+  // alone is NOT enough for that eval() call — it only covers Pyodide's
+  // WebAssembly compile, which 'unsafe-eval' already permits too.
   // cdn.jsdelivr.net: Pyodide (in-browser Python + its package wheels) loads
   // from there — script for pyodide.js, connect for the .wasm/.whl fetches.
   const csp = [
