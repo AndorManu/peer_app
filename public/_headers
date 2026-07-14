@@ -1,0 +1,32 @@
+# Peer — production hosting headers (Netlify / Cloudflare Pages "_headers"
+# format). This is `server/security.js`'s applySecurityHeaders() CSP, minus
+# the dev-only relaxations (see the comment there for the full "why").
+#
+# Verify before deploying (see supabase/README.md "Production hosting: CSP"):
+#   npm run build && node tools/serve-dist.mjs
+#
+# script-src keeps 'unsafe-eval' (dropped only 'unsafe-inline', which the
+# built app never needs — no inline scripts in dist/index.html). This was
+# settled by MEASUREMENT, not assumption: the Code lab JS runner
+# (src/CodingPanel.jsx) runs learner code via `(0, eval)(code)` inside a
+# blob: Worker, which inherits this page CSP. Serving the built app with
+# script-src restricted to 'self' 'wasm-unsafe-eval' (no 'unsafe-eval')
+# made that eval() throw an EvalError (caught, surfaced as a run error) —
+# 'wasm-unsafe-eval' only covers Pyodide's WebAssembly compile, not JS
+# eval(). With 'unsafe-eval' restored, BOTH a JS run (plain code and a
+# library pack loaded via importScripts) and a Pyodide Python run passed
+# clean against a served dist/ build, zero CSP violations. Narrowing this
+# further needs a sandbox-runner refactor (postMessage a restricted
+# interpreter, or a sandboxed <iframe> with its own stricter CSP) — out of
+# scope here; queued as a follow-up.
+#
+# SUPABASE_HOST below is filled in with this project's current URL
+# (https://xadsdmlqqyswcpxfwdph.supabase.co — same value already public via
+# /api/config). If the project ever changes, update both connect-src entries.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://*.fal.media https://xadsdmlqqyswcpxfwdph.supabase.co; connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://xadsdmlqqyswcpxfwdph.supabase.co wss://xadsdmlqqyswcpxfwdph.supabase.co; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), geolocation=(), payment=()
+  Strict-Transport-Security: max-age=63072000; includeSubDomains
