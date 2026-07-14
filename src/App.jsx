@@ -1948,6 +1948,7 @@ export default function App() {
   const commands = [
     { label: "New chat", hint: "Start a clean study thread", icon: Plus, run: () => createChat(activeProject?.id || null) },
     { label: "Open learning brain", hint: "Graph your concepts, files, notes, and weak spots", icon: Brain, run: () => setView("brain") },
+    { label: "Open code lab", hint: "Write, run, and get tutoring on code", icon: Code2, run: () => setView("code") },
     { label: "Open learning profile", hint: "Inspect adaptive signals", icon: UserRound, run: () => setView("profile") },
     { label: "Open notes", hint: "Review saved explanations", icon: Save, run: () => setView("notes") },
     { label: "Open study rooms", hint: "Local peer-to-peer study prototype", icon: Users, run: () => setView("community") },
@@ -2313,6 +2314,7 @@ function ViewTitle({ view, activeChat, activeProject }) {
   if (view === "settings") return <h1 className="topbar-title"><Settings size={17} /><span>Settings</span></h1>;
   if (view === "profile") return <h1 className="topbar-title"><UserRound size={17} /><span>Learning profile</span></h1>;
   if (view === "brain") return <h1 className="topbar-title"><Brain size={17} /><span>Learning brain</span></h1>;
+  if (view === "code") return <h1 className="topbar-title"><Code2 size={17} /><span>Code lab</span></h1>;
   if (view === "notes") return <h1 className="topbar-title"><Save size={17} /><span>Saved notes</span></h1>;
   if (view === "flashcards") return <h1 className="topbar-title"><BookOpen size={17} /><span>Flashcards</span></h1>;
   if (view === "community") return <h1 className="topbar-title"><Users size={17} /><span>Study rooms</span></h1>;
@@ -2511,6 +2513,7 @@ function Sidebar(props) {
       <nav className="sidebar-nav">
         <button className={view === "chat" ? "active" : ""} onClick={() => setView("chat")}><MessageSquare size={16} /> Chat</button>
         <button className={view === "brain" ? "active" : ""} onClick={() => setView("brain")}><Brain size={16} /> Brain</button>
+        <button className={view === "code" ? "active" : ""} onClick={() => setView("code")}><Code2 size={16} /> Code</button>
         <button className={view === "profile" ? "active" : ""} onClick={() => setView("profile")}><UserRound size={16} /> Profile</button>
         <button className={view === "notes" ? "active" : ""} onClick={() => setView("notes")}><Save size={16} /> Notes</button>
         <button className={view === "flashcards" ? "active" : ""} onClick={() => setView("flashcards")}><BookOpen size={16} /> Flashcards</button>
