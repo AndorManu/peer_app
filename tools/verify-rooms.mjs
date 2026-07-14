@@ -2,7 +2,8 @@
 // User A creates a room; user B joins via the invite code (RPC); both connect
 // to the realtime channel from separate clients ("different devices"), see
 // each other's presence, exchange a chat message, and sync a quiz event.
-// Also proves isolation: outsiders can't see the room or fake a join.
+// Also proves isolation: outsiders can't see the room, fake a join, or
+// subscribe/broadcast on the room's private realtime channel.
 // Usage: node tools/verify-rooms.mjs
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
@@ -65,8 +66,8 @@ try {
 
   // both connect to the realtime channel (two devices)
   const state = { membersA: [], msgB: null, quizB: null, subA: false, subB: false };
-  const chA = clientA.channel(`room:${room.id}`, { config: { presence: { key: userA.user.id }, broadcast: { self: true } } });
-  const chB = clientB.channel(`room:${room.id}`, { config: { presence: { key: userB.user.id }, broadcast: { self: true } } });
+  const chA = clientA.channel(`room:${room.id}`, { config: { presence: { key: userA.user.id }, broadcast: { self: true }, private: true } });
+  const chB = clientB.channel(`room:${room.id}`, { config: { presence: { key: userB.user.id }, broadcast: { self: true }, private: true } });
 
   chA.on("presence", { event: "sync" }, () => { state.membersA = Object.values(chA.presenceState()).flat(); });
   chB.on("broadcast", { event: "room-msg" }, ({ payload }) => { state.msgB = payload; });
@@ -89,6 +90,23 @@ try {
   await until(() => Boolean(state.quizB));
   check("co-op quiz question synced to B", state.quizB?.question === "ojalá + ?" && state.quizB?.revealed === false);
 
+  // outsider C is an authenticated non-member: private-channel RLS on
+  // realtime.messages must reject both subscribing and broadcasting to
+  // this room's topic, independent of the "can't see the row" checks above.
+  const stateC = { status: null, gotReply: false };
+  const chC = clientC.channel(`room:${room.id}`, { config: { presence: { key: userC.user.id }, broadcast: { self: true }, private: true } });
+  chC.on("broadcast", { event: "room-msg" }, () => { stateC.gotReply = true; });
+  chC.subscribe((status) => { stateC.status = status; });
+  await until(() => ["SUBSCRIBED", "CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(stateC.status));
+  check("outsider cannot subscribe to the room's private realtime channel", stateC.status !== "SUBSCRIBED", stateC.status);
+
+  state.msgB = null;
+  chC.send({ type: "broadcast", event: "room-msg", payload: { id: "spy", name: "C", userId: userC.user.id, text: "leaked", at: Date.now() } });
+  chA.send({ type: "broadcast", event: "room-msg", payload: { id: "m2", name: "Ana", userId: userA.user.id, text: "still live", at: Date.now() } });
+  await until(() => Boolean(state.msgB));
+  check("outsider's broadcast never reached B", state.msgB?.text === "still live" && !stateC.gotReply);
+
+  await chC.unsubscribe().catch(() => {});
   await chA.unsubscribe();
   await chB.unsubscribe();
 } finally {
