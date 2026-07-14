@@ -5,6 +5,7 @@
 // Usage: node tools/verify-roundtrip.mjs
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { runSyncCycle } from "../src/sync.js";
 import { getDocPreviewUrl } from "../src/materials.js";
@@ -88,6 +89,12 @@ const onePxPng = Buffer.from(
   "hex",
 );
 
+// RLS regression fixture: a real object under a prefix the test user does
+// NOT own, so the RLS + traversal probes below have something concrete to
+// probe against instead of relying on a path that merely fails validation.
+const foreignUserId = randomUUID();
+const foreignPreviewPath = `${foreignUserId}/roundtrip-preview-foreign.png`;
+
 try {
   const clientA = createClient(url, anonKey, { auth: { persistSession: false } });
   const clientB = createClient(url, anonKey, { auth: { persistSession: false } });
@@ -98,6 +105,11 @@ try {
     .from("doc-previews")
     .upload(previewPath, onePxPng, { contentType: "image/png", upsert: true });
   check("test fixture: preview image uploaded to Storage", !uploadError, uploadError?.message);
+
+  const { error: foreignUploadError } = await admin.storage
+    .from("doc-previews")
+    .upload(foreignPreviewPath, onePxPng, { contentType: "image/png", upsert: true });
+  check("test fixture: foreign-owned preview image uploaded to Storage", !foreignUploadError, foreignUploadError?.message);
 
   // Device A pushes a full local life, including an image doc with a
   // preview_path (its data-URL never leaves the device — only the path syncs)
@@ -132,6 +144,25 @@ try {
   const foreignRefused = await getDocPreviewUrl(clientB, userId, `not-${userId}/roundtrip-preview.png`);
   check("signed URL refused for a foreign-prefixed path", foreignRefused === null);
 
+  // Guard-level traversal probe: a smuggled path that starts with the
+  // caller's own prefix (passes the `${userId}/` check) but escapes it via
+  // `..` to reach a foreign object — exercises the new `..`/`//` rejection.
+  const smuggledForeignPath = `${userId}/../${foreignPreviewPath}`;
+  const smuggledRefused = await getDocPreviewUrl(clientB, userId, smuggledForeignPath);
+  check("signed URL refused for a path-traversal-smuggled foreign path", smuggledRefused === null);
+
+  // Direct RLS regression probe: bypass getDocPreviewUrl entirely and call
+  // Storage straight — this proves migration 0008's RLS itself fails closed,
+  // independent of any client-side guard.
+  const { data: rlsProbeData, error: rlsProbeError } = await clientB.storage
+    .from("doc-previews")
+    .createSignedUrl(foreignPreviewPath, 300);
+  check(
+    "RLS refuses a signed URL for a foreign object (direct client call, guard bypassed)",
+    !!rlsProbeError || !rlsProbeData?.signedUrl,
+    rlsProbeError?.message,
+  );
+
   // Device B edits a note and deletes the deck (tombstone)
   deviceB.state = {
     ...deviceB.state,
@@ -160,8 +191,9 @@ try {
   check("offline edit reconciles to the other device", deviceB.state.chats[0]?.name === "Renamed offline on A");
 } finally {
   await admin.storage.from("doc-previews").remove([previewPath]).catch(() => {});
+  await admin.storage.from("doc-previews").remove([foreignPreviewPath]).catch(() => {});
   await admin.auth.admin.deleteUser(userId).catch(() => {});
-  console.log("cleanup: test user + preview object removed");
+  console.log("cleanup: test user + preview objects removed");
 }
 
 process.exit(failures ? 1 : 0);
