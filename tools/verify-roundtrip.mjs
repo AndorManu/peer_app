@@ -8,7 +8,8 @@ import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { runSyncCycle } from "../src/sync.js";
-import { getDocPreviewUrl } from "../src/materials.js";
+import { getDocPreviewUrl, deleteDocPreview } from "../src/materials.js";
+import { purgeDocPreviews } from "../server/handleAccount.js";
 
 loadDotEnv();
 
@@ -95,6 +96,25 @@ const onePxPng = Buffer.from(
 const foreignUserId = randomUUID();
 const foreignPreviewPath = `${foreignUserId}/roundtrip-preview-foreign.png`;
 
+// Storage orphan cleanup probe: a scratch user folder seeded beyond one
+// list() page to prove purgeDocPreviews' pagination handling.
+const purgeUserId = randomUUID();
+
+// Storage orphan cleanup probe: a scratch user folder where list() page 1
+// (limit 100) is dominated by virtual sub-prefix (folder, id: null)
+// entries — reproduces the RLS-legal-but-unremovable-folder-entry case
+// (RLS only pins the first path segment, so a user can legally nest
+// objects under their own sub-prefixes) that once made purgeDocPreviews
+// loop forever, and — once "fixed" to stop on an all-folder page instead
+// of hanging — silently returned "done" without ever discovering real
+// objects sorted alphabetically AFTER the folder-dominated page 1. The
+// folder names below sort lexically before the real object names on
+// purpose, mirroring how an attacker could name sub-prefixes to bury
+// their own real objects past page 1.
+const purgeFolderUserId = randomUUID();
+const purgeFolderCount = 105;
+const purgeFolderRealNames = ["zz-real-0.png", "zz-real-1.png", "zz-real-2.png"];
+
 try {
   const clientA = createClient(url, anonKey, { auth: { persistSession: false } });
   const clientB = createClient(url, anonKey, { auth: { persistSession: false } });
@@ -163,6 +183,98 @@ try {
     rlsProbeError?.message,
   );
 
+  // Storage orphan cleanup — deleteProject path: prove the exact primitive
+  // src/App.jsx's removeDocPreview wraps (deleteDocPreview) really removes a
+  // live object, which is what deleteProject now calls per doc on delete.
+  const projectDeleteTestPath = `${userId}/project-delete-test.png`;
+  const { error: projectDeleteUploadError } = await admin.storage
+    .from("doc-previews")
+    .upload(projectDeleteTestPath, onePxPng, { contentType: "image/png", upsert: true });
+  check("test fixture: project-delete preview uploaded", !projectDeleteUploadError, projectDeleteUploadError?.message);
+  await deleteDocPreview(clientA, projectDeleteTestPath);
+  const { data: afterProjectDelete } = await admin.storage.from("doc-previews").list(userId, { search: "project-delete-test.png" });
+  check(
+    "deleteProject's Storage cleanup (deleteDocPreview) removes the preview object",
+    !afterProjectDelete?.some((entry) => entry.name === "project-delete-test.png"),
+  );
+
+  // Storage orphan cleanup — account deletion path: prove purgeDocPreviews
+  // (shared logic with supabase/functions/delete-account/index.ts) empties a
+  // whole doc-previews/<user_id>/ folder, including beyond a single list()
+  // page (purgeDocPreviews pages at 100).
+  const purgeObjectCount = 130;
+  const seedResults = await Promise.all(
+    Array.from({ length: purgeObjectCount }, (_, i) => admin.storage
+      .from("doc-previews")
+      .upload(`${purgeUserId}/seed-${i}.png`, onePxPng, { contentType: "image/png", upsert: true })),
+  );
+  check("test fixture: purge-seed objects uploaded", seedResults.every((r) => !r.error), seedResults.find((r) => r.error)?.error?.message);
+  const { data: beforePurge } = await admin.storage.from("doc-previews").list(purgeUserId, { limit: 1000 });
+  check("test fixture: purge folder seeded beyond one list() page", (beforePurge?.length || 0) > 100, `${beforePurge?.length} objects`);
+  await purgeDocPreviews(admin, purgeUserId);
+  const { data: afterPurge } = await admin.storage.from("doc-previews").list(purgeUserId, { limit: 1000 });
+  check(
+    "purgeDocPreviews (account deletion) empties a doc-previews/<user_id>/ folder beyond one list() page",
+    (afterPurge?.length || 0) === 0,
+    `${afterPurge?.length} objects remain`,
+  );
+
+  // Storage orphan cleanup — virtual-folder pagination regression: seed
+  // enough distinct sub-prefixes that the first list() page (limit 100) is
+  // filled entirely with folder entries (id: null, no removable object at
+  // that exact name), PLUS a handful of real top-level objects that sort
+  // alphabetically after all of them. The buggy loop kept re-listing an
+  // unshrinking, unremovable page forever; a naive fix that just stops on
+  // an all-folder page returns early WITHOUT ever finding the real objects
+  // past page 1. The fix must both terminate quickly AND actually remove
+  // those real objects.
+  const folderSeedResults = await Promise.all(
+    Array.from({ length: purgeFolderCount }, (_, i) => admin.storage
+      .from("doc-previews")
+      .upload(`${purgeFolderUserId}/0-folder-${String(i).padStart(3, "0")}/leaf.png`, onePxPng, { contentType: "image/png", upsert: true })),
+  );
+  check("test fixture: folder-only purge-seed objects uploaded", folderSeedResults.every((r) => !r.error), folderSeedResults.find((r) => r.error)?.error?.message);
+  const folderRealSeedResults = await Promise.all(
+    purgeFolderRealNames.map((name) => admin.storage
+      .from("doc-previews")
+      .upload(`${purgeFolderUserId}/${name}`, onePxPng, { contentType: "image/png", upsert: true })),
+  );
+  check(
+    "test fixture: real objects seeded to sort AFTER the folder-dominated page 1",
+    folderRealSeedResults.every((r) => !r.error),
+    folderRealSeedResults.find((r) => r.error)?.error?.message,
+  );
+  const { data: beforeFolderPurge } = await admin.storage.from("doc-previews").list(purgeFolderUserId, { limit: purgeFolderCount + purgeFolderRealNames.length + 10 });
+  check(
+    "test fixture: folder-only purge folder has more sub-prefixes than one list() page",
+    (beforeFolderPurge?.length || 0) > 100,
+    `${beforeFolderPurge?.length} entries`,
+  );
+  const { data: page1Composition } = await admin.storage.from("doc-previews").list(purgeFolderUserId, { limit: 100 });
+  check(
+    "test fixture: list() page 1 (limit 100) is entirely virtual folder entries, real objects pushed past it",
+    (page1Composition?.length || 0) === 100 && page1Composition.every((entry) => entry.id == null),
+    `${page1Composition?.filter((e) => e.id != null).length || 0} real entries leaked into page 1`,
+  );
+  const purgeFolderTimeoutMs = 15000;
+  const folderPurgeResult = await Promise.race([
+    purgeDocPreviews(admin, purgeFolderUserId).then(() => "done"),
+    new Promise((resolve) => setTimeout(() => resolve("timeout"), purgeFolderTimeoutMs)),
+  ]);
+  check(
+    "purgeDocPreviews terminates on a page 1 dominated by virtual folder entries",
+    folderPurgeResult === "done",
+    folderPurgeResult === "timeout" ? `did not return within ${purgeFolderTimeoutMs}ms` : "",
+  );
+  const { data: afterFolderPurge } = await admin.storage
+    .from("doc-previews")
+    .list(purgeFolderUserId, { limit: purgeFolderRealNames.length + 5, search: "zz-real-" });
+  check(
+    "purgeDocPreviews actually removes real objects sorted AFTER a folder-dominated page 1 (regression: must advance past page 1, not just return early)",
+    (afterFolderPurge?.length || 0) === 0,
+    `${afterFolderPurge?.length} real object(s) survived: ${afterFolderPurge?.map((e) => e.name).join(", ")}`,
+  );
+
   // Device B edits a note and deletes the deck (tombstone)
   deviceB.state = {
     ...deviceB.state,
@@ -192,6 +304,14 @@ try {
 } finally {
   await admin.storage.from("doc-previews").remove([previewPath]).catch(() => {});
   await admin.storage.from("doc-previews").remove([foreignPreviewPath]).catch(() => {});
+  await admin.storage.from("doc-previews").remove([`${userId}/project-delete-test.png`]).catch(() => {});
+  await purgeDocPreviews(admin, purgeUserId).catch(() => {});
+  await admin.storage.from("doc-previews")
+    .remove(Array.from({ length: purgeFolderCount }, (_, i) => `${purgeFolderUserId}/0-folder-${String(i).padStart(3, "0")}/leaf.png`))
+    .catch(() => {});
+  await admin.storage.from("doc-previews")
+    .remove(purgeFolderRealNames.map((name) => `${purgeFolderUserId}/${name}`))
+    .catch(() => {});
   await admin.auth.admin.deleteUser(userId).catch(() => {});
   console.log("cleanup: test user + preview objects removed");
 }
