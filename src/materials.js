@@ -121,15 +121,19 @@ export async function deleteDocPreview(client, previewPath) {
 
 // Mint a short-lived signed URL for a doc's Storage preview so a device that
 // only has `preview_path` (pulled from another device, part B) can render it
-// via `<img>`. RLS already scopes Storage access to the owning user, but this
-// path string round-trips through the synced `documents` row, which a user
-// can write arbitrary values into via raw REST — so it's re-validated here
-// before ever reaching the signing call. Never throws: any refusal or Storage
-// failure (expired/deleted object, offline) resolves to null so the caller
-// degrades to "no preview" instead of surfacing an error.
+// via `<img>`. `previewPath` round-trips through the synced `documents` row,
+// which a user can write arbitrary values into via raw REST, so the checks
+// below are a client-side convenience only (fail fast, avoid a pointless
+// signing call) — they are NOT the security boundary. The real boundary is
+// Supabase Storage RLS (migration 0008), which scopes every operation to the
+// owning user's folder regardless of what this function does or misses.
+// Never throws: any refusal or Storage failure (expired/deleted object,
+// offline) resolves to null so the caller degrades to "no preview" instead
+// of surfacing an error.
 export async function getDocPreviewUrl(client, userId, previewPath, expiresIn = 300) {
   if (!client || !userId || !previewPath) return null;
   if (!previewPath.startsWith(`${userId}/`)) return null;
+  if (previewPath.includes("..") || previewPath.includes("//")) return null;
   try {
     const { data, error } = await client.storage.from(DOC_PREVIEW_BUCKET).createSignedUrl(previewPath, expiresIn);
     if (error || !data?.signedUrl) return null;

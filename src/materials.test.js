@@ -107,6 +107,15 @@ test("getDocPreviewUrl refuses a foreign-prefixed path without hitting the netwo
   assert.deepEqual(client.calls.signPaths, [], "must not sign a path outside the caller's own prefix");
 });
 
+test("getDocPreviewUrl refuses a path-traversal-smuggled path without hitting the network", async () => {
+  const client = makeFakeClient();
+  const traversal = await getDocPreviewUrl(client, "user-1", "user-1/../user-2/doc-1");
+  assert.equal(traversal, null);
+  const doubleSlash = await getDocPreviewUrl(client, "user-1", "user-1//doc-1");
+  assert.equal(doubleSlash, null);
+  assert.deepEqual(client.calls.signPaths, [], "must not sign a traversal-smuggled or malformed path");
+});
+
 test("getDocPreviewUrl returns null for missing inputs without hitting the network", async () => {
   const client = makeFakeClient();
   assert.equal(await getDocPreviewUrl(null, "user-1", "user-1/doc-1"), null);
