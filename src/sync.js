@@ -78,8 +78,10 @@ export function stateToRows(state, userId) {
         language: doc.language || null,
         pages: doc.pages || 0,
         chars: doc.chars || 0,
-        // image previews are data URLs — those move to Storage later; sync text
+        // image previews are data URLs — those never leave the device; only
+        // the Storage path (set after upload, see materials.js) is synced
         content: doc.kind === "code" ? String(doc.content || "") : String(doc.text || ""),
+        preview_path: doc.previewPath || null,
         note: doc.note || "",
         deleted: false,
         created_at: toIso(doc.addedAt || doc.createdAt),
@@ -234,6 +236,7 @@ function rowToDoc(row) {
     chars: row.chars || 0,
     ...(row.kind === "code" ? { content: row.content || "" } : { text: row.content || "" }),
     previewUrl: null,
+    previewPath: row.preview_path || null,
     note: row.note || "",
     addedAt: toMs(row.created_at),
     createdAt: toMs(row.created_at),
