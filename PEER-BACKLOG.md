@@ -33,21 +33,26 @@ _(empty — planner fills this in at the start of the next round)_
 
 ## Next
 
-- **⚠️ Code lab has no reachable nav entry point** — *(surfaced by
-  peer-tester during CSP-readiness verification, 2026-07-14; real,
-  pre-existing, unrelated to CSP — likely higher priority than most
-  of this queue)* `grep -n 'setView("code")' src/App.jsx` returns
-  nothing — no sidebar nav item, command-palette entry, or other UI
-  path currently opens the Code lab panel. The feature (editor,
-  sandboxed JS/Pyodide runner, library packs, AI tutor integration —
-  substantial existing functionality per PROGRESS.md) is fully built
-  but invisible to users. Needs: find/restore the missing nav wiring
-  (check `src/components/PeerNavRail.jsx` and the command palette for
-  what should call `setView("code")`), confirm it's not an
-  intentional gate (unlike Rooms, which has a deliberate Coming Soon
-  gate — this looks like an accidental regression, not a design
-  choice, but verify against maintenance-log.md before assuming).
-  Touches UI: YES — designer round.
+- **Delete the superseded `peer-skin.css:357` Space Grotesk heading
+  rule** — *(surfaced by peer-tester + peer-reviewer during Code lab
+  nav parity, 2026-07-15)* `.peer-skin .page-heading h1` is set to
+  Space Grotesk in `peer-skin.css:357` and to Fraunces in
+  `studyhall.css:89`, at the exact same CSS specificity (0,2,1) —
+  today it resolves correctly only because `studyhall.css` happens to
+  load last in `src/main.jsx:11`. Not a live bug, but a fragile tie a
+  future import reorder could silently flip across every page heading
+  in the app. Small, low risk. No functional UI change (removing dead
+  code that currently loses the tie).
+- **Consider: revive or remove the dead `.sidebar-nav` / non-chat
+  `.topbar` code paths** — *(surfaced by peer-coder during Code lab
+  nav parity, 2026-07-15)* Both are unconditionally CSS-hidden under
+  the active peer-skin theme (deliberately — `PeerNavRail` replaced
+  them), yet `App.jsx` still carries a full set of per-view branches
+  for both (Brain/Profile/Notes/Flashcards/Rooms/Settings/Code) that
+  render into nothing. Not urgent, not a bug — but every future
+  nav-adjacent task pays a "parity tax" maintaining dead branches.
+  Owner call: delete the dead branches, or leave them as a safety net
+  if the skin ever becomes conditional again.
 - **Sandbox-runner refactor to drop `'unsafe-eval'`** — *(follow-up
   from CSP-readiness task, 2026-07-14)* The Code lab's blob-Worker JS
   runner (`src/CodingPanel.jsx:112`, `(0, eval)(code)`) forced
@@ -187,6 +192,17 @@ to "Next", 1 declined below)_
 
 ## Done
 
+- Code lab nav parity: command palette + sidebar nav + topbar title —
+  979c644 (2026-07-15). Planner independently re-verified and
+  corrected the prior round's "no nav entry point" claim (grep false
+  negative — the rail already worked); real gaps were palette/sidebar
+  entries and the topbar title, all fixed. Two fix rounds: designer
+  caught the CodingPanel heading using one-off inline styles instead
+  of shared design tokens; the first attempt at that fix then caused
+  a 45-76% header-row growth (unscoped CSS bleeding into a shared flex
+  row), caught live by the tester and fixed with a scoped override.
+  Surfaced two low-priority follow-ups (dead CSS specificity tie,
+  dead nav branches), both queued in Next.
 - Production strict-CSP readiness — 0b18c81 (2026-07-14). Ships
   `public/_headers` + `tools/serve-dist.mjs`. Eval story settled by
   measurement: the Code lab's blob-Worker eval sink genuinely
