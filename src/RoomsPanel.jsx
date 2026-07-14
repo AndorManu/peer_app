@@ -345,7 +345,7 @@ function LiveRoom({ room, account, decks, showToast, leave, onRoomSession }) {
       const client = await getSupabase();
       if (!client || disposed) return;
       channel = client.channel(`room:${room.id}`, {
-        config: { presence: { key: account.id }, broadcast: { self: true } },
+        config: { presence: { key: account.id }, broadcast: { self: true }, private: true },
       });
       channelRef.current = channel;
 
