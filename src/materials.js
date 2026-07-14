@@ -118,3 +118,23 @@ export async function deleteDocPreview(client, previewPath) {
   const { error } = await client.storage.from(DOC_PREVIEW_BUCKET).remove([previewPath]);
   if (error) throw error;
 }
+
+// Mint a short-lived signed URL for a doc's Storage preview so a device that
+// only has `preview_path` (pulled from another device, part B) can render it
+// via `<img>`. RLS already scopes Storage access to the owning user, but this
+// path string round-trips through the synced `documents` row, which a user
+// can write arbitrary values into via raw REST — so it's re-validated here
+// before ever reaching the signing call. Never throws: any refusal or Storage
+// failure (expired/deleted object, offline) resolves to null so the caller
+// degrades to "no preview" instead of surfacing an error.
+export async function getDocPreviewUrl(client, userId, previewPath, expiresIn = 300) {
+  if (!client || !userId || !previewPath) return null;
+  if (!previewPath.startsWith(`${userId}/`)) return null;
+  try {
+    const { data, error } = await client.storage.from(DOC_PREVIEW_BUCKET).createSignedUrl(previewPath, expiresIn);
+    if (error || !data?.signedUrl) return null;
+    return data.signedUrl;
+  } catch {
+    return null;
+  }
+}

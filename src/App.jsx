@@ -50,7 +50,7 @@ import {
   X,
 } from "lucide-react";
 import { Markdown } from "./markdown.jsx";
-import { deleteDocPreview, extractStudyMaterial, uploadDocPreview } from "./materials.js";
+import { deleteDocPreview, extractStudyMaterial, getDocPreviewUrl, uploadDocPreview } from "./materials.js";
 import { buildSystemPrompt, shouldUseRetrieval } from "./peerPrompt.js";
 import { loadState, saveState, setSaveErrorHandler } from "./storage.js";
 import {
@@ -180,6 +180,11 @@ export default function App() {
   const [pendingFiles, setPendingFiles] = useState([]);
   const [composerDragging, setComposerDragging] = useState(false);
   const [attachmentBusy, setAttachmentBusy] = useState(false);
+  // Signed preview URLs for image docs pulled from another device (no local
+  // data-URL yet). In-memory only, keyed by doc id — never merged into
+  // `state`, so a bearer token never reaches saveState()/IndexedDB or the
+  // cloud (pushAll already excludes previewUrl).
+  const [previewUrlCache, setPreviewUrlCache] = useState({});
   const [profileDraft, setProfileDraft] = useState(() => ({
     subject: state.profile.subject,
     goal: state.profile.goal,
@@ -399,6 +404,13 @@ export default function App() {
   const activeProject = state.projects.find((project) => project.id === activeChat?.projectId) || null;
   const managedProject = state.projects.find((project) => project.id === managedProjectId) || null;
   const selectedDoc = managedProject?.docs.find((doc) => doc.id === selectedDocId) || managedProject?.docs[0] || null;
+  // Only the <img> render slot gets the hydrated signed URL — never merged
+  // into the doc object itself, so features that treat previewUrl as an
+  // embeddable base64 data: URL (vision, OCR) stay untouched by a device that
+  // pulled the doc without its local data-URL.
+  const hydratedPreviewUrl = selectedDoc && !selectedDoc.previewUrl
+    ? previewUrlCache[selectedDoc.id]?.url || null
+    : null;
   const unfiledChats = state.chats.filter((chat) => !chat.projectId);
   const font = FONT_OPTIONS.find((option) => option.id === state.fontId) || FONT_OPTIONS[0];
   // Fraunces display serif applies only with the standard fonts — a learner's
@@ -410,6 +422,13 @@ export default function App() {
   const insights = getProfileInsights(state.profile);
 
   const appClass = useMemo(() => `app ${state.theme === "light" ? "theme-light" : "theme-dark"}`, [state.theme]);
+
+  // A doc pulled from another device carries a preview_path but no local
+  // previewUrl — sign one on demand once it's actually being viewed.
+  useEffect(() => {
+    if (selectedDoc) hydrateDocPreviewInBackground(selectedDoc);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDoc?.id, selectedDoc?.previewPath, selectedDoc?.previewUrl, state.account?.verified]);
 
   // Hydrate persisted state from IndexedDB once on mount, then resync the
   // onboarding draft so it reflects the loaded profile.
@@ -697,10 +716,11 @@ export default function App() {
     } catch { /* orphaned chunks are harmless; retried on re-embed */ }
   }
 
-  // Upload an image doc's local preview to Storage so other devices can
-  // eventually see it (hydration is a separate task). Non-fatal: the doc
-  // already attached and synced from local state, so a failure here only
-  // surfaces as a toast, never blocks or crashes the attach flow.
+  // Upload an image doc's local preview to Storage so other devices can see
+  // it (hydrateDocPreviewInBackground below resolves it back to a URL there).
+  // Non-fatal: the doc already attached and synced from local state, so a
+  // failure here only surfaces as a toast, never blocks or crashes the
+  // attach flow.
   async function uploadDocPreviewInBackground(doc, projectId) {
     if (doc.kind !== "image" || !doc.previewUrl || !state.account?.verified) return;
     try {
@@ -717,6 +737,24 @@ export default function App() {
     } catch (err) {
       showToast(friendlyError(err, "Couldn't sync this image to the cloud — it still works on this device"));
     }
+  }
+
+  // Hydrate a pulled image doc's preview on demand: mint a short-lived signed
+  // URL from its Storage path so the existing <img> slot has something to
+  // render on a device that never had the local data-URL. Fire-and-forget,
+  // like uploadDocPreviewInBackground above — a failure (expired object,
+  // offline, validation refusal) just leaves the preview blank, no toast.
+  async function hydrateDocPreviewInBackground(doc) {
+    if (doc.kind !== "image" || doc.previewUrl || !doc.previewPath || !state.account?.verified) return;
+    const cached = previewUrlCache[doc.id];
+    if (cached && cached.expiresAt > Date.now()) return;
+    try {
+      const client = await getSupabase();
+      if (!client) return;
+      const url = await getDocPreviewUrl(client, state.account.id, doc.previewPath);
+      if (!url) return;
+      setPreviewUrlCache((current) => ({ ...current, [doc.id]: { url, expiresAt: Date.now() + 4 * 60_000 } }));
+    } catch { /* no local preview yet; retried next time the doc is viewed */ }
   }
 
   async function removeDocPreview(previewPath) {
@@ -2186,6 +2224,7 @@ export default function App() {
         <ProjectModal
           project={managedProject}
           selectedDoc={selectedDoc}
+          hydratedPreviewUrl={hydratedPreviewUrl}
           selectedDocId={selectedDocId}
           setSelectedDocId={setSelectedDocId}
           extracting={extracting}
@@ -3606,7 +3645,7 @@ function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSyn
   );
 }
 
-function ProjectModal({ project, selectedDoc, selectedDocId, setSelectedDocId, extracting, error, close, pickFile, addMaterials, removeDoc, deleteProject, runDocAction, setProjectDomain, ocrDoc }) {
+function ProjectModal({ project, selectedDoc, hydratedPreviewUrl, selectedDocId, setSelectedDocId, extracting, error, close, pickFile, addMaterials, removeDoc, deleteProject, runDocAction, setProjectDomain, ocrDoc }) {
   const [dragging, setDragging] = useState(false);
   const [selectedExcerpt, setSelectedExcerpt] = useState("");
   const trapRef = useFocusTrap(true, { onEscape: close });
@@ -3703,7 +3742,9 @@ function ProjectModal({ project, selectedDoc, selectedDocId, setSelectedDocId, e
                   <button onClick={() => removeDoc(project.id, selectedDoc.id)}><Trash2 size={14} /> Remove</button>
                 </div>
               </div>
-                {selectedDoc.previewUrl && <img className="doc-image-preview" src={selectedDoc.previewUrl} alt={selectedDoc.name} />}
+                {(selectedDoc.previewUrl || hydratedPreviewUrl) && (
+                  <img className="doc-image-preview" src={selectedDoc.previewUrl || hydratedPreviewUrl} alt={selectedDoc.name} />
+                )}
                 {selectedDoc.note && <div className="doc-note">{selectedDoc.note}</div>}
                 <div className="doc-action-grid">
                   <button onClick={() => run("summary")}><ClipboardCheck size={14} /> Summary</button>

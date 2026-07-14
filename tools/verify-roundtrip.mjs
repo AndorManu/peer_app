@@ -7,6 +7,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import { runSyncCycle } from "../src/sync.js";
+import { getDocPreviewUrl } from "../src/materials.js";
 
 loadDotEnv();
 
@@ -79,14 +80,33 @@ if (createError) {
 }
 const userId = created.user.id;
 
+// part B: image doc round trip needs a real object in the doc-previews
+// bucket so createSignedUrl has something to sign against.
+const previewPath = `${userId}/roundtrip-preview.png`;
+const onePxPng = Buffer.from(
+  "89504e470d0a1a0a0000000d49484452000000010000000108020000009077053d0000000a4944415478da6360000002000155a2731b0000000049454e44ae426082",
+  "hex",
+);
+
 try {
   const clientA = createClient(url, anonKey, { auth: { persistSession: false } });
   const clientB = createClient(url, anonKey, { auth: { persistSession: false } });
   await clientA.auth.signInWithPassword({ email, password });
   await clientB.auth.signInWithPassword({ email, password });
 
-  // Device A pushes a full local life
-  const deviceA = makeDevice(clientA, userId, fullState());
+  const { error: uploadError } = await admin.storage
+    .from("doc-previews")
+    .upload(previewPath, onePxPng, { contentType: "image/png", upsert: true });
+  check("test fixture: preview image uploaded to Storage", !uploadError, uploadError?.message);
+
+  // Device A pushes a full local life, including an image doc with a
+  // preview_path (its data-URL never leaves the device — only the path syncs)
+  const stateA = fullState();
+  stateA.projects[0].docs.push({
+    id: "doc-preview-test", name: "photo.png", kind: "image", pages: 0, chars: 0,
+    text: "[Image: photo.png]", previewUrl: null, previewPath, note: "", addedAt: Date.now(),
+  });
+  const deviceA = makeDevice(clientA, userId, stateA);
   const first = await deviceA.sync();
   check("device A pushes its local state", first.pushed >= 8, `${first.pushed} rows`);
 
@@ -95,11 +115,22 @@ try {
   const bootstrap = await deviceB.sync();
   check("device B pulls the full state", bootstrap.pulled >= 8, `${bootstrap.pulled} rows`);
   check("subject round-tripped", deviceB.state.projects[0]?.name === "Spanish B2" && deviceB.state.projects[0]?.domainId === "language");
-  check("document text round-tripped", deviceB.state.projects[0]?.docs[0]?.text === "ser estar tener haber ir");
+  check("document text round-tripped", deviceB.state.projects[0]?.docs.find((doc) => doc.id === "doc1")?.text === "ser estar tener haber ir");
   check("chat + messages round-tripped", deviceB.state.chats[0]?.messages?.length === 2);
   check("note round-tripped", deviceB.state.notes[0]?.title === "WEIRDO triggers");
   check("card SRS state round-tripped", deviceB.state.flashcards[0]?.cards[0]?.reps === 2);
   check("profile round-tripped", deviceB.state.profile?.subject === "Spanish");
+
+  // Part B: image doc preview_path pulled onto a fresh device (no local
+  // data-URL) — should carry the path but stay unhydrated until a signed
+  // URL is minted on demand, and never resolve for another user's path.
+  const pulledImageDoc = deviceB.state.projects[0]?.docs.find((doc) => doc.id === "doc-preview-test");
+  check("image doc preview_path round-tripped", pulledImageDoc?.previewPath === previewPath);
+  check("image doc previewUrl stays null after pull (blank until hydrated)", pulledImageDoc?.previewUrl == null);
+  const signedUrl = await getDocPreviewUrl(clientB, userId, previewPath);
+  check("signed URL obtainable for the owner-prefixed path", typeof signedUrl === "string" && signedUrl.length > 0);
+  const foreignRefused = await getDocPreviewUrl(clientB, userId, `not-${userId}/roundtrip-preview.png`);
+  check("signed URL refused for a foreign-prefixed path", foreignRefused === null);
 
   // Device B edits a note and deletes the deck (tombstone)
   deviceB.state = {
@@ -128,8 +159,9 @@ try {
   await deviceB.sync();
   check("offline edit reconciles to the other device", deviceB.state.chats[0]?.name === "Renamed offline on A");
 } finally {
+  await admin.storage.from("doc-previews").remove([previewPath]).catch(() => {});
   await admin.auth.admin.deleteUser(userId).catch(() => {});
-  console.log("cleanup: test user removed");
+  console.log("cleanup: test user + preview object removed");
 }
 
 process.exit(failures ? 1 : 0);
