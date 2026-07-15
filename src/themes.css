@@ -198,7 +198,11 @@
 
 /* ===========================================================================
    FIELD NOTES — warm olive on recycled paper (FREE, light). Serif display,
-   dashed field-guide borders, muted ink.
+   muted olive ink, soft paper shadows.
+
+   No dashed borders: dashed conventionally reads as "drop zone" or "empty
+   placeholder", so decorative dashes look like a bug, not a texture. The
+   paper feel comes from the palette and shadows instead.
    =========================================================================== */
 :root[data-theme="fieldnotes"] {
   --sh-bg-deep: #d8d5c4;
@@ -220,9 +224,6 @@
   --sh-shadow-card: 0 1px 2px rgba(44, 51, 32, 0.14), 0 10px 26px -16px rgba(44, 51, 32, 0.28);
   --sh-shadow-pop: 0 18px 44px -18px rgba(44, 51, 32, 0.34);
 }
-:root[data-theme="fieldnotes"] .peer-skin .card,
-:root[data-theme="fieldnotes"] .peer-skin .chip,
-:root[data-theme="fieldnotes"] .peer-skin .message.user { border-style: dashed !important; }
 :root[data-theme="fieldnotes"] .peer-skin .project-dot { box-shadow: none !important; }
 
 /* ===========================================================================
