@@ -1095,12 +1095,18 @@ textarea:focus {
   box-shadow: 0 0 16px rgba(var(--sh-accent-rgb), 0.1) !important;
 }
 
+/* Recording no longer stops at a natural pause, so a session can stay open
+   indefinitely — a static colour isn't enough of a "still live" signal. Reuse
+   the same pulse the voice HUD dot uses. (peer-theme.css already disables it
+   under prefers-reduced-motion.) Colour darkened from #d98a7c for >=3:1 on the
+   light themes' near-white composer (WCAG 1.4.11). */
 .composer .mic-button.recording {
   border-color: rgba(201, 106, 90, 0.45) !important;
   background: rgba(201, 106, 90, 0.12) !important;
-  color: #d98a7c !important;
-  box-shadow: 0 0 18px rgba(201, 106, 90, 0.16) !important;
+  color: #b8503f !important;
+  animation: plive 1.6s ease-out infinite;
 }
+.theme-dark .composer .mic-button.recording { color: #e8a294 !important; }
 
 .composer .send-button {
   background: var(--accent) !important;
