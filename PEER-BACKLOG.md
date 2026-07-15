@@ -33,30 +33,37 @@ _(empty — planner fills this in at the start of the next round)_
 
 ## Next
 
+### Follow-ups from the mic fix (2026-07-15)
+- **Recording mic icon contrast on light themes (dead CSS)** — *(peer-designer,
+  2026-07-15)* `.composer .mic-button.recording { color: #b8503f }`
+  (`src/styles.css:1103`) never wins: `.peer-skin.theme-light .mic-button`
+  (`src/peer-responsive.css:376-378`) has equal specificity (0,3,0) and
+  `peer-responsive.css` imports AFTER `styles.css` (`src/main.jsx:7` vs `:10`),
+  so it wins on source order. The recording icon renders the same muted brown
+  as idle on Field Notes. State is still legible (background tint, border,
+  pulse), so low severity. One-line fix: raise specificity or reorder the
+  import. Small.
+- **Misattributed comment in `src/styles.css:1100-1101`** — *(peer-designer,
+  2026-07-15)* it credits `peer-theme.css`'s `[style*="plive"]` rule with
+  suppressing the pulse under prefers-reduced-motion, but that only matches
+  INLINE style attributes; the real suppressor is the blanket `.peer-skin *`
+  rule at `src/peer-responsive.css:250-259`. Behaviour is correct, comment is
+  wrong. Trivial — fold into the next touch of that file.
+- **Dictation/hands-free: interim word can duplicate if the learner types
+  mid-word** — *(peer-reviewer, 2026-07-15, non-gating)* adopting the typed
+  text as the new base while an interim result is still in flight can repeat
+  that word once it finalizes. The learner's typing always survives (that's
+  the criterion that mattered), so this is a polish edge, not a data issue.
+  Small.
+
 ### Voice-to-voice — owner-requested epic (2026-07-15)
 *Owner: "voice to voice is really bad… the mic feature doesn't work at all, it
 won't print any letters in the text bar… make voice to voice special like how
 OpenAI makes it where it really feels like you're having a conversation… make
 it so while you are in voice to voice Peer can still help you do your work or
 task and that you're still able to learn your way." Ordered so each item ships
-on its own; take them top-down.*
+on its own; take them top-down. Item 1 promoted to "Now" by planner 2026-07-15.*
 
-- **1 · Fix the mic: separate "dictate" from "hands-free"** — *the bug the
-  owner reported.* `rec.onend` (`src/App.jsx:1561-1569`) runs
-  `setInput(""); sendMessage(text)` — it wipes the composer and auto-sends —
-  and `rec.continuous = false` (`:1541`) ends recognition on ANY pause. So
-  dictated text appears for a split second, vanishes, and fires off: exactly
-  "it won't print any letters in the text bar". The mic button and hands-free
-  voice mode share one code path (`startListening`, `:1524`), so there is no
-  dictate-only mode at all. Acceptance: the mic button transcribes into the
-  composer and the text STAYS there for the learner to edit/send (never
-  auto-sends); recognition doesn't stop on a natural pause; hands-free voice
-  mode keeps auto-send but on real end-of-turn detection, not any pause; the
-  silently-swallowed recognition errors (`no-speech`, `audio-capture`,
-  `network` — `:1554-1560` only toasts permission errors) surface. Small.
-  Touches UI. Must be verified with a REAL microphone — this is untestable
-  headlessly and maintenance-log.md:83 already flags mic as never
-  hardware-tested.
 - **2 · Voice picker + best available voices** — `queueUtterance`
   (`src/App.jsx:1457-1484`) picks the first system voice whose lang matches
   and exposes no choice, so most learners get the OS default robot. Acceptance:
@@ -298,6 +305,29 @@ to "Next", 1 declined below)_
   frustration-driven drop-off.
 
 ## Done
+
+- Mic: separate dictation from hands-free (voice epic item 1) — 75c9af3
+  (2026-07-15). **Awaiting owner hardware sign-off** — no real microphone was
+  used; see the checklist below. Fixes the owner's reported bug (dictated text
+  flashed, vanished and auto-sent, because the mic button and the hands-free
+  loop shared one path with `continuous=false` + an unconditional auto-send in
+  `onend`). Session logic extracted to `src/speech.js` with the browser API
+  injected, which is what makes it testable at all (22 tests, mocked
+  recognition). Four real bugs caught by the gates before shipping: an
+  effect-lagged `inputRef` that could re-drop transcript; `composeDictation`
+  flattening a multi-line draft; **hands-free silently destroying an unsent
+  draft** (reproduced live by the designer); and the mic button giving no
+  signal which of its two behaviours it would do. peer-coder hit a repeated
+  spurious API error on this task, so the orchestrator implemented it directly
+  and the gates reviewed it as usual.
+
+  **Owner hardware checklist (Chrome/Edge, real mic):**
+  1. Mic button OUTSIDE voice mode → speak with a mid-sentence pause → text
+     appears and STAYS, editable, nothing sends on its own.
+  2. Voice mode → speak → Peer replies aloud → speak again → the turn sends
+     only after you genuinely stop, never mid-sentence.
+  3. Type a draft, then use the mic → your draft is kept, not overwritten.
+  4. Deny or unplug the mic → a plain-English error appears and the mic resets.
 
 - Code lab nav parity: command palette + sidebar nav + topbar title —
   979c644 (2026-07-15). Planner independently re-verified and
