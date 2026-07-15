@@ -101,6 +101,7 @@ import {
 } from "./stateModel.js";
 import { DOMAINS, GENERAL_DOMAIN, classifySubject, domainForProject, getDomain } from "./subjects.js";
 import { THEMES, DEFAULT_THEME, getTheme, isThemeAllowed, resolveTheme } from "./themes.js";
+import { createSpeechSession } from "./speech.js";
 import { computeBadges, detectNewBadges, getBadgeDef } from "./badges.js";
 import { hapticTap } from "./native.js";
 import { LegalDialog, downloadDataExport } from "./legal.jsx";
@@ -219,11 +220,18 @@ export default function App() {
   const spokenOffsetRef = useRef(0);
   const speechQueueRef = useRef(0);
   const listeningRef = useRef(false);
+  // Holds the active speech session (src/speech.js), not a raw recognition
+  // object — it owns the dictate-vs-hands-free behaviour.
   const recognitionRef = useRef(null);
+  const inputRef = useRef("");
   const voicesRef = useRef([]);
   const loadingRef = useRef(false);
   const bottomRef = useRef(null);
   const fileRef = useRef(null);
+
+  // Mirror `input` into a ref so the recognition callbacks (which close over a
+  // stale render) can tell whether the learner has typed since our last write.
+  useEffect(() => { inputRef.current = input; }, [input]);
 
   // Color theme: data-theme on <html> drives the CSS variable contract.
   // resolveTheme downgrades a Pro-only skin to the free default when the
@@ -1427,7 +1435,11 @@ export default function App() {
     setVoiceMode((current) => {
       const next = !current;
       voiceModeRef.current = next;
-      if (!next) stopSpeaking();
+      if (!next) {
+        stopSpeaking();
+        // Leaving voice mode mid-turn shouldn't fire off whatever was half-said.
+        if (listeningRef.current) stopListening({ discard: true });
+      }
       return next;
     });
   }
@@ -1517,11 +1529,15 @@ export default function App() {
     if (!voiceModeRef.current || listeningRef.current || loadingRef.current) return;
     if (typeof document !== "undefined" && document.hidden) return;
     window.setTimeout(() => {
-      if (voiceModeRef.current && !listeningRef.current && !loadingRef.current) startListening();
+      if (voiceModeRef.current && !listeningRef.current && !loadingRef.current) startListening("handsfree");
     }, 350);
   }
 
-  function startListening() {
+  // `mode` is "dictate" (mic button: transcript lands in the composer and STAYS
+  // — never auto-sends) or "handsfree" (voice mode: the turn auto-sends once
+  // the learner has genuinely stopped talking). The session logic itself lives
+  // in src/speech.js so it can be tested against a mocked SpeechRecognition.
+  function startListening(mode = "dictate") {
     const SpeechRec = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
     if (!SpeechRec) {
       showToast("Voice input isn't supported in this browser. Try Chrome or Edge.");
@@ -1530,63 +1546,36 @@ export default function App() {
     if (listeningRef.current) return;
     if (speaking) stopSpeaking();
 
-    let rec;
-    try {
-      rec = new SpeechRec();
-    } catch {
-      return;
-    }
-    rec.lang = SPEECH_LANG_MAP[state.profile.language] || "en-US";
-    rec.interimResults = true;
-    rec.continuous = false;
-    rec.maxAlternatives = 1;
+    const session = createSpeechSession({
+      SpeechRec,
+      lang: SPEECH_LANG_MAP[state.profile.language] || "en-US",
+      mode,
+      getInput: () => inputRef.current,
+      // Mirror synchronously as well as via the effect below: a passive effect
+      // only flushes after commit, so two fast interim results in one render
+      // window would make the session mistake its OWN last write for the
+      // learner typing — resetting the base and dropping finalized speech
+      // (the vanishing-text bug, on a rarer path). Writing here means only
+      // genuinely external edits (typing, sendMessage clearing) trip that check.
+      onTranscript: (text) => { inputRef.current = text; setInput(text); },
+      onSend: (text) => sendMessage(text),
+      onError: (message) => showToast(message),
+      onListeningChange: (active) => {
+        listeningRef.current = active;
+        setListening(active);
+      },
+    });
 
-    let finalText = "";
-    rec.onresult = (event) => {
-      let interim = "";
-      for (let i = event.resultIndex; i < event.results.length; i += 1) {
-        const result = event.results[i];
-        if (result.isFinal) finalText += result[0].transcript;
-        else interim += result[0].transcript;
-      }
-      setInput((finalText + interim).replace(/\s+/g, " ").trimStart());
-    };
-    rec.onerror = (event) => {
-      listeningRef.current = false;
-      setListening(false);
-      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-        showToast("Microphone access is blocked. Allow it in your browser's site settings.");
-      }
-    };
-    rec.onend = () => {
-      listeningRef.current = false;
-      setListening(false);
-      const text = finalText.trim();
-      if (text) {
-        setInput("");
-        sendMessage(text);
-      }
-    };
-
-    recognitionRef.current = rec;
-    listeningRef.current = true;
-    setListening(true);
-    try {
-      rec.start();
-    } catch {
-      listeningRef.current = false;
-      setListening(false);
-    }
+    recognitionRef.current = session;
+    session.start();
   }
 
-  function stopListening() {
+  // `discard: true` ends the session without auto-sending the in-flight turn
+  // (used when the learner leaves voice mode mid-sentence).
+  function stopListening({ discard = false } = {}) {
     listeningRef.current = false;
     setListening(false);
-    try {
-      recognitionRef.current?.stop();
-    } catch {
-      /* already stopped */
-    }
+    recognitionRef.current?.stop({ discard });
   }
 
   async function generateImage(message) {
@@ -2809,8 +2798,22 @@ function Composer({
 
   function toggleRecording() {
     if (listening) stopListening();
-    else startListening();
+    // In voice mode the mic starts a hands-free turn (auto-sends, like the
+    // loop). Outside it, the mic is pure dictation: text lands in the composer
+    // and waits for the learner.
+    else startListening(voiceMode ? "handsfree" : "dictate");
   }
+
+  // Name the two behaviours plainly — the same button either holds your words
+  // or sends them, and that difference has to be legible (including to screen
+  // readers, which never see the voice HUD).
+  const micLabel = listening
+    ? (voiceMode ? "Stop listening — Peer sends when you pause" : "Stop dictating — your words stay in the box")
+    : speaking
+      ? "Interrupt Peer and speak"
+      : voiceMode
+        ? "Speak — Peer sends when you pause"
+        : "Dictate — your words go in the box, you send them";
 
   return (
     <footer
@@ -2868,7 +2871,7 @@ function Composer({
         <div className="voice-hud" role="status">
           <span className={`voice-hud-dot ${listening ? "hud-listening" : loading ? "hud-thinking" : speaking ? "hud-speaking" : ""}`} aria-hidden="true" />
           {listening
-            ? "Listening — just talk, Peer is writing it down"
+            ? "Listening — just talk, Peer replies when you pause"
             : loading
               ? "Thinking…"
               : speaking
@@ -2908,8 +2911,13 @@ function Composer({
           <button
             className={`mic-button ${listening ? "recording" : ""}`}
             onClick={toggleRecording}
-            aria-label={listening ? "Stop listening" : speaking ? "Interrupt and speak" : "Speak your question"}
-            title={listening ? "Listening — click to stop" : speaking ? "Interrupt Peer and speak" : "Speak your question"}
+            // The mic does two materially different things, so it has to say
+            // which: in voice mode it sends the turn on its own, outside it the
+            // words just land in the box. The voice HUD only exists in voice
+            // mode and isn't part of this button's accessible name, so without
+            // this a screen-reader user gets no signal at all.
+            aria-label={micLabel}
+            title={micLabel}
           >
             {listening ? <MicOff size={17} /> : <Mic size={17} />}
           </button>
