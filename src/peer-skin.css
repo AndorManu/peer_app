@@ -79,7 +79,7 @@
 .peer-skin .side-heading { color: rgba(var(--sh-text-rgb),0.55) !important; letter-spacing: .5px !important; font-weight: 600 !important; }
 
 /* project group dot gets the design glow */
-.peer-skin .project-dot { box-shadow: 0 0 10px 1px currentColor; }
+.peer-skin .project-dot { box-shadow: none; }
 .peer-skin .project-name { font-weight: 500 !important; }
 
 /* chat rows + active gradient left border */
