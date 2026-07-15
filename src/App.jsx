@@ -21,6 +21,7 @@ import {
   HelpCircle,
   Languages,
   Layers,
+  Lock,
   Library,
   Menu,
   MessageSquare,
@@ -99,6 +100,7 @@ import {
   uid,
 } from "./stateModel.js";
 import { DOMAINS, GENERAL_DOMAIN, classifySubject, domainForProject, getDomain } from "./subjects.js";
+import { THEMES, DEFAULT_THEME, getTheme, isThemeAllowed, resolveTheme } from "./themes.js";
 import { computeBadges, detectNewBadges, getBadgeDef } from "./badges.js";
 import { hapticTap } from "./native.js";
 import { LegalDialog, downloadDataExport } from "./legal.jsx";
@@ -174,6 +176,19 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [aiGate, setAiGate] = useState(null); // { code: "auth_required" | "quota_exhausted", details }
   const [usageInfo, setUsageInfo] = useState(null); // { plan, usedToday, allowance }
+  // Dev-only Pro preview so the owner can see Pro-gated looks locally without a
+  // subscription. Vite compiles import.meta.env.DEV to false in production, so
+  // this whole branch is dead-stripped from the shipped bundle — it can never
+  // unlock anything for a real user.
+  const [devPro, setDevPro] = useState(() => {
+    try { return Boolean(import.meta.env?.DEV) && localStorage.getItem("peer-dev-pro") === "1"; }
+    catch { return false; }
+  });
+  function toggleDevPro(next) {
+    setDevPro(next);
+    try { localStorage.setItem("peer-dev-pro", next ? "1" : "0"); } catch { /* private mode */ }
+  }
+  const effectivePlan = devPro ? "pro" : usageInfo?.plan;
   const [chatSearch, setChatSearch] = useState("");
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
@@ -210,11 +225,14 @@ export default function App() {
   const bottomRef = useRef(null);
   const fileRef = useRef(null);
 
-  // Color theme: data-theme on <html> drives the CSS variable contract
-  // (studyhall / indigo / mono) — applies instantly, no reload.
+  // Color theme: data-theme on <html> drives the CSS variable contract.
+  // resolveTheme downgrades a Pro-only skin to the free default when the
+  // account isn't Pro (post-downgrade or stale synced state) — this is the
+  // load-time entitlement guard, re-run whenever the plan or choice changes.
+  const activeTheme = resolveTheme(state.colorTheme || DEFAULT_THEME, effectivePlan);
   useEffect(() => {
-    document.documentElement.dataset.theme = state.colorTheme || "studyhall";
-  }, [state.colorTheme]);
+    document.documentElement.dataset.theme = activeTheme;
+  }, [activeTheme]);
 
   const studyPulse = useMemo(
     () => computeStudyPulse(state),
@@ -413,15 +431,27 @@ export default function App() {
     : null;
   const unfiledChats = state.chats.filter((chat) => !chat.projectId);
   const font = FONT_OPTIONS.find((option) => option.id === state.fontId) || FONT_OPTIONS[0];
-  // Fraunces display serif applies only with the standard fonts — a learner's
-  // accessibility font (OpenDyslexic, Atkinson, Lexend…) wins everywhere.
-  const fontDisplay = ["inter", "system", "serif"].includes(font.id)
-    ? "'Fraunces', Georgia, serif"
+  // A learner's accessibility font (OpenDyslexic, Atkinson, Lexend…) always
+  // wins; per-skin fonts + the Fraunces display serif apply only when they're
+  // on a standard UI font.
+  const usingStdFont = ["inter", "system", "serif"].includes(font.id);
+  const themeDef = getTheme(activeTheme);
+  const appFont = usingStdFont && themeDef.bodyFont ? themeDef.bodyFont : font.family;
+  const fontDisplay = usingStdFont
+    ? (themeDef.displayFont || "'Fraunces', Georgia, serif")
     : font.family;
   const activeMode = STUDY_MODES.find((mode) => mode.id === state.activeMode) || STUDY_MODES[0];
   const insights = getProfileInsights(state.profile);
 
-  const appClass = useMemo(() => `app ${state.theme === "light" ? "theme-light" : "theme-dark"}`, [state.theme]);
+  // A skin can commit to a light/dark mode (registry `mode`); "auto" respects
+  // the learner's own light/dark toggle. Committed skins reuse the existing
+  // .theme-* infrastructure so the studyhall-tuned patchwork never fights them.
+  const effectiveLight = themeDef.mode === "light"
+    || (themeDef.mode !== "dark" && state.theme === "light");
+  const appClass = useMemo(
+    () => `app ${effectiveLight ? "theme-light" : "theme-dark"}`,
+    [effectiveLight],
+  );
 
   // A doc pulled from another device carries a preview_path but no local
   // previewUrl — sign one on demand once it's actually being viewed.
@@ -1995,7 +2025,7 @@ export default function App() {
     return (
       <div
         className={appClass}
-        style={{ "--app-font": font.family, "--font-display": fontDisplay, "--text-size": `${state.textSize}px` }}
+        style={{ "--app-font": appFont, "--font-display": fontDisplay, "--text-size": `${state.textSize}px` }}
       >
         <div className="boot-splash">
           <PeerLogo size={40} />
@@ -2010,7 +2040,7 @@ export default function App() {
       <div
         className={appClass}
         style={{
-          "--app-font": font.family, "--font-display": fontDisplay,
+          "--app-font": appFont, "--font-display": fontDisplay,
           "--text-size": `${state.textSize}px`,
         }}
       >
@@ -2023,7 +2053,7 @@ export default function App() {
     <div
       className={`${appClass} peer-skin view-${view}`}
       style={{
-        "--app-font": font.family, "--font-display": fontDisplay,
+        "--app-font": appFont, "--font-display": fontDisplay,
         "--text-size": `${state.textSize}px`,
       }}
     >
@@ -2134,7 +2164,7 @@ export default function App() {
           </div>
         </header>
 
-        {view === "settings" && <SettingsPanel state={state} updateState={updateState} resetData={confirmResetData} loadSampleData={loadSampleData} cloudSync={cloudSync} signOut={signOut} confirmDeleteAccount={confirmDeleteAccount} usage={usageInfo} startCheckout={startCheckout} openBillingPortal={openBillingPortal} />}
+        {view === "settings" && <SettingsPanel state={state} updateState={updateState} resetData={confirmResetData} loadSampleData={loadSampleData} cloudSync={cloudSync} signOut={signOut} confirmDeleteAccount={confirmDeleteAccount} usage={usageInfo} startCheckout={startCheckout} openBillingPortal={openBillingPortal} devPro={devPro} toggleDevPro={toggleDevPro} />}
         {view === "profile" && <ProfilePanel profile={state.profile} activeProject={activeProject} activeChat={activeChat} insights={insights} activeMode={activeMode} updateState={updateState} recap={buildLearnerRecap(state)} badgeInfo={computeBadges(state)} showToast={showToast} pulse={studyPulse} onReviewNow={startReviewNow} personaInsights={buildPersonaInsights(state)} onDnaFeedback={handleDnaFeedback} />}
         {view === "brain" && (
           <React.Suspense fallback={<PanelLoading label="Waking up your brain…" />}>
@@ -3389,10 +3419,70 @@ function NotesPanel({ notes, projects, deleteNote, toggleShareNote, onPractice, 
 }
 
 
-function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSync, signOut, confirmDeleteAccount, usage, startCheckout, openBillingPortal }) {
+// Registry-driven theme picker: free themes select instantly; Pro themes are
+// locked (and open the upsell) until the account is Pro.
+function ThemePicker({ state, updateState, isPro, startCheckout }) {
+  const [upsell, setUpsell] = useState(false);
+  const current = state.colorTheme || DEFAULT_THEME;
+  const freeThemes = THEMES.filter((t) => t.tier === "free");
+  const proThemes = THEMES.filter((t) => t.tier === "pro");
+
+  const renderTheme = (theme) => {
+    const locked = theme.tier === "pro" && !isPro;
+    const active = current === theme.id;
+    return (
+      <button
+        key={theme.id}
+        type="button"
+        className={`theme-swatch${active ? " active" : ""}${locked ? " locked" : ""}`}
+        aria-pressed={active}
+        onClick={() => (locked ? setUpsell(true) : updateState((c) => ({ ...c, colorTheme: theme.id })))}
+        title={locked ? `${theme.label} — Pro` : theme.label}
+      >
+        <span className="theme-swatch-dots" aria-hidden="true">
+          {theme.dots.map((color, i) => (
+            <span key={i} style={{ background: color }} />
+          ))}
+        </span>
+        <span className="theme-swatch-text">
+          <strong>{theme.label}</strong>
+          <small>{theme.hint}</small>
+        </span>
+        {locked && <Lock size={13} className="theme-swatch-lock" aria-label="Pro" />}
+      </button>
+    );
+  };
+
+  return (
+    <div className="theme-picker">
+      <div className="theme-tier">
+        <span className="theme-tier-label">Free</span>
+        <div className="theme-grid">{freeThemes.map(renderTheme)}</div>
+      </div>
+      <div className="theme-tier">
+        <span className="theme-tier-label">
+          Pro {!isPro && <span className="theme-tier-hint">— unlock all with Pro</span>}
+        </span>
+        <div className="theme-grid">{proThemes.map(renderTheme)}</div>
+      </div>
+      {upsell && !isPro && (
+        <div className="theme-upsell">
+          <span>Every theme, a smarter tutor, and a far bigger daily allowance.</span>
+          <button type="button" className="primary-button" onClick={() => startCheckout("monthly")}>
+            Go Pro — $8.99/mo
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSync, signOut, confirmDeleteAccount, usage, startCheckout, openBillingPortal, devPro, toggleDevPro }) {
   const [tab, setTab] = useState("appearance");
   const [legal, setLegal] = useState(null);
   const provider = AUTH_PROVIDERS.find((item) => item.id === state.account?.provider);
+  const isPro = devPro || usage?.plan === "pro";
+  const isDev = Boolean(import.meta.env?.DEV);
 
   const syncDescriptions = {
     starting: "Checking cloud connection…",
@@ -3439,7 +3529,8 @@ function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSyn
           {tab === "appearance" && (
             <>
               <div className="settings-group">
-                <h2>Theme</h2>
+                <h2>Light &amp; dark</h2>
+                <p className="settings-danger-desc">Applies to themes that support both — most themes below set their own light or dark look.</p>
                 <div className="segmented">
                   <button className={state.theme === "dark" ? "active" : ""} onClick={() => updateState((c) => ({ ...c, theme: "dark" }))}>
                     <Moon size={15} /> Dark
@@ -3471,24 +3562,18 @@ function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSyn
               </div>
 
               <div className="settings-group">
-                <h2>Palette</h2>
-                <p className="settings-danger-desc">Three complete looks — switching is instant and applies everywhere.</p>
-                <div className="segmented palette-picker">
-                  {[
-                    { id: "studyhall", label: "Study Hall", hint: "warm amber" },
-                    { id: "indigo", label: "Indigo Night", hint: "violet & cyan" },
-                    { id: "mono", label: "Monochrome", hint: "black & white" },
-                  ].map((option) => (
-                    <button
-                      key={option.id}
-                      className={(state.colorTheme || "studyhall") === option.id ? "active" : ""}
-                      onClick={() => updateState((c) => ({ ...c, colorTheme: option.id }))}
-                    >
-                      <span className={`palette-dot palette-${option.id}`} aria-hidden="true" />
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
+                <h2>Theme</h2>
+                <p className="settings-danger-desc">
+                  Complete looks — switching is instant and applies everywhere.
+                  {!isPro && " Two are free; the rest unlock with Pro."}
+                </p>
+                {isDev && (
+                  <label className="dev-pro-toggle">
+                    <input type="checkbox" checked={Boolean(devPro)} onChange={(e) => toggleDevPro(e.target.checked)} />
+                    <span><strong>Dev: preview Pro</strong> — unlock every theme locally. Only exists in <code>npm run dev</code>; stripped from production builds.</span>
+                  </label>
+                )}
+                <ThemePicker state={state} updateState={updateState} isPro={isPro} startCheckout={startCheckout} />
               </div>
 
               <div className="settings-group">

@@ -15,6 +15,7 @@
 //
 // The mapping + merge core is pure and unit-tested; runSyncCycle does I/O.
 // ============================================================================
+import { THEME_IDS } from "./themes.js";
 
 export const SYNC_TABLES = ["projects", "documents", "chats", "messages", "notes", "decks", "cards", "badges"];
 const PULL_ORDER = ["projects", "chats", "decks", "documents", "messages", "notes", "cards", "badges", "profiles"];
@@ -464,7 +465,8 @@ export function applyPull(state, pulledByTable, dirtyKeys = new Set()) {
         }
         const settings = row.settings || {};
         if (settings.theme === "light" || settings.theme === "dark") target.theme = settings.theme;
-        if (["studyhall", "indigo", "mono"].includes(settings.colorTheme)) target.colorTheme = settings.colorTheme;
+        if (THEME_IDS.includes(settings.colorTheme)) target.colorTheme = settings.colorTheme;
+        else if (settings.colorTheme === "mono") target.colorTheme = "slate";
         if (settings.fontId) target.fontId = settings.fontId;
         if (Number.isFinite(Number(settings.textSize))) target.textSize = Number(settings.textSize);
         if (settings.activeMode) target.activeMode = settings.activeMode;
