@@ -129,6 +129,72 @@ sub-items here rather than let one round sprawl.
 
 ## Next
 
+### Theme-pack findings (peer-designer + peer-tester audit, 2026-07-15)
+*The theme system itself (registry, gating, picker, all 7 dark themes) audited
+clean. Every failure below is a **pre-existing legacy CSS layer written when
+Peer had one theme** — hardcoded hex + `!important` that the new `--sh-*`
+token contract can't override. Several of these are live bugs TODAY,
+independent of whether the theme pack ships.*
+
+- **⚠️ Accessibility fonts have never worked (live bug, ship-blocker,
+  independent of themes)** — *(peer-tester, 2026-07-15)* `src/peer-skin.css:13`
+  (`.peer-skin.app { font-family: Geist … !important }`) and
+  `src/peer-skin.css:237` (`.composer textarea`) hardcode Geist and never
+  consume `var(--app-font)`. `--app-font` is computed correctly and then
+  discarded. Result: **Settings → Reading Font does nothing for body text** —
+  a dyslexic learner selects OpenDyslexic, the UI shows it active, and the
+  reading surface stays Geist. Atkinson Hyperlegible and Lexend same. Only
+  headings work (they route through `--font-display` in a later file). This
+  predates the theme work and also makes the new per-theme `bodyFont` dead
+  code. Fix: make both rules consume `var(--app-font)`. Verify: pick
+  OpenDyslexic → `getComputedStyle('.app').fontFamily` must change. Small.
+- **Legacy `.theme-light` block hijacks every light theme** —
+  *(peer-designer, 2026-07-15)* `src/peer-responsive.css:262-531` is a
+  ~270-line / 144-rule block hardcoding the old Study Hall cream palette
+  (`#ffffff`, `#2a2318`, `#746a58`, `#f3ecdd`, `#e5dcc9`) with `!important` at
+  specificity (0,3,0) — beating every token rule at (0,2,0). Confirmed via
+  computed styles: `panel`/`muted`/`border` are **byte-identical** across
+  Field Notes, Newsprint and Swiss. Dialogs, note cards, profile cards,
+  flashcards, settings sidenav all render the same cream regardless of theme.
+  Compounded by `src/studyhall.css:240` + `src/styles.css:542` only partially
+  deriving `.theme-light` vars from `--sh-*`. Fix: make the block token-based,
+  or delete it now that the token contract covers those surfaces. Large —
+  split before pickup. Touches UI → designer round.
+- **Sidebar/nav rail uses text-color-as-background (breaks all light themes)**
+  — *(peer-designer)* `src/peer-responsive.css:279` + `:291` fill the rail and
+  sidebar with `rgba(var(--sh-text-rgb), .72/.85)` — a dark-mode assumption.
+  In any light theme `--sh-text-rgb` is dark, so the rail renders near-black:
+  Swiss ("pure white, one red accent") gets a near-black sidebar over ~22% of
+  the viewport. Small-to-medium. Touches UI.
+- **Brain headings hardcoded white → invisible on light themes (WCAG fail)** —
+  *(peer-designer)* `src/peer-skin.css:458`, `:522`, `:525` force `color:#fff`,
+  while `:447` makes the brain canvas follow `var(--sh-bg)` (now light). Decide
+  one: keep the brain canvas always-dark (matches the stated intent in
+  `peer-responsive.css:264`) or make headings `var(--sh-text)`. Small.
+- **Note-card accent stripe + tags hardcoded amber in 8 of 10 themes** —
+  *(peer-designer)* `src/peer-skin.css:379` (`linear-gradient(#c9a875,#c96a5a)`
+  + amber glow) and `:383` (tag pills) never reference `--sh-accent` — Terminal's
+  green CRT shows an orange stripe. Same pattern at `:412-415` / `:437-438`
+  (flashcard grades, recap chips) — those are arguably semantic (warn/success),
+  so a design call, not an automatic fix. Small.
+- **Study Hall + Indigo in light mode fall back to generic cream** —
+  *(peer-designer)* `themes.css`'s surface guard only lists committed-mode
+  themes, so the two "auto" themes toggled to light render `#faf6ee` cream —
+  "Indigo Night" becomes cream with violet accents. Either give them real light
+  token variants or drop them to committed-dark. Small.
+- **Theme flash on every reload (introduced by the theme pack)** —
+  *(peer-tester)* `usageInfo` starts `null` (`App.jsx:178`) and
+  `resolveTheme` (`App.jsx:219`) treats unknown-plan as non-Pro, so a Pro user
+  on a Pro theme renders Slate for ~830ms until `/api/usage` resolves, then
+  snaps. Fails closed (no entitlement leak) but visible on every load. Fix
+  needs a judgment call: optimistic-render-then-correct removes the flash but
+  weakens the bypass guard the tester verified — themes are cosmetic-only so
+  that's likely the right trade, but it's a deliberate decision. Small.
+- **Code syntax highlighting hardcoded GitHub Dark on light themes** —
+  *(peer-designer)* `src/styles.css:10` embeds the full GitHub-Dark hljs theme
+  with no per-theme override; pale-blue strings + gray comments on Field
+  Notes' cream editor. Worse on Swiss/Newsprint (nearer true white). Medium.
+
 - **Delete the superseded `peer-skin.css:357` Space Grotesk heading
   rule** — *(surfaced by peer-tester + peer-reviewer during Code lab
   nav parity, 2026-07-15)* `.peer-skin .page-heading h1` is set to
