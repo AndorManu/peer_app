@@ -9,6 +9,7 @@ import "./peer-theme.css";
 import "./peer-skin.css";
 import "./peer-responsive.css";
 import "./studyhall.css";
+import "./themes.css";
 
 class ErrorBoundary extends React.Component {
   constructor(props) {

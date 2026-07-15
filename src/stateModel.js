@@ -4,8 +4,17 @@
 import { makeMastery, makeProfile, normalizeMastery, normalizeProfile } from "./learningModel.js";
 import { AUTH_PROVIDERS, FONT_OPTIONS, LEGACY_COLOR_MAP, PROJECT_COLORS, STUDY_MODES } from "./constants.js";
 import { classifySubject, getDomain } from "./subjects.js";
+import { THEME_IDS, DEFAULT_THEME } from "./themes.js";
 
 export const uid = () => Math.random().toString(36).slice(2, 10);
+
+// Accept any known theme id; migrate the retired "mono" id to the clean B&W
+// default ("slate"); fall back to the default for anything unrecognized.
+export function normalizeThemeId(id) {
+  if (THEME_IDS.includes(id)) return id;
+  if (id === "mono") return "slate";
+  return DEFAULT_THEME;
+}
 
 export const makeChat = (projectId = null) => ({
   id: uid(),
@@ -21,7 +30,7 @@ export const defaultState = () => {
 
   return {
     theme: "dark",
-    colorTheme: "studyhall", // studyhall | indigo | mono
+    colorTheme: DEFAULT_THEME, // see themes.js registry (free default: slate)
     fontId: "inter",
     textSize: 15,
     activeMode: "auto",
@@ -107,7 +116,7 @@ export function normalizeState(stored) {
 
   return {
     theme: stored.theme === "light" ? "light" : "dark",
-    colorTheme: ["studyhall", "indigo", "mono"].includes(stored.colorTheme) ? stored.colorTheme : "studyhall",
+    colorTheme: normalizeThemeId(stored.colorTheme),
     fontId: FONT_OPTIONS.some((font) => font.id === stored.fontId) ? stored.fontId : "inter",
     textSize: Number.isFinite(Number(stored.textSize)) ? Number(stored.textSize) : 15,
     activeMode,

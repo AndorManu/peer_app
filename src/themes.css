@@ -1,0 +1,436 @@
+/* ============================================================================
+   PEER — theme pack. Loaded LAST (after studyhall.css) so these win.
+   Registry + tiers live in themes.js; this file owns each theme's actual
+   look: a full --sh-* token block (colors propagate to every surface that
+   already reads the contract) plus targeted structural flair per skin.
+
+   Each new skin commits to ONE mode (dark or light) — App.jsx forces the
+   matching .theme-dark/.theme-light class from the registry's `mode`, so the
+   studyhall-tuned light/dark patchwork never fights a committed skin.
+
+   Free: slate (clean B&W, default) · fieldnotes (paper).
+   Pro:  studyhall · indigo · terminal · blueprint · newsprint · neon ·
+         academia · swiss.
+   ============================================================================ */
+
+/* ===========================================================================
+   DEV-ONLY Pro preview toggle (stripped from production builds).
+   =========================================================================== */
+.dev-pro-toggle {
+  display: flex; align-items: flex-start; gap: 9px; margin-bottom: 14px;
+  padding: 10px 12px; border-radius: 10px; cursor: pointer;
+  background: var(--sh-accent-soft); border: 1px dashed var(--sh-border-strong);
+  font-size: 12.5px; color: var(--sh-text-muted); line-height: 1.45;
+}
+.dev-pro-toggle strong { color: var(--sh-text); }
+.dev-pro-toggle code { font-family: var(--sh-font-mono, ui-monospace, monospace); font-size: 11.5px; }
+.dev-pro-toggle input { margin-top: 2px; flex: 0 0 auto; accent-color: var(--sh-accent); }
+
+/* ===========================================================================
+   LIGHT-SKIN RECLAIM — src/peer-responsive.css:262-531 is a ~144-rule legacy
+   block written when Peer had exactly one light look (Study Hall cream). It
+   hardcodes #ffffff / #2a2318 / #746a58 / #f3ecdd / #e5dcc9 with !important at
+   specificity (0,3,0), which beats every --sh-* token rule (0,2,0) — so all
+   three committed-light skins rendered as the same cream regardless of their
+   own palette (audited: panel/muted/border were byte-identical across them).
+
+   Until that block is properly tokenized (queued in PEER-BACKLOG.md), reclaim
+   the surfaces it hijacks by matching its !important at higher specificity
+   and pointing them back at the active theme's tokens.
+   =========================================================================== */
+:root[data-theme="fieldnotes"] .peer-skin.theme-light,
+:root[data-theme="newsprint"] .peer-skin.theme-light,
+:root[data-theme="swiss"] .peer-skin.theme-light {
+  --bg: var(--sh-bg);
+  --panel: var(--sh-bg-2);
+  --panel-2: var(--sh-bg-3);
+  --panel-3: var(--sh-bg-4);
+  --text: var(--sh-text);
+  --muted: var(--sh-text-muted);
+  --faint: var(--sh-text-faint);
+  --border: var(--sh-border);
+  --hairline: var(--sh-border);
+  --bubble: var(--sh-bg-2);
+}
+
+/* card-ish surfaces the legacy block forces to #ffffff */
+:root[data-theme="fieldnotes"] .peer-skin.theme-light .note-card,
+:root[data-theme="fieldnotes"] .peer-skin.theme-light .profile-card,
+:root[data-theme="fieldnotes"] .peer-skin.theme-light .settings-sidenav,
+:root[data-theme="fieldnotes"] .peer-skin.theme-light .font-list button,
+:root[data-theme="fieldnotes"] .peer-skin.theme-light .confirm-dialog,
+:root[data-theme="fieldnotes"] .peer-skin.theme-light .modal,
+:root[data-theme="fieldnotes"] .peer-skin.theme-light .card,
+:root[data-theme="fieldnotes"] .peer-skin.theme-light .message.assistant,
+:root[data-theme="newsprint"] .peer-skin.theme-light .note-card,
+:root[data-theme="newsprint"] .peer-skin.theme-light .profile-card,
+:root[data-theme="newsprint"] .peer-skin.theme-light .settings-sidenav,
+:root[data-theme="newsprint"] .peer-skin.theme-light .font-list button,
+:root[data-theme="newsprint"] .peer-skin.theme-light .confirm-dialog,
+:root[data-theme="newsprint"] .peer-skin.theme-light .modal,
+:root[data-theme="newsprint"] .peer-skin.theme-light .card,
+:root[data-theme="newsprint"] .peer-skin.theme-light .message.assistant,
+:root[data-theme="swiss"] .peer-skin.theme-light .note-card,
+:root[data-theme="swiss"] .peer-skin.theme-light .profile-card,
+:root[data-theme="swiss"] .peer-skin.theme-light .settings-sidenav,
+:root[data-theme="swiss"] .peer-skin.theme-light .font-list button,
+:root[data-theme="swiss"] .peer-skin.theme-light .confirm-dialog,
+:root[data-theme="swiss"] .peer-skin.theme-light .modal,
+:root[data-theme="swiss"] .peer-skin.theme-light .card,
+:root[data-theme="swiss"] .peer-skin.theme-light .message.assistant {
+  background: var(--sh-bg-2) !important;
+  color: var(--sh-text) !important;
+  border-color: var(--sh-border) !important;
+}
+
+/* the rail + sidebar filled themselves with the TEXT colour (a dark-mode
+   assumption) — in a light skin that paints them near-black. */
+:root[data-theme="fieldnotes"] .peer-skin.theme-light .peer-rail,
+:root[data-theme="newsprint"] .peer-skin.theme-light .peer-rail,
+:root[data-theme="swiss"] .peer-skin.theme-light .peer-rail,
+:root[data-theme="fieldnotes"] .peer-skin.theme-light .sidebar,
+:root[data-theme="newsprint"] .peer-skin.theme-light .sidebar,
+:root[data-theme="swiss"] .peer-skin.theme-light .sidebar {
+  background: var(--sh-bg-2) !important;
+  border-right: 1px solid var(--sh-border) !important;
+}
+:root[data-theme="fieldnotes"] .peer-skin.theme-light .peer-rail-item,
+:root[data-theme="newsprint"] .peer-skin.theme-light .peer-rail-item,
+:root[data-theme="swiss"] .peer-skin.theme-light .peer-rail-item {
+  color: var(--sh-text-muted) !important;
+}
+:root[data-theme="fieldnotes"] .peer-skin.theme-light .peer-rail-item.active,
+:root[data-theme="newsprint"] .peer-skin.theme-light .peer-rail-item.active,
+:root[data-theme="swiss"] .peer-skin.theme-light .peer-rail-item.active {
+  color: var(--sh-accent) !important;
+}
+
+/* Brain headings are hardcoded #fff — invisible once the canvas follows a
+   light --sh-bg. */
+:root[data-theme="fieldnotes"] .peer-skin .brain-heading h1,
+:root[data-theme="fieldnotes"] .peer-skin .brain-detail h2,
+:root[data-theme="fieldnotes"] .peer-skin .brain-open-secondary,
+:root[data-theme="newsprint"] .peer-skin .brain-heading h1,
+:root[data-theme="newsprint"] .peer-skin .brain-detail h2,
+:root[data-theme="newsprint"] .peer-skin .brain-open-secondary,
+:root[data-theme="swiss"] .peer-skin .brain-heading h1,
+:root[data-theme="swiss"] .peer-skin .brain-detail h2,
+:root[data-theme="swiss"] .peer-skin .brain-open-secondary { color: var(--sh-text) !important; }
+
+/* note-card accent stripe + tags were hardcoded amber in every theme */
+.peer-skin .note-card::before {
+  background: linear-gradient(180deg, var(--sh-accent), var(--sh-accent-hi)) !important;
+  box-shadow: none !important;
+}
+.peer-skin .note-tags span {
+  background: var(--sh-accent-soft) !important;
+  color: var(--sh-accent) !important;
+}
+
+/* ===========================================================================
+   THEME PICKER (Settings) — token-driven so it looks right in every skin.
+   =========================================================================== */
+.theme-picker { display: flex; flex-direction: column; gap: 18px; }
+.theme-tier { display: flex; flex-direction: column; gap: 9px; }
+.theme-tier-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--sh-text-muted);
+}
+.theme-tier-hint { font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--sh-text-faint); }
+.theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.theme-swatch {
+  display: flex; align-items: center; gap: 10px; position: relative;
+  padding: 10px 12px; text-align: left; cursor: pointer;
+  background: var(--sh-bg-2); color: var(--sh-text);
+  border: 1px solid var(--sh-border); border-radius: 10px;
+  transition: border-color 0.16s var(--sh-ease, ease), transform 0.16s var(--sh-ease, ease);
+}
+.theme-swatch:hover { border-color: var(--sh-border-strong); }
+.theme-swatch.active { border-color: var(--sh-accent); box-shadow: 0 0 0 1px var(--sh-accent); }
+.theme-swatch.locked { opacity: 0.72; }
+.theme-swatch.locked:hover { opacity: 1; }
+.theme-swatch-dots { display: inline-flex; flex: 0 0 auto; }
+.theme-swatch-dots span {
+  width: 15px; height: 15px; border-radius: 999px; display: block;
+  margin-left: -5px; border: 1.5px solid var(--sh-bg-2);
+}
+.theme-swatch-dots span:first-child { margin-left: 0; }
+.theme-swatch-text { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.theme-swatch-text strong { font-size: 13px; font-weight: 600; }
+.theme-swatch-text small { font-size: 11px; color: var(--sh-text-faint); }
+.theme-swatch-lock { position: absolute; top: 8px; right: 9px; color: var(--sh-text-faint); }
+.theme-upsell {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+  padding: 13px 15px; margin-top: 2px;
+  background: var(--sh-accent-soft); border: 1px solid var(--sh-border-strong); border-radius: 12px;
+  font-size: 13px; color: var(--sh-text);
+}
+
+/* ===========================================================================
+   SLATE — clean black & white (FREE default). White as the only accent,
+   hairline borders, zero color wash, glow removed. Restraint is the look.
+   =========================================================================== */
+:root[data-theme="slate"] {
+  --sh-bg-deep: #000000;
+  --sh-bg: #0b0b0c;
+  --sh-bg-2: #141416;
+  --sh-bg-3: #1b1b1e;
+  --sh-bg-4: #252528;
+  --sh-text: #f5f5f6;
+  --sh-text-rgb: 245, 245, 246;
+  --sh-border: rgba(245, 245, 246, 0.10);
+  --sh-border-strong: rgba(245, 245, 246, 0.22);
+  --sh-text-muted: rgba(245, 245, 246, 0.60);
+  --sh-text-faint: rgba(245, 245, 246, 0.36);
+  --sh-accent: #f5f5f6;
+  --sh-accent-hi: #ffffff;
+  --sh-accent-ink: #0b0b0c;
+  --sh-accent-rgb: 245, 245, 246;
+  --sh-accent-soft: rgba(245, 245, 246, 0.08);
+  --sh-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 30px -18px rgba(0, 0, 0, 0.7);
+  --sh-shadow-pop: 0 24px 60px -24px rgba(0, 0, 0, 0.8);
+}
+/* clean = no colored glow anywhere; hairline everything */
+:root[data-theme="slate"] .peer-skin .project-dot,
+:root[data-theme="slate"] .peer-skin [class*="glow"] { box-shadow: none !important; }
+:root[data-theme="slate"] .peer-skin .brand-mark,
+:root[data-theme="slate"] .peer-skin .welcome-mark { box-shadow: inset 0 1px 0 rgba(245,245,246,.14) !important; }
+
+/* ===========================================================================
+   FIELD NOTES — warm olive on recycled paper (FREE, light). Serif display,
+   dashed field-guide borders, muted ink.
+   =========================================================================== */
+:root[data-theme="fieldnotes"] {
+  --sh-bg-deep: #d8d5c4;
+  --sh-bg: #e6e3d3;
+  --sh-bg-2: #ded9c6;
+  --sh-bg-3: #d5d0ba;
+  --sh-bg-4: #cbc5ac;
+  --sh-text: #2c3320;
+  --sh-text-rgb: 44, 51, 32;
+  --sh-border: rgba(44, 51, 32, 0.16);
+  --sh-border-strong: rgba(44, 51, 32, 0.32);
+  --sh-text-muted: rgba(44, 51, 32, 0.66);
+  --sh-text-faint: rgba(44, 51, 32, 0.44);
+  --sh-accent: #5c6b3f;
+  --sh-accent-hi: #6f8049;
+  --sh-accent-ink: #f2efe0;
+  --sh-accent-rgb: 92, 107, 63;
+  --sh-accent-soft: rgba(92, 107, 63, 0.14);
+  --sh-shadow-card: 0 1px 2px rgba(44, 51, 32, 0.14), 0 10px 26px -16px rgba(44, 51, 32, 0.28);
+  --sh-shadow-pop: 0 18px 44px -18px rgba(44, 51, 32, 0.34);
+}
+:root[data-theme="fieldnotes"] .peer-skin .card,
+:root[data-theme="fieldnotes"] .peer-skin .chip,
+:root[data-theme="fieldnotes"] .peer-skin .message.user { border-style: dashed !important; }
+:root[data-theme="fieldnotes"] .peer-skin .project-dot { box-shadow: none !important; }
+
+/* ===========================================================================
+   TERMINAL — green-on-black CRT (PRO, dark). Monospace everywhere, square
+   corners, faint scanlines, hard 1px frames.
+   =========================================================================== */
+:root[data-theme="terminal"] {
+  --sh-bg-deep: #050705;
+  --sh-bg: #0a0d0a;
+  --sh-bg-2: #0f140f;
+  --sh-bg-3: #131a13;
+  --sh-bg-4: #182218;
+  --sh-text: #c9f7c2;
+  --sh-text-rgb: 201, 247, 194;
+  --sh-border: rgba(94, 242, 122, 0.18);
+  --sh-border-strong: rgba(94, 242, 122, 0.4);
+  --sh-text-muted: rgba(201, 247, 194, 0.62);
+  --sh-text-faint: rgba(201, 247, 194, 0.4);
+  --sh-accent: #5ef27a;
+  --sh-accent-hi: #8affa0;
+  --sh-accent-ink: #061206;
+  --sh-accent-rgb: 94, 242, 122;
+  --sh-accent-soft: rgba(94, 242, 122, 0.1);
+}
+:root[data-theme="terminal"] .peer-skin .card,
+:root[data-theme="terminal"] .peer-skin .message,
+:root[data-theme="terminal"] .peer-skin .chip,
+:root[data-theme="terminal"] .peer-skin button,
+:root[data-theme="terminal"] .peer-skin input,
+:root[data-theme="terminal"] .peer-skin textarea,
+:root[data-theme="terminal"] .peer-skin .composer,
+:root[data-theme="terminal"] .peer-skin .modal,
+:root[data-theme="terminal"] .peer-skin .panel { border-radius: 0 !important; }
+:root[data-theme="terminal"] .main::after {
+  content: ""; position: fixed; inset: 0; z-index: 40; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(94, 242, 122, 0.035) 0 1px, transparent 1px 3px);
+}
+
+/* ===========================================================================
+   BLUEPRINT — drafting table, cyan ink on deep blue (PRO, dark). Serif
+   headings, faint grid paper, square corners.
+   =========================================================================== */
+:root[data-theme="blueprint"] {
+  --sh-bg-deep: #081f39;
+  --sh-bg: #0d2b4e;
+  --sh-bg-2: #123a66;
+  --sh-bg-3: #16457a;
+  --sh-bg-4: #1c5290;
+  --sh-text: #dceeff;
+  --sh-text-rgb: 220, 238, 255;
+  --sh-border: rgba(127, 212, 255, 0.22);
+  --sh-border-strong: rgba(127, 212, 255, 0.42);
+  --sh-text-muted: rgba(220, 238, 255, 0.66);
+  --sh-text-faint: rgba(220, 238, 255, 0.42);
+  --sh-accent: #7fd4ff;
+  --sh-accent-hi: #a9e4ff;
+  --sh-accent-ink: #08243f;
+  --sh-accent-rgb: 127, 212, 255;
+  --sh-accent-soft: rgba(127, 212, 255, 0.12);
+}
+:root[data-theme="blueprint"] .app::before {
+  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.5;
+  background-image: linear-gradient(rgba(127, 212, 255, 0.10) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(127, 212, 255, 0.10) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+:root[data-theme="blueprint"] .peer-skin .card,
+:root[data-theme="blueprint"] .peer-skin .message,
+:root[data-theme="blueprint"] .peer-skin button,
+:root[data-theme="blueprint"] .peer-skin .composer { border-radius: 2px !important; }
+
+/* ===========================================================================
+   NEWSPRINT — broadsheet, red masthead on off-white (PRO, light). Serif,
+   hard black rules, no rounding.
+   =========================================================================== */
+:root[data-theme="newsprint"] {
+  --sh-bg-deep: #e4e1d6;
+  --sh-bg: #eeece4;
+  --sh-bg-2: #e6e2d4;
+  --sh-bg-3: #dcd8c8;
+  --sh-bg-4: #d0cbb8;
+  --sh-text: #1a1a1a;
+  --sh-text-rgb: 26, 26, 26;
+  --sh-border: rgba(26, 26, 26, 0.22);
+  --sh-border-strong: rgba(26, 26, 26, 0.5);
+  --sh-text-muted: rgba(26, 26, 26, 0.66);
+  --sh-text-faint: rgba(26, 26, 26, 0.46);
+  --sh-accent: #b21f1f;
+  --sh-accent-hi: #c62a2a;
+  --sh-accent-ink: #f4f1e8;
+  --sh-accent-rgb: 178, 31, 31;
+  --sh-accent-soft: rgba(178, 31, 31, 0.1);
+}
+:root[data-theme="newsprint"] .peer-skin .card,
+:root[data-theme="newsprint"] .peer-skin .message,
+:root[data-theme="newsprint"] .peer-skin .chip,
+:root[data-theme="newsprint"] .peer-skin button,
+:root[data-theme="newsprint"] .peer-skin input,
+:root[data-theme="newsprint"] .peer-skin textarea,
+:root[data-theme="newsprint"] .peer-skin .composer { border-radius: 0 !important; }
+:root[data-theme="newsprint"] .peer-skin .message { border: 1px solid #1a1a1a !important; }
+
+/* ===========================================================================
+   NEON ARCADE — magenta + electric teal on deep violet (PRO, dark).
+   =========================================================================== */
+:root[data-theme="neon"] {
+  --sh-bg-deep: #080415;
+  --sh-bg: #0e0621;
+  --sh-bg-2: #1c0f3a;
+  --sh-bg-3: #241247;
+  --sh-bg-4: #2e1758;
+  --sh-text: #f4e9ff;
+  --sh-text-rgb: 244, 233, 255;
+  --sh-border: rgba(91, 46, 255, 0.4);
+  --sh-border-strong: rgba(255, 46, 147, 0.55);
+  --sh-text-muted: rgba(244, 233, 255, 0.66);
+  --sh-text-faint: rgba(244, 233, 255, 0.42);
+  --sh-accent: #ff2e93;
+  --sh-accent-hi: #6ef2e0;
+  --sh-accent-ink: #12042a;
+  --sh-accent-rgb: 255, 46, 147;
+  --sh-accent-soft: rgba(255, 46, 147, 0.14);
+}
+:root[data-theme="neon"] .peer-skin .project-dot,
+:root[data-theme="neon"] .peer-skin .topbar i { box-shadow: 0 0 8px 1px currentColor !important; }
+:root[data-theme="neon"] .peer-skin .primary-button,
+:root[data-theme="neon"] .peer-skin .newchat {
+  background: linear-gradient(90deg, #ff2e93, #5b2eff) !important; color: #fff !important;
+}
+
+/* ===========================================================================
+   DARK ACADEMIA — candlelit gold on oxblood-brown (PRO, dark). Serif, warm.
+   =========================================================================== */
+:root[data-theme="academia"] {
+  --sh-bg-deep: #140b09;
+  --sh-bg: #1c1210;
+  --sh-bg-2: #28190f;
+  --sh-bg-3: #31211a;
+  --sh-bg-4: #3d2a20;
+  --sh-text: #ece3d2;
+  --sh-text-rgb: 236, 227, 210;
+  --sh-border: rgba(201, 160, 74, 0.22);
+  --sh-border-strong: rgba(201, 160, 74, 0.42);
+  --sh-text-muted: rgba(236, 227, 210, 0.64);
+  --sh-text-faint: rgba(236, 227, 210, 0.42);
+  --sh-accent: #c9a04a;
+  --sh-accent-hi: #ddb968;
+  --sh-accent-ink: #180f0c;
+  --sh-accent-rgb: 201, 160, 74;
+  --sh-accent-soft: rgba(201, 160, 74, 0.12);
+}
+:root[data-theme="academia"] .app::before {
+  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(ellipse at 20% 0%, rgba(201, 160, 74, 0.08), transparent 55%);
+}
+
+/* ===========================================================================
+   SWISS — international style, red rule on true white (PRO, light). Grotesk,
+   flat, hard corners, one red accent.
+   =========================================================================== */
+:root[data-theme="swiss"] {
+  --sh-bg-deep: #f0f0f0;
+  --sh-bg: #ffffff;
+  --sh-bg-2: #f4f4f4;
+  --sh-bg-3: #ececec;
+  --sh-bg-4: #e2e2e2;
+  --sh-text: #111111;
+  --sh-text-rgb: 17, 17, 17;
+  --sh-border: rgba(17, 17, 17, 0.16);
+  --sh-border-strong: rgba(17, 17, 17, 0.42);
+  --sh-text-muted: rgba(17, 17, 17, 0.62);
+  --sh-text-faint: rgba(17, 17, 17, 0.42);
+  --sh-accent: #d81e1e;
+  --sh-accent-hi: #ec2b2b;
+  --sh-accent-ink: #ffffff;
+  --sh-accent-rgb: 216, 30, 30;
+  --sh-accent-soft: rgba(216, 30, 30, 0.08);
+}
+:root[data-theme="swiss"] .peer-skin .card,
+:root[data-theme="swiss"] .peer-skin .message,
+:root[data-theme="swiss"] .peer-skin .chip,
+:root[data-theme="swiss"] .peer-skin button,
+:root[data-theme="swiss"] .peer-skin input,
+:root[data-theme="swiss"] .peer-skin textarea,
+:root[data-theme="swiss"] .peer-skin .composer { border-radius: 0 !important; }
+:root[data-theme="swiss"] .peer-skin .main { border-top: 5px solid #d81e1e !important; }
+
+/* ===========================================================================
+   Committed-skin surface guard — defeat the studyhall-tuned light/dark
+   patchwork so a committed skin's own --sh-bg/--sh-text always win on the
+   big surfaces, regardless of which .theme-* class App.jsx applied.
+   =========================================================================== */
+:root[data-theme="slate"] .app,
+:root[data-theme="fieldnotes"] .app,
+:root[data-theme="terminal"] .app,
+:root[data-theme="blueprint"] .app,
+:root[data-theme="newsprint"] .app,
+:root[data-theme="neon"] .app,
+:root[data-theme="academia"] .app,
+:root[data-theme="swiss"] .app {
+  background: var(--sh-bg-deep) !important;
+  color: var(--sh-text) !important;
+}
+:root[data-theme="slate"] .main,
+:root[data-theme="fieldnotes"] .main,
+:root[data-theme="terminal"] .main,
+:root[data-theme="blueprint"] .main,
+:root[data-theme="newsprint"] .main,
+:root[data-theme="neon"] .main,
+:root[data-theme="academia"] .main,
+:root[data-theme="swiss"] .main { background: var(--sh-bg) !important; }
