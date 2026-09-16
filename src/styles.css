@@ -4429,3 +4429,33 @@ code, pre, kbd, samp, .hljs, .code-block, .code-block code, .markdown code, .mar
     padding-top: 8px !important;
   }
 }
+
+/* ── Bring-your-own-key (Settings → AI key, and the first-message prompt) ── */
+.byok-row { display: flex; gap: 8px; align-items: stretch; }
+.byok-input,
+.byok-select {
+  flex: 1;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--sh-accent-rgb), 0.22);
+  background: rgba(var(--sh-accent-rgb), 0.04);
+  color: inherit;
+  font: inherit;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+.byok-select { width: 100%; font-family: inherit; }
+.byok-row button { min-height: 42px; padding: 0 14px; border-radius: 10px; }
+.byok-actions { display: flex; gap: 10px; align-items: center; margin-top: 4px; }
+.byok-actions .primary-button { margin: 0; }
+.byok-status { margin: 12px 0 0; font-size: 13px; }
+.byok-status.byok-error { color: #e0655c; }
+.byok-status.byok-saved { color: var(--accent); }
+.byok-status.byok-busy { opacity: 0.7; }
+.byok-dialog { width: min(520px, calc(100vw - 32px)); }
+.byok-dialog .settings-group { margin-bottom: 14px; }
+.byok .byok-h { font-family: inherit !important; font-size: 12px !important; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.7; margin: 0 0 8px !important; }
+.byok-compact .settings-danger-desc { font-size: 12px; }
