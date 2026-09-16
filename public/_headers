@@ -23,8 +23,10 @@
 # SUPABASE_HOST below is filled in with this project's current URL
 # (https://xadsdmlqqyswcpxfwdph.supabase.co — same value already public via
 # /api/config). If the project ever changes, update both connect-src entries.
+# api.anthropic.com / api.openai.com: the hosted build has no server, so the
+# browser calls the provider directly with the learner's own key (src/byok.js).
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://*.fal.media https://xadsdmlqqyswcpxfwdph.supabase.co; connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://xadsdmlqqyswcpxfwdph.supabase.co wss://xadsdmlqqyswcpxfwdph.supabase.co; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://*.fal.media https://xadsdmlqqyswcpxfwdph.supabase.co; connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://xadsdmlqqyswcpxfwdph.supabase.co wss://xadsdmlqqyswcpxfwdph.supabase.co https://api.anthropic.com https://api.openai.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin

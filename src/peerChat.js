@@ -2,6 +2,7 @@
 // Same SSE contract the chat view uses; lifted out so the coding tab and the
 // practice generator can call the AI without going through the chat thread.
 import { getSupabase } from "./supabase.js";
+import { chatFetch } from "./byok.js";
 
 // AI is gated by auth + daily quota on the server: attach the session token
 // and the timezone offset (quota resets at the LEARNER'S midnight).
@@ -31,12 +32,7 @@ export class AiGateError extends Error {
 }
 
 export async function streamChat({ system, messages, onChunk, signal }) {
-  const response = await fetch("/api/chat", {
-    method: "POST",
-    headers: await aiRequestHeaders(),
-    body: JSON.stringify({ system, messages }),
-    signal,
-  });
+  const response = await chatFetch({ system, messages }, await aiRequestHeaders(), signal);
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     if (response.status === 401 || response.status === 402) throw new AiGateError(response.status, data);

@@ -53,6 +53,8 @@ import {
 import { Markdown } from "./markdown.jsx";
 import { deleteDocPreview, extractStudyMaterial, getDocPreviewUrl, uploadDocPreview } from "./materials.js";
 import { buildSystemPrompt, shouldUseRetrieval } from "./peerPrompt.js";
+import { STATIC_BUILD, chatFetch, hasByok } from "./byok.js";
+import { ByokPrompt, ByokSettings } from "./ByokSettings.jsx";
 import { loadState, saveState, setSaveErrorHandler } from "./storage.js";
 import {
   adaptationNotice,
@@ -176,6 +178,8 @@ export default function App() {
   const [error, setError] = useState("");
   const [toast, setToast] = useState(null);
   const [aiGate, setAiGate] = useState(null); // { code: "auth_required" | "quota_exhausted", details }
+  const [byokPrompt, setByokPrompt] = useState(false); // hosted build: ask for a key on the first message
+  const [settingsTab, setSettingsTab] = useState(null); // one-shot request to open a specific settings tab
   const [usageInfo, setUsageInfo] = useState(null); // { plan, usedToday, allowance }
   // Dev-only Pro preview so the owner can see Pro-gated looks locally without a
   // subscription. Vite compiles import.meta.env.DEV to false in production, so
@@ -370,6 +374,7 @@ export default function App() {
 
   // Daily AI usage meter (server-computed; the client only displays it).
   const refreshUsage = useCallback(async () => {
+    if (STATIC_BUILD || hasByok()) { setUsageInfo(null); return; }
     try {
       const response = await fetch("/api/usage", { headers: await aiRequestHeaders() });
       if (!response.ok) {
@@ -739,7 +744,7 @@ export default function App() {
   // Fire-and-forget document ingestion for semantic retrieval. Failure is
   // fine — the tutor still answers, just without cited excerpts.
   async function embedDocInBackground(doc, projectId) {
-    if (!doc?.text?.trim() || doc.kind === "image") return;
+    if (STATIC_BUILD || !doc?.text?.trim() || doc.kind === "image") return;
     try {
       await fetch("/api/embed-doc", {
         method: "POST",
@@ -750,6 +755,7 @@ export default function App() {
   }
 
   async function removeDocChunks(docId) {
+    if (STATIC_BUILD) return;
     try {
       await fetch("/api/embed-doc", {
         method: "POST",
@@ -1058,17 +1064,14 @@ export default function App() {
   async function streamRequest(messages, modeId, onChunk, profileOverride = state.profile, projectOverride = null, imageAttachments = []) {
     const project = projectOverride || state.projects.find((item) => item.id === activeChat.projectId);
     const recipe = buildTeachingRecipe(profileOverride, project, modeId);
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: await aiRequestHeaders(),
-      body: JSON.stringify({
-        system: buildSystemPrompt(project, profileOverride, modeId, recipe),
-        messages,
-        imageDataUrls: imageAttachments.map((f) => ({ dataUrl: f.previewUrl, name: f.name })),
-        // big libraries: server retrieves + cites only the relevant excerpts
-        retrieval: project && shouldUseRetrieval(project) ? { projectId: project.id } : undefined,
-      }),
-    });
+    const response = await chatFetch({
+      system: buildSystemPrompt(project, profileOverride, modeId, recipe),
+      messages,
+      imageDataUrls: imageAttachments.map((f) => ({ dataUrl: f.previewUrl, name: f.name })),
+      // big libraries: server retrieves + cites only the relevant excerpts
+      // (not available with an own key — the prompt inlines the library instead)
+      retrieval: project && !hasByok() && shouldUseRetrieval(project) ? { projectId: project.id } : undefined,
+    }, await aiRequestHeaders());
 
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
@@ -1191,6 +1194,7 @@ export default function App() {
   async function sendMessage(forcedPrompt, options = {}) {
     const content = (forcedPrompt ?? input).trim();
     if ((!content && !pendingFiles.length) || loading || attachmentBusy || !activeChat) return;
+    if (STATIC_BUILD && !hasByok()) { setByokPrompt(true); return; }
 
     const modeId = options.mode || state.activeMode;
     const attachmentContext = pendingFiles.length
@@ -1929,6 +1933,11 @@ export default function App() {
     });
   }
 
+  useEffect(() => {
+    if (STATIC_BUILD && hydrated && !state.landingComplete) continueAsGuest();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, state.landingComplete]);
+
   function continueAsGuest() {
     updateState((current) => ({
       ...current,
@@ -2153,7 +2162,7 @@ export default function App() {
           </div>
         </header>
 
-        {view === "settings" && <SettingsPanel state={state} updateState={updateState} resetData={confirmResetData} loadSampleData={loadSampleData} cloudSync={cloudSync} signOut={signOut} confirmDeleteAccount={confirmDeleteAccount} usage={usageInfo} startCheckout={startCheckout} openBillingPortal={openBillingPortal} devPro={devPro} toggleDevPro={toggleDevPro} />}
+        {view === "settings" && <SettingsPanel openTab={settingsTab} onTabOpened={() => setSettingsTab(null)} state={state} updateState={updateState} resetData={confirmResetData} loadSampleData={loadSampleData} cloudSync={cloudSync} signOut={signOut} confirmDeleteAccount={confirmDeleteAccount} usage={usageInfo} startCheckout={startCheckout} openBillingPortal={openBillingPortal} devPro={devPro} toggleDevPro={toggleDevPro} />}
         {view === "profile" && <ProfilePanel profile={state.profile} activeProject={activeProject} activeChat={activeChat} insights={insights} activeMode={activeMode} updateState={updateState} recap={buildLearnerRecap(state)} badgeInfo={computeBadges(state)} showToast={showToast} pulse={studyPulse} onReviewNow={startReviewNow} personaInsights={buildPersonaInsights(state)} onDnaFeedback={handleDnaFeedback} />}
         {view === "brain" && (
           <React.Suspense fallback={<PanelLoading label="Waking up your brain…" />}>
@@ -2292,7 +2301,12 @@ export default function App() {
             updateState((current) => ({ ...current, landingComplete: false }));
           }}
           onUpgrade={startCheckout}
+          onOwnKey={() => { setAiGate(null); setByokPrompt(true); }}
         />
+      )}
+
+      {byokPrompt && (
+        <ByokPrompt onClose={() => setByokPrompt(false)} onSaved={() => { setByokPrompt(false); showToast("Key saved. Ask Peer anything."); }} />
       )}
 
       {confirmRequest && (
@@ -2730,7 +2744,7 @@ function MessageActions({ message, index, handleFeedback, saveNote, regenerateFr
     feedbackChip("teachBack", <MessageSquare size={14} />, "Teach back"),
     actionChip("stepByStep", <ChevronRight size={14} />, "Step by step", () => sendMessage("Break this down step by step from the very beginning. Number each step and explain each one clearly.", { mode: "explain" })),
     actionChip("regenerate", <RotateCcw size={14} />, "Regenerate", () => regenerateFrom(index)),
-    actionChip("visualize", <Layers size={14} />, "Visualize", () => generateImage(message)),
+    ...(STATIC_BUILD ? [] : [actionChip("visualize", <Layers size={14} />, "Visualize", () => generateImage(message))]),
     actionChip("diagram", <GitBranch size={14} />, "Diagram", () => requestVisualBlueprint(message, "diagram")),
     actionChip("flowchart", <GitBranch size={14} />, "Flowchart", () => requestVisualBlueprint(message, "flowchart")),
     actionChip("mindmap", <Brain size={14} />, "Memory map", () => requestVisualBlueprint(message, "mindmap")),
@@ -3485,8 +3499,9 @@ function ThemePicker({ state, updateState, isPro, startCheckout }) {
   );
 }
 
-function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSync, signOut, confirmDeleteAccount, usage, startCheckout, openBillingPortal, devPro, toggleDevPro }) {
-  const [tab, setTab] = useState("appearance");
+function SettingsPanel({ openTab, onTabOpened, state, updateState, resetData, loadSampleData, cloudSync, signOut, confirmDeleteAccount, usage, startCheckout, openBillingPortal, devPro, toggleDevPro }) {
+  const [tab, setTab] = useState(openTab || "appearance");
+  useEffect(() => { if (openTab) { setTab(openTab); onTabOpened?.(); } }, [openTab, onTabOpened]);
   const [legal, setLegal] = useState(null);
   const provider = AUTH_PROVIDERS.find((item) => item.id === state.account?.provider);
   const isPro = devPro || usage?.plan === "pro";
@@ -3505,7 +3520,8 @@ function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSyn
 
   const tabs = [
     { id: "appearance", icon: Sun, label: "Appearance" },
-    { id: "plan", icon: Trophy, label: "Plan" },
+    { id: "ai", icon: Sparkles, label: "AI key" },
+    ...(STATIC_BUILD ? [] : [{ id: "plan", icon: Trophy, label: "Plan" }]),
     { id: "account", icon: UserRound, label: "Account" },
     { id: "data", icon: Trash2, label: "Data" },
   ];
@@ -3596,6 +3612,8 @@ function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSyn
             </>
           )}
 
+          {tab === "ai" && <ByokSettings />}
+
           {tab === "plan" && (
             <>
               <div className="settings-group">
@@ -3672,11 +3690,11 @@ function SettingsPanel({ state, updateState, resetData, loadSampleData, cloudSyn
                   <div>
                     <strong>{state.account?.name || "Local learner"}</strong>
                     <span>{state.account?.verified ? state.account.email : "Guest mode — data lives on this device"}</span>
-                    <small>{state.account?.verified ? `Signed in with ${provider?.label || "email"}` : "Sign in to back up and sync across devices"}</small>
+                    <small>{state.account?.verified ? `Signed in with ${provider?.label || "email"}` : STATIC_BUILD ? "The hosted version has no accounts. Use the Data tab to export and move devices." : "Sign in to back up and sync across devices"}</small>
                   </div>
                   {state.account?.verified ? (
                     <button onClick={signOut}>Sign out</button>
-                  ) : (
+                  ) : !STATIC_BUILD && (
                     <button className="primary-button" style={{ margin: 0 }} onClick={() => updateState((c) => ({ ...c, landingComplete: false }))}>Sign in</button>
                   )}
                 </div>
@@ -3854,7 +3872,7 @@ function ProjectModal({ project, selectedDoc, hydratedPreviewUrl, selectedDocId,
                   <button onClick={() => run("diagram")}><GitBranch size={14} /> Diagram</button>
                   <button onClick={() => run("exam")}><GraduationCap size={14} /> Exam</button>
                   {selectedDoc.kind === "image" && <button onClick={() => run("vision")}><Layers size={14} /> Explain image</button>}
-                  {selectedDoc.kind === "image" && <button onClick={() => ocrDoc(project.id, selectedDoc.id)}><FileText size={14} /> Extract text (OCR)</button>}
+                  {selectedDoc.kind === "image" && !STATIC_BUILD && <button onClick={() => ocrDoc(project.id, selectedDoc.id)}><FileText size={14} /> Extract text (OCR)</button>}
                   {codeFile && <button onClick={() => run("codeTutor")}><Code2 size={14} /> Code tutor</button>}
                 </div>
                 <div className="doc-highlight-box">
@@ -3947,7 +3965,7 @@ function OnboardingModal({ profileDraft, setProfileDraft, complete, skip }) {
 }
 
 // AI gate: sign-in prompt (401) or the daily-quota paywall (402).
-function PaywallModal({ gate, onClose, onSignIn, onUpgrade }) {
+function PaywallModal({ gate, onClose, onSignIn, onUpgrade, onOwnKey }) {
   const trapRef = useFocusTrap(true, { onEscape: onClose });
   const quota = gate.code === "quota_exhausted";
   const details = gate.details || {};
@@ -3993,6 +4011,7 @@ function PaywallModal({ gate, onClose, onSignIn, onUpgrade }) {
             </p>
             <div className="confirm-actions paywall-actions">
               <button type="button" onClick={onClose}>Not now</button>
+              {onOwnKey && <button type="button" onClick={onOwnKey}>Use my own API key</button>}
               <button type="button" className="primary-button" onClick={onSignIn} data-autofocus>Sign in — it's free</button>
             </div>
           </>

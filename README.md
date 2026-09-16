@@ -2,6 +2,12 @@
 
 Peer is a local React app for adaptive peer-to-peer learning. It starts as a chat, watches how the learner asks and responds, and shifts between simple explanations, technical detail, analogies, Socratic questions, mini challenges, and rubber-duck checking.
 
+## Use it now
+
+**https://peer-app.pages.dev** — no account, no server. Paste your own Anthropic or OpenAI API key under *Settings → AI key* (or when you send your first message). The key is stored only in your browser and sent only to the provider you picked; you pay the provider directly, a study session costs cents. Everything you create stays on your device.
+
+The hosted build is `VITE_STATIC=1 vite build`: it hides the parts that need the local server (image generation, OCR, semantic retrieval over big libraries, the server code runner for languages other than JavaScript/Python, cloud accounts and billing).
+
 ## Run locally
 
 ```bash
