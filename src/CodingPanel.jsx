@@ -514,7 +514,7 @@ ${code || "(empty)"}
               {running ? (
                 <div className="term-line muted">running…<span className="term-caret" /></div>
               ) : output.length === 0 ? (
-                <div className="term-line muted">Press Run to execute. JavaScript runs instantly; other languages run on the server.</div>
+                <div className="term-line muted">{STATIC_BUILD ? "Press Run to execute. JavaScript and Python run right here in your browser." : "Press Run to execute. JavaScript runs instantly; other languages run on the server."}</div>
               ) : output.map((line, i) => (
                 <div key={i} className={`term-line ${line.k}`}>{line.t || " "}</div>
               ))}
