@@ -17,6 +17,7 @@ import { streamChat } from "./peerChat.js";
 import StyledSelect from "./components/StyledSelect.jsx";
 import { COLORS, GRADIENTS, EASE } from "./peerTheme.js";
 import { packsFor, scriptUrlsFor, pyPackagesFor, enabledPackLabels, NO_PACKS_NOTE } from "./libraryPacks.js";
+import { STATIC_BUILD } from "./byok.js";
 
 const LANGUAGES = [
   { id: "javascript", label: "JavaScript", ext: "main.js", local: true },
@@ -311,6 +312,12 @@ export default function CodingPanel({ profile, projects = [], onSaveToBrain }) {
         setOutput([{ k: "muted", t: "Python runtime unavailable — falling back to the server runner (stdlib only)…" }]);
         // fall through to the Wandbox path below
       }
+    }
+    if (STATIC_BUILD) {
+      setOutput([{ k: "err", t: "The hosted version runs JavaScript and Python in your browser only. Run Peer locally (npm run dev) for other languages." }]);
+      setExit({ code: 1, ms: Math.round(performance.now() - started) });
+      setRunning(false);
+      return;
     }
     try {
       const r = await fetch("/api/run", {
