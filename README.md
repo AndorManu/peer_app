@@ -71,3 +71,7 @@ These are intentionally not hardcoded into the local prototype:
 - OCR for scanned PDFs.
 - AI vision over attached images.
 - Rate limits, usage tracking, and billing safeguards.
+
+## License
+
+MIT. Use it, fork it, keep the name.
